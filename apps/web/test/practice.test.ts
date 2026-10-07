@@ -41,6 +41,7 @@ describe('practice timer', () => {
     expect(formatDuration(65_400)).toBe('1:05');
     expect(formatDuration(3_725_000)).toBe('1:02:05');
     expect(formatDuration(-5)).toBe('0:00');
+    expect(formatMinutes(0)).toBe('0 min');
     expect([20, 600, 3600, 3900].map(formatMinutes)).toEqual([
       '1 min',
       '10 min',

@@ -43,7 +43,7 @@ export function formatDuration(ms: number): string {
 }
 
 export function formatMinutes(seconds: number): string {
-  const minutes = Math.max(1, Math.round(seconds / 60));
+  const minutes = seconds <= 0 ? 0 : Math.max(1, Math.round(seconds / 60));
   if (minutes < 60) return `${String(minutes)} min`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;

@@ -1,6 +1,6 @@
 ---
 title: Deployment to the Pi
-status: in progress
+status: shipped
 updated: 2026-10-07
 ---
 
@@ -13,6 +13,8 @@ See [ADR 0005](../adr/0005-ci-cd-to-the-pi.md) and [ADR 0006](../adr/0006-google
 - Pi module: `~/code/dot-files/per-chordas-ad-astra/` (compose, `deploy.sh`, README).
 - Pi state: `/var/lib/per-chordas-ad-astra/{data,secrets,state}`, never in git.
 - URL: `https://per-chordas-ad-astra.333133333.xyz` (Google gate), plus a tile on privatearea.
+- First CI deploy 2026-10-07 (`0.1.2`): healthy 20 s after the pull, 28 MiB in use; proven end to end in Dewi's
+  signed-in Edge (a stroke drawn in the UI reached GitHub as its own commit about 22 s later).
 
 Container environment: `DATA_REMOTE`, `DATA_SSH_KEY_FILE`, `DATA_KNOWN_HOSTS_FILE`, `TRUSTED_CIDRS`,
 `COMMIT_IDLE_MS` (ms), `PUSH_RETRY_DELAYS_MS` (comma-separated ms), `GIT_AUTHOR_NAME/EMAIL`, `LOG_LEVEL`.
