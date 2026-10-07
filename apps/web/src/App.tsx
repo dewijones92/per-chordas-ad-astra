@@ -1,10 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Route, Switch, useLocation, useRoute } from 'wouter';
 import { LibraryPage } from './library/LibraryPage.tsx';
 import { MetronomeProvider, useMetronome } from './metronome/MetronomeProvider.tsx';
 import { PiecePage } from './piece/PiecePage.tsx';
 import { LogPage } from './practice/LogPage.tsx';
-import { readResume, shouldResumeTo, updateResume } from './resume/resume.ts';
+import {
+  flushResume,
+  pullResume,
+  readResume,
+  rememberPath,
+  shouldResumeTo,
+} from './resume/resume.ts';
 import { SyncPill } from './sync/SyncPill.tsx';
 import { ToolsPage } from './ui/ToolsPage.tsx';
 import './ui/shell.css';
@@ -34,6 +40,23 @@ function MiniMetronome() {
   );
 }
 
+function useResumeReady(): boolean {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    void pullResume().finally(() => {
+      setReady(true);
+    });
+    const onHide = () => {
+      flushResume();
+    };
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      window.removeEventListener('pagehide', onHide);
+    };
+  }, []);
+  return ready;
+}
+
 function ResumeTracker() {
   const [location, navigate] = useLocation();
   const first = useRef(true);
@@ -47,15 +70,15 @@ function ResumeTracker() {
         return;
       }
     }
-    updateResume((s) => ({ ...s, lastPath: location }));
+    rememberPath(location);
   }, [location, navigate]);
   return null;
 }
 
 export function App() {
+  const ready = useResumeReady();
   return (
     <MetronomeProvider>
-      <ResumeTracker />
       <div className="shell">
         <header className="topbar">
           <Link href="/" className="brand" aria-label="Per chordas ad astra: library">
@@ -83,26 +106,30 @@ export function App() {
           <SyncPill />
         </header>
         <main className="content">
-          <Switch>
-            <Route path="/">
-              <LibraryPage />
-            </Route>
-            <Route path="/piece/:id">
-              {(params) => <PiecePage key={params.id} id={params.id} />}
-            </Route>
-            <Route path="/log">
-              <LogPage />
-            </Route>
-            <Route path="/tools">
-              <ToolsPage />
-            </Route>
-            <Route>
-              <div className="piece-missing">
-                <h1>Lost in space 🌌</h1>
-                <Link href="/">Back to the library</Link>
-              </div>
-            </Route>
-          </Switch>
+          {!ready && <p className="muted boot">Finding your place…</p>}
+          {ready && <ResumeTracker />}
+          {ready && (
+            <Switch>
+              <Route path="/">
+                <LibraryPage />
+              </Route>
+              <Route path="/piece/:id">
+                {(params) => <PiecePage key={params.id} id={params.id} />}
+              </Route>
+              <Route path="/log">
+                <LogPage />
+              </Route>
+              <Route path="/tools">
+                <ToolsPage />
+              </Route>
+              <Route>
+                <div className="piece-missing">
+                  <h1>Lost in space 🌌</h1>
+                  <Link href="/">Back to the library</Link>
+                </div>
+              </Route>
+            </Switch>
+          )}
         </main>
       </div>
     </MetronomeProvider>

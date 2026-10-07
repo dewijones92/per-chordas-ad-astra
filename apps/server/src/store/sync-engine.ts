@@ -1,4 +1,4 @@
-import { mkdir, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { SCHEMA_VERSION, type SyncPhase, type SyncStatus } from '@pcaa/shared';
 import type { Logger } from '../log.ts';
@@ -16,6 +16,8 @@ export interface SyncEngineOptions {
 }
 
 type Activity = 'idle' | 'committing' | 'pushing';
+
+const IGNORED = '.state/';
 
 export function commitMessage(descriptions: readonly string[]): string {
   if (descriptions.length === 0) return 'Save changes';
@@ -93,6 +95,8 @@ export class SyncEngine {
       await this.git(['add', '-A']);
       await this.git(['commit', '-q', '-m', 'Initialise practice library']);
     }
+
+    await this.ensureIgnored();
 
     if ((await this.git(['status', '--porcelain'])).stdout.trim() !== '') {
       this.log.warn(
@@ -275,6 +279,23 @@ export class SyncEngine {
         'dewidebug sync init: fetch failed, continuing from local copy',
       );
     }
+  }
+
+  private async ensureIgnored(): Promise<void> {
+    const path = join(this.opts.dir, '.gitignore');
+    const current = await readFile(path, 'utf8').catch(() => '');
+    if (current.split('\n').some((line) => line.trim() === IGNORED)) return;
+    await writeFile(
+      path,
+      `${current}${current === '' || current.endsWith('\n') ? '' : '\n'}${IGNORED}\n`,
+    );
+    await this.git(['add', '.gitignore']);
+    await this.git(['commit', '-q', '-m', 'Ignore the server-side state folder']);
+    this.unpushed += 1;
+    this.log.info(
+      { ignored: IGNORED },
+      'dewidebug sync init: added the state folder to .gitignore',
+    );
   }
 
   private async hasCommits(): Promise<boolean> {

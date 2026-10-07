@@ -3,6 +3,7 @@ import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
 import { createLogger } from './log.ts';
 import { DataRepo } from './store/data-repo.ts';
+import { ResumeStore } from './store/resume-store.ts';
 import { createGit } from './store/git.ts';
 import { SyncEngine } from './store/sync-engine.ts';
 
@@ -41,8 +42,10 @@ log.info(
 await sync.init();
 
 const repo = new DataRepo({ dir: config.DATA_DIR, changes: sync, log });
+const resume = new ResumeStore(config.DATA_DIR, log);
 const app = createApp({
   repo,
+  resume,
   sync,
   log,
   version: config.APP_VERSION,

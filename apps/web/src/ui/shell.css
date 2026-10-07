@@ -84,3 +84,8 @@
     transform: scale(1.8);
   }
 }
+
+.boot {
+  padding: 32px;
+  font-weight: 700;
+}

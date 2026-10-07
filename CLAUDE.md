@@ -21,7 +21,7 @@ reversal).
 | Auth                    | The Pi's Google gate is the only login; the app trusts only the nginx network                                                                          | [0006](docs/adr/0006-google-gate-is-the-auth.md)          |
 | Slow-down               | The browser's pitch-preserving `playbackRate`, not SoundTouch (a deviation from the first plan)                                                        | [0007](docs/adr/0007-native-pitch-preserving-playback.md) |
 | PDF rendering           | pdf.js **legacy** build, loaded lazily                                                                                                                 | [0008](docs/adr/0008-pdfjs-legacy-build.md)               |
-| Resume                  | Reopen at the last piece, page, looper spot and a paused timer; per browser                                                                            | [0009](docs/adr/0009-resume-state-per-browser.md)         |
+| Resume                  | Reopen at the last piece, page, looper spot and a paused timer, on any device; kept on the Pi outside git                                              | [0010](docs/adr/0010-resume-state-on-the-server.md)       |
 | Look                    | Bold and playful, light theme only: white background, indigo/coral/sun/teal, sticker-style buttons                                                     | Dewi's choice                                             |
 | Devices                 | Laptop/desktop first (mouse and trackpad drawing, keyboard shortcuts)                                                                                  | Dewi's choice                                             |
 

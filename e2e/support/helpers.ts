@@ -59,6 +59,7 @@ export const toneFile = (name: string, seconds = 8) => ({
 
 export async function openLibrary(page: Page): Promise<void> {
   await page.goto('/');
+  await expect(page.locator('.boot')).toHaveCount(0);
   await page.locator('.nav').getByRole('link', { name: 'Library', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Your library' })).toBeVisible();
 }

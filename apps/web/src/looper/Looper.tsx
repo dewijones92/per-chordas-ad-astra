@@ -1,7 +1,7 @@
 import { newId, type Loop, type Loops, type TrackRef } from '@pcaa/shared';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { api } from '../api/client.ts';
-import { readResume, updateResume } from '../resume/resume.ts';
+import { readResume, rememberLooper } from '../resume/resume.ts';
 import {
   computePeaks,
   formatTime,
@@ -144,13 +144,10 @@ export function Looper({ pieceId, tracks }: Props) {
   const lastSaved = useRef(0);
 
   const remember = () => {
-    if (!trackFile) return;
+    if (!trackFile || !restored.current) return;
     const positionSec = Math.round((audioRef.current?.currentTime ?? position) * 10) / 10;
     lastSaved.current = performance.now();
-    updateResume((s) => ({
-      ...s,
-      loopers: { ...s.loopers, [pieceId]: { track: trackFile, positionSec, rate, loop } },
-    }));
+    rememberLooper(pieceId, { track: trackFile, positionSec, rate, loop });
   };
   const rememberLater = useEffectEvent(remember);
 

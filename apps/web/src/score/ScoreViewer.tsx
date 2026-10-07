@@ -40,10 +40,12 @@ interface Editing extends TextEditRequest {
 }
 
 const PAGE_GAP = 24;
+const TURN_SETTLE_MS = 700;
 
 export function ScoreViewer(props: Props) {
   const { url, history, dispatch, tools, zoom, mode, selected, onSelect } = props;
   const scroller = useRef<HTMLDivElement>(null);
+  const pendingTurn = useRef<{ top: number; until: number } | null>(null);
   const [opened, setOpened] = useState<{
     url: string;
     pages: PDFPageProxy[] | null;
@@ -100,7 +102,8 @@ export function ScoreViewer(props: Props) {
   const positionOf = (): ScorePosition | null => {
     const el = scroller.current;
     if (!el || !pages) return null;
-    const top = el.scrollTop + PAGE_GAP;
+    const atBottom = el.scrollTop >= el.scrollHeight - el.clientHeight - 2;
+    const top = el.scrollTop + (atBottom ? el.clientHeight / 2 : PAGE_GAP);
     const elements = pageElements();
     const current = [...elements].reverse().find((p) => p.offsetTop <= top) ?? elements[0];
     if (!current) return null;
@@ -108,7 +111,8 @@ export function ScoreViewer(props: Props) {
     const page = pages[number - 1];
     if (!page) return null;
     const scale = cssWidth / page.getViewport({ scale: 1 }).width;
-    return { page: number, y: Math.max(0, Math.round((top - current.offsetTop) / scale)) };
+    const anchor = el.scrollTop + PAGE_GAP;
+    return { page: number, y: Math.max(0, Math.round((anchor - current.offsetTop) / scale)) };
   };
 
   const scrollToPosition = ({ page, y }: ScorePosition, behavior: ScrollBehavior): boolean => {
@@ -126,9 +130,13 @@ export function ScoreViewer(props: Props) {
       const el = scroller.current;
       if (!el) return;
       const rows = pageElements().map((p) => ({ top: p.offsetTop, height: p.offsetHeight }));
-      const view = { top: el.scrollTop, height: el.clientHeight, scrollHeight: el.scrollHeight };
+      const pending = pendingTurn.current;
+      const inFlight = pending !== null && performance.now() < pending.until;
+      const from = inFlight ? pending.top : el.scrollTop;
+      const view = { top: from, height: el.clientHeight, scrollHeight: el.scrollHeight };
       const top = turnTarget(rows, view, direction, PAGE_GAP);
-      console.info('dewidebug score turn', { direction, from: view.top, to: top, mode });
+      pendingTurn.current = { top, until: performance.now() + TURN_SETTLE_MS };
+      console.info('dewidebug score turn', { direction, from, to: top, inFlight, mode });
       el.scrollTo({ top, behavior: 'smooth' });
     },
     position: positionOf,

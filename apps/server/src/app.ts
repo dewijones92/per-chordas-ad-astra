@@ -8,6 +8,7 @@ import { ZodError } from 'zod';
 import { isTrusted } from './http/ip.ts';
 import { serveFile } from './http/serve-file.ts';
 import type { Logger } from './log.ts';
+import type { ResumeStore } from './store/resume-store.ts';
 import {
   InvalidDataError,
   NotFoundError,
@@ -22,6 +23,7 @@ export interface SyncControl {
 
 export interface AppDeps {
   repo: DataRepo;
+  resume: ResumeStore;
   sync: SyncControl;
   log: Logger;
   version: string;
@@ -146,6 +148,9 @@ export function createApp(deps: AppDeps): Hono {
   api.post('/sessions', async (c) =>
     c.json(await repo.addSession(NewPracticeSession.parse(await c.req.json())), 201),
   );
+
+  api.get('/resume', async (c) => c.json(await deps.resume.get()));
+  api.put('/resume', async (c) => c.json(await deps.resume.merge(await c.req.json())));
 
   api.get('/sync', (c) => c.json(sync.status()));
   api.post('/sync/flush', async (c) => c.json(await sync.flush(c.req.query('reason') ?? 'client')));

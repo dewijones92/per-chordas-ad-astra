@@ -24,3 +24,6 @@ Server logs (`dewidebug sync …`) record every commit, push, retry and recovery
 Files: `apps/server/src/store/sync-engine.ts`, `apps/web/src/sync/*`.
 Tests: `apps/server/test/sync-engine.test.ts` (real bare remote: batching, outage then retry, rebase over
 remote edits, crash recovery, local mode), every e2e that reads the remote.
+
+The data repo's `.gitignore` lists `.state/` (added by the server on start): server-side state such as
+"where you left off" lives there and is never committed.

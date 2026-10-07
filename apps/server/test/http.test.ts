@@ -7,6 +7,7 @@ import { createApp } from '../src/app.ts';
 import { ipInCidr, isTrusted } from '../src/http/ip.ts';
 import { parseRange } from '../src/http/serve-file.ts';
 import { DataRepo } from '../src/store/data-repo.ts';
+import { ResumeStore } from '../src/store/resume-store.ts';
 import { engineFor, silentLog, tempDir } from './helpers.ts';
 
 describe('ipInCidr', () => {
@@ -65,6 +66,7 @@ describe('HTTP API', () => {
     caller = '172.21.0.7';
     app = createApp({
       repo,
+      resume: new ResumeStore(data, silentLog),
       sync,
       log: silentLog,
       version: 'test-1',
@@ -215,5 +217,30 @@ describe('HTTP API', () => {
     expect(await deep.text()).toContain('<title>app</title>');
     expect(deep.headers.get('cache-control')).toBe('no-cache');
     expect((await app.request('/api/nope')).status).toBe(404);
+  });
+
+  it('keeps resume state on the server, newest entry wins, and never commits it', async () => {
+    const put = (body: unknown) =>
+      app.request('/api/resume', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    expect(await (await app.request('/api/resume')).json()).toMatchObject({ lastPath: null });
+    await put({
+      lastPath: { path: '/piece/a', at: 200 },
+      scores: { 'a/a.pdf': { page: 3, y: 5, at: 200 } },
+    });
+    const merged = (await (await put({ lastPath: { path: '/piece/old', at: 100 } })).json()) as {
+      lastPath: { path: string };
+      scores: Record<string, { page: number }>;
+    };
+    expect(merged.lastPath.path).toBe('/piece/a');
+    expect(merged.scores['a/a.pdf']?.page).toBe(3);
+    expect((await put({ lastPath: { path: 5 } })).status).toBe(400);
+    const flushed = (await (await app.request('/api/sync/flush', { method: 'POST' })).json()) as {
+      phase: string;
+    };
+    expect(flushed.phase).toBe('clean');
   });
 });

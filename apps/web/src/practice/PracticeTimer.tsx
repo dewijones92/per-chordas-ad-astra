@@ -2,7 +2,7 @@ import type { PracticeSession } from '@pcaa/shared';
 import { useEffect, useEffectEvent, useState } from 'react';
 import { api } from '../api/client.ts';
 import { useMetronome } from '../metronome/MetronomeProvider.tsx';
-import { readResume, updateResume } from '../resume/resume.ts';
+import { rememberTimer, savedTimer } from '../resume/resume.ts';
 import {
   elapsedMs,
   formatDuration,
@@ -21,7 +21,7 @@ interface Props {
 export function PracticeTimer({ pieceId, onLogged }: Props) {
   const metronome = useMetronome();
   const [timer, setTimer] = useState<TimerState>(() => {
-    const spot = readResume().timers[pieceId];
+    const spot = savedTimer(pieceId);
     return spot
       ? { runningSince: null, accumulatedMs: spot.accumulatedMs, startedAt: spot.startedAt }
       : idleTimer();
@@ -33,19 +33,16 @@ export function PracticeTimer({ pieceId, onLogged }: Props) {
   const [error, setError] = useState<string | null>(null);
   const running = timer.runningSince !== null;
 
+  const [initialTimer] = useState(timer);
   const remember = useEffectEvent(() => {
-    const at = Date.now();
-    const accumulatedMs = elapsedMs(timer, at);
-    updateResume((s) => {
-      const { [pieceId]: _previous, ...others } = s.timers;
-      return {
-        ...s,
-        timers:
-          timer.startedAt === null || accumulatedMs <= 0
-            ? others
-            : { ...others, [pieceId]: { accumulatedMs, startedAt: timer.startedAt } },
-      };
-    });
+    if (timer === initialTimer) return;
+    const accumulatedMs = elapsedMs(timer, Date.now());
+    rememberTimer(
+      pieceId,
+      timer.startedAt === null || accumulatedMs <= 0
+        ? null
+        : { accumulatedMs, startedAt: timer.startedAt },
+    );
   });
 
   useEffect(() => {

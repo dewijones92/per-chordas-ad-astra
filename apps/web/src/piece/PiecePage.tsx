@@ -13,7 +13,7 @@ import { PracticeTimer } from '../practice/PracticeTimer.tsx';
 import { bestBpmByDay } from '../practice/stats.ts';
 import { formatMinutes } from '../practice/timer.ts';
 import { ScoreViewer, type ScoreViewerHandle, type ViewMode } from '../score/ScoreViewer.tsx';
-import { readResume, scoreKey, updateResume } from '../resume/resume.ts';
+import { readResume, rememberPieceScore, rememberScore, scoreKey } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
 import './piece.css';
 
@@ -196,10 +196,7 @@ function ScoreArea({
           handleRef={viewer}
           initialPosition={initialPosition}
           onPositionChange={(position) => {
-            updateResume((s) => ({
-              ...s,
-              scores: { ...s.scores, [scoreKey(piece.id, file)]: position },
-            }));
+            rememberScore(scoreKey(piece.id, file), position);
           }}
         />
       </div>
@@ -381,12 +378,12 @@ export function PiecePage({ id }: { id: string }) {
   const sessions = useAsync(() => api.listSessions(id), `sessions:${id}`);
   const setlists = useAsync(() => api.getSetlists(), 'setlists');
   const [chosenScore, setChosenScore] = useState<string | null>(
-    () => readResume().pieceScore[id] ?? null,
+    () => readResume().pieceScore[id]?.file ?? null,
   );
   const setScoreFile = useCallback(
     (file: string) => {
       setChosenScore(file);
-      updateResume((s) => ({ ...s, pieceScore: { ...s.pieceScore, [id]: file } }));
+      rememberPieceScore(id, file);
     },
     [id],
   );

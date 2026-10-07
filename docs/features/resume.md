@@ -17,6 +17,10 @@ Dewi, 7 Oct 2026: _"I always wanna resume from where I left off."_
 - The practice timer: an unfinished session comes back **paused** at its time so far, so a closed laptop
   never logs hours you did not practise.
 
-Stored per browser ([ADR 0009](../adr/0009-resume-state-per-browser.md)). Files:
-`apps/web/src/resume/resume.ts` plus hooks in `App.tsx`, `ScoreViewer`, `PiecePage`, `Looper` and
-`PracticeTimer`. Tests: `test/resume.test.ts`, `e2e/resume.spec.ts` (seen to fail with the restore removed).
+**Across devices**: the state lives on the Pi, outside git, and each entry's newest stamp wins
+([ADR 0010](../adr/0010-resume-state-on-the-server.md)). Open on the laptop, carry on from the phone. Files:
+`packages/shared/src/resume.ts` (schema + merge), `apps/server/src/store/resume-store.ts`,
+`apps/web/src/resume/resume.ts`, plus hooks in `App.tsx`, `ScoreViewer`, `PiecePage`, `Looper` and
+`PracticeTimer`. Tests: shared merge tests, server route test (newest wins, invalid rejected), sync-engine test (`.state/` never
+committed), `test/resume.test.ts`, and `e2e/resume.spec.ts`, which includes **two separate browser profiles**: the
+second opens on the first's piece and page (the restore was seen to fail when disabled).

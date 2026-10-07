@@ -36,14 +36,14 @@ adapters over browser or process APIs; their logic lives in pure modules that ar
 
 ## End to end (Playwright)
 
-| Spec               | Flows                                                                                                                            |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `library.spec.ts`  | create piece with PDF → in the remote; search and tag filters; setlist saved                                                     |
-| `annotate.spec.ts` | pen, stamp, text → remote → survive reload; undo/redo/eraser reach the remote; bookmark saved and jumps                          |
-| `tools.spec.ts`    | metronome ticks and stops; tuner hears A2 within 2 cents                                                                         |
-| `practice.spec.ts` | timed session logged with tempo; looper speed, playback, drag-loop, saved loop in the remote                                     |
-| `health.spec.ts`   | health reports version and sync; unknown routes                                                                                  |
-| `resume.spec.ts`   | reopening returns to the last piece, its page, a paused timer and the looper speed; leaving from the library reopens the library |
+| Spec               | Flows                                                                                                                                                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `library.spec.ts`  | create piece with PDF → in the remote; search and tag filters; setlist saved                                                                                                                                                   |
+| `annotate.spec.ts` | pen, stamp, text → remote → survive reload; undo/redo/eraser reach the remote; bookmark saved and jumps                                                                                                                        |
+| `tools.spec.ts`    | metronome ticks and stops; tuner hears A2 within 2 cents                                                                                                                                                                       |
+| `practice.spec.ts` | timed session logged with tempo; looper speed, playback, drag-loop, saved loop in the remote                                                                                                                                   |
+| `health.spec.ts`   | health reports version and sync; unknown routes                                                                                                                                                                                |
+| `resume.spec.ts`   | reopening returns to the last piece, its page, a paused timer and the looper speed; leaving from the library reopens the library; a second browser profile opens on the first's piece and page; two quick turns move two pages |
 
 **Not covered automatically:** the real GitHub push (covered by the bare-repo stand-in and checked by
 hand after deploy), the Google gate (checked by response body after deploy), and audio quality.

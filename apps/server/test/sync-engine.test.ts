@@ -1,4 +1,4 @@
-import { rename, writeFile } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { commitMessage } from '../src/store/sync-engine.ts';
@@ -37,7 +37,11 @@ describe('SyncEngine against a bare remote', () => {
     const engine = engineFor(dir, remote);
     await engine.init();
     await waitFor(() => engine.status().phase === 'clean');
-    expect(gitIn(remote, 'log', '--format=%s', 'main').trim()).toBe('Initialise practice library');
+    expect(gitIn(remote, 'log', '--format=%s', 'main').trim().split('\n')).toEqual([
+      'Ignore the server-side state folder',
+      'Initialise practice library',
+    ]);
+    expect(gitIn(remote, 'show', 'main:.gitignore')).toBe('.state/\n');
     expect(engine.status().unpushedCommits).toBe(0);
     await engine.close();
   });
@@ -56,7 +60,7 @@ describe('SyncEngine against a bare remote', () => {
 
     await waitFor(() => engine.status().phase === 'clean' && engine.status().lastPushAt !== null);
     const subjects = gitIn(remote, 'log', '--format=%s', 'main').trim().split('\n');
-    expect(subjects).toEqual(['2 changes: Edit A; Edit B', 'Initialise practice library']);
+    expect(subjects[0]).toBe('2 changes: Edit A; Edit B');
     await engine.close();
   });
 
@@ -149,5 +153,25 @@ describe('SyncEngine against a bare remote', () => {
     expect(status).toMatchObject({ phase: 'clean', unpushedCommits: 0 });
     expect(gitIn(dir, 'log', '-1', '--format=%s').trim()).toBe('Edit E');
     await engine.close();
+  });
+
+  it('never commits the server-side state folder, and adds the ignore rule only once', async () => {
+    const engine = engineFor(dir, remote, { idleMs: 60_000 });
+    await engine.init();
+    await mkdir(join(dir, '.state'), { recursive: true });
+    await writeFile(join(dir, '.state', 'resume.json'), '{}');
+    await writeFile(join(dir, 'real.txt'), 'r');
+    engine.markDirty('Edit real');
+    await engine.flush('test');
+    expect(gitIn(remote, 'ls-tree', '-r', '--name-only', 'main')).not.toContain('.state');
+    await engine.close();
+    const again = engineFor(dir, remote);
+    await again.init();
+    expect(
+      gitIn(dir, 'log', '--format=%s')
+        .split('\n')
+        .filter((l) => l.startsWith('Ignore')),
+    ).toHaveLength(1);
+    await again.close();
   });
 });
