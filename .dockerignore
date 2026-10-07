@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/coverage
+.git
+e2e/.tmp
+test-results
+playwright-report
+apps/web/public/pdfjs
+*.log

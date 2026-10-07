@@ -1,0 +1,171 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  gate:
+    name: Gate (lint, types, unit, e2e)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm preflight
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:coverage
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14
+
+  image:
+    name: Image (${{ matrix.arch }})
+    needs: gate
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          build-args: APP_VERSION=0.1.${{ github.run_number }}+${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=0.1.${{ github.run_number }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,scope=${{ matrix.arch }},mode=max
+          provenance: false
+      - run: |
+          mkdir -p digests
+          touch "digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: digest-${{ matrix.arch }}
+          path: digests/*
+          retention-days: 1
+
+  manifest:
+    name: Publish multi-arch image
+    needs: image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.publish.outputs.digest }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: digests
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: publish
+        working-directory: digests
+        run: |
+          set -euo pipefail
+          sources=$(printf "${IMAGE}@sha256:%s " *)
+          docker buildx imagetools create \
+            -t "${IMAGE}:sha-${GITHUB_SHA::7}" \
+            -t "${IMAGE}:v0.1.${GITHUB_RUN_NUMBER}" \
+            -t "${IMAGE}:latest" \
+            $sources
+          docker buildx imagetools inspect "${IMAGE}:sha-${GITHUB_SHA::7}"
+          digest=$(docker buildx imagetools inspect "${IMAGE}:sha-${GITHUB_SHA::7}" --format '{{json .Manifest}}' | jq -r .digest)
+          platforms=$(docker buildx imagetools inspect "${IMAGE}:sha-${GITHUB_SHA::7}" --format '{{json .Manifest}}' | jq -r '[.manifests[].platform.architecture] | sort | join(",")')
+          echo "dewidebug published ${IMAGE}@${digest} platforms=${platforms}"
+          [ "$platforms" = "amd64,arm64" ] || { echo "expected amd64,arm64 but got ${platforms}"; exit 1; }
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy to the Pi
+    needs: manifest
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: https://per-chordas-ad-astra.333133333.xyz
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Deploy over the forced-command SSH key
+        env:
+          SSH_KEY: ${{ secrets.PI_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.PI_KNOWN_HOSTS }}
+          PI_HOST: ${{ secrets.PI_HOST }}
+          DIGEST: ${{ needs.manifest.outputs.digest }}
+          PULL_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s\n' "$SSH_KEY" > key
+          printf '%s\n' "$KNOWN_HOSTS" > known_hosts
+          echo "dewidebug deploying ${DIGEST} for ${GITHUB_SHA::7} to the Pi"
+          printf '%s\n%s\n' "$GITHUB_ACTOR" "$PULL_TOKEN" | ssh \
+            -i key -o IdentitiesOnly=yes -o BatchMode=yes \
+            -o UserKnownHostsFile=known_hosts -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=20 -o ServerAliveInterval=15 \
+            "pi@${PI_HOST}" "deploy ${DIGEST} ${GITHUB_SHA}"

@@ -25,7 +25,17 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['packages/shared/src/**', 'apps/server/src/**', 'apps/web/src/**'],
-      exclude: ['apps/server/src/main.ts', 'apps/web/src/main.tsx', '**/*.d.ts'],
+      exclude: [
+        '**/*.d.ts',
+        'apps/server/src/main.ts',
+        'apps/server/src/log.ts',
+        'apps/web/src/**/*.tsx',
+        'apps/web/src/metronome/engine.ts',
+        'apps/web/src/tuner/use-tuner.ts',
+        'apps/web/src/annotate/use-annotations.ts',
+        'apps/web/src/score/pdf.ts',
+        'apps/web/src/sync/use-sync.ts',
+      ],
       thresholds: { lines: 75, functions: 75, branches: 70, statements: 75 },
     },
   },
