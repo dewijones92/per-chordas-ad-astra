@@ -15,3 +15,4 @@ updated: 2026-10-07
 | Slow-down looper                | shipped     | [looper.md](looper.md)                     |
 | GitHub sync and status pill     | shipped     | [sync.md](sync.md)                         |
 | Deployment to the Pi            | in progress | [deployment.md](deployment.md)             |
+| Resume where you left off       | shipped     | [resume.md](resume.md)                     |

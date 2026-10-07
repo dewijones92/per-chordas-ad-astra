@@ -1,7 +1,8 @@
 import type { PracticeSession } from '@pcaa/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { api } from '../api/client.ts';
 import { useMetronome } from '../metronome/MetronomeProvider.tsx';
+import { readResume, updateResume } from '../resume/resume.ts';
 import {
   elapsedMs,
   formatDuration,
@@ -19,13 +20,50 @@ interface Props {
 
 export function PracticeTimer({ pieceId, onLogged }: Props) {
   const metronome = useMetronome();
-  const [timer, setTimer] = useState<TimerState>(idleTimer);
+  const [timer, setTimer] = useState<TimerState>(() => {
+    const spot = readResume().timers[pieceId];
+    return spot
+      ? { runningSince: null, accumulatedMs: spot.accumulatedMs, startedAt: spot.startedAt }
+      : idleTimer();
+  });
   const [now, setNow] = useState(() => Date.now());
   const [logging, setLogging] = useState(false);
   const [bpm, setBpm] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const running = timer.runningSince !== null;
+
+  const remember = useEffectEvent(() => {
+    const at = Date.now();
+    const accumulatedMs = elapsedMs(timer, at);
+    updateResume((s) => {
+      const { [pieceId]: _previous, ...others } = s.timers;
+      return {
+        ...s,
+        timers:
+          timer.startedAt === null || accumulatedMs <= 0
+            ? others
+            : { ...others, [pieceId]: { accumulatedMs, startedAt: timer.startedAt } },
+      };
+    });
+  });
+
+  useEffect(() => {
+    remember();
+  }, [timer]);
+
+  useEffect(() => {
+    const onHide = () => {
+      remember();
+    };
+    window.addEventListener('pagehide', onHide);
+    const id = window.setInterval(onHide, 5000);
+    return () => {
+      window.removeEventListener('pagehide', onHide);
+      window.clearInterval(id);
+      remember();
+    };
+  }, []);
   const elapsed = elapsedMs(timer, now);
 
   useEffect(() => {

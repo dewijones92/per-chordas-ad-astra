@@ -13,6 +13,7 @@ import { PracticeTimer } from '../practice/PracticeTimer.tsx';
 import { bestBpmByDay } from '../practice/stats.ts';
 import { formatMinutes } from '../practice/timer.ts';
 import { ScoreViewer, type ScoreViewerHandle, type ViewMode } from '../score/ScoreViewer.tsx';
+import { readResume, scoreKey, updateResume } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
 import './piece.css';
 
@@ -74,6 +75,7 @@ function ScoreArea({
   const [tools, setTools] = useState<ToolState>(defaultToolState);
   const [zoom, setZoom] = useState(1);
   const [mode, setMode] = useState<ViewMode>(loadViewMode);
+  const [initialPosition] = useState(() => readResume().scores[scoreKey(piece.id, file)] ?? null);
   const [selected, setSelected] = useState<string | null>(null);
   const viewer = useRef<ScoreViewerHandle>(null);
   const metronome = useMetronome();
@@ -192,6 +194,13 @@ function ScoreArea({
           selected={selected}
           onSelect={setSelected}
           handleRef={viewer}
+          initialPosition={initialPosition}
+          onPositionChange={(position) => {
+            updateResume((s) => ({
+              ...s,
+              scores: { ...s.scores, [scoreKey(piece.id, file)]: position },
+            }));
+          }}
         />
       </div>
       <JumpTargets
@@ -371,7 +380,16 @@ export function PiecePage({ id }: { id: string }) {
   const piece = useAsync(() => api.getPiece(id), `piece:${id}`);
   const sessions = useAsync(() => api.listSessions(id), `sessions:${id}`);
   const setlists = useAsync(() => api.getSetlists(), 'setlists');
-  const [chosenScore, setScoreFile] = useState<string | null>(null);
+  const [chosenScore, setChosenScore] = useState<string | null>(
+    () => readResume().pieceScore[id] ?? null,
+  );
+  const setScoreFile = useCallback(
+    (file: string) => {
+      setChosenScore(file);
+      updateResume((s) => ({ ...s, pieceScore: { ...s.pieceScore, [id]: file } }));
+    },
+    [id],
+  );
   const [, navigate] = useLocation();
   const metronome = useMetronome();
   const current = piece.data;

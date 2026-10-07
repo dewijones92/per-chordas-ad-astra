@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createPiece, eventuallyInRemote, remoteLog } from './support/helpers.ts';
+import { createPiece, eventuallyInRemote, openLibrary, remoteLog } from './support/helpers.ts';
 
 test('creating a piece with a PDF opens its score and commits both to GitHub', async ({ page }) => {
   const id = await createPiece(page, 'Lagrima', { tags: 'classical, learning' });
@@ -21,7 +21,7 @@ test('creating a piece with a PDF opens its score and commits both to GitHub', a
 test('search and tag filters narrow the library', async ({ page }) => {
   await createPiece(page, 'Malaguena', { tags: 'flamenco', pdf: false });
   await createPiece(page, 'Asturias', { tags: 'classical', pdf: false });
-  await page.goto('/');
+  await openLibrary(page);
   await page.getByLabel('Search pieces').fill('malag');
   await expect(page.getByTestId('piece-card')).toHaveCount(1);
   await expect(page.getByTestId('piece-card')).toContainText('Malaguena');
@@ -32,7 +32,7 @@ test('search and tag filters narrow the library', async ({ page }) => {
 
 test('a setlist collects pieces in order and is saved to GitHub', async ({ page }) => {
   await createPiece(page, 'Romanza', { pdf: false });
-  await page.goto('/');
+  await openLibrary(page);
   page.once('dialog', (d) => void d.accept('Warm-ups'));
   await page.getByTestId('new-setlist').click();
   await expect(page.getByRole('heading', { name: 'Warm-ups' })).toBeVisible();
@@ -41,7 +41,7 @@ test('a setlist collects pieces in order and is saved to GitHub', async ({ page 
   await page.getByText('🏷 Tags & setlists').click();
   await page.getByRole('checkbox', { name: 'Warm-ups' }).check();
 
-  await page.goto('/');
+  await openLibrary(page);
   await page.getByRole('button', { name: /Warm-ups/ }).click();
   await expect(page.getByTestId('piece-card')).toHaveCount(1);
   const setlists = JSON.parse(

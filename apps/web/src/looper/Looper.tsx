@@ -1,6 +1,7 @@
 import { newId, type Loop, type Loops, type TrackRef } from '@pcaa/shared';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { api } from '../api/client.ts';
+import { readResume, updateResume } from '../resume/resume.ts';
 import {
   computePeaks,
   formatTime,
@@ -120,7 +121,10 @@ function Waveform({
 }
 
 export function Looper({ pieceId, tracks }: Props) {
-  const [chosenTrack, setTrackFile] = useState<string | null>(tracks[0]?.file ?? null);
+  const [saved] = useState(() => readResume().loopers[pieceId] ?? null);
+  const [chosenTrack, setTrackFile] = useState<string | null>(
+    saved?.track ?? tracks[0]?.file ?? null,
+  );
   const trackFile = tracks.some((t) => t.file === chosenTrack)
     ? chosenTrack
     : (tracks[0]?.file ?? null);
@@ -128,14 +132,42 @@ export function Looper({ pieceId, tracks }: Props) {
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [rate, setRate] = useState(1);
-  const [loop, setLoop] = useState<LoopWindow | null>(null);
+  const [rate, setRate] = useState(saved?.rate ?? 1);
+  const [loop, setLoop] = useState<LoopWindow | null>(saved?.loop ?? null);
   const [looping, setLooping] = useState(true);
   const [loops, setLoops] = useState<Loops>({ tracks: {} });
   const [mark, setMark] = useState<number | null>(null);
   const url = trackFile ? api.fileUrl(pieceId, trackFile) : null;
   const peaks = usePeaks(url);
   const wraps = useRef(0);
+  const restored = useRef(false);
+  const lastSaved = useRef(0);
+
+  const remember = () => {
+    if (!trackFile) return;
+    const positionSec = Math.round((audioRef.current?.currentTime ?? position) * 10) / 10;
+    lastSaved.current = performance.now();
+    updateResume((s) => ({
+      ...s,
+      loopers: { ...s.loopers, [pieceId]: { track: trackFile, positionSec, rate, loop } },
+    }));
+  };
+  const rememberLater = useEffectEvent(remember);
+
+  useEffect(() => {
+    rememberLater();
+  }, [trackFile, rate, loop]);
+
+  useEffect(() => {
+    const onHide = () => {
+      rememberLater();
+    };
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      window.removeEventListener('pagehide', onHide);
+      rememberLater();
+    };
+  }, []);
 
   useEffect(() => {
     api.getLoops(pieceId).then(setLoops, (e: unknown) => {
@@ -161,6 +193,7 @@ export function Looper({ pieceId, tracks }: Props) {
           wraps.current += 1;
         }
         setPosition(audio.currentTime);
+        if (performance.now() - lastSaved.current > 2000) rememberLater();
       }
       frame = requestAnimationFrame(tick);
     };
@@ -224,15 +257,28 @@ export function Looper({ pieceId, tracks }: Props) {
         preload="auto"
         data-testid="looper-audio"
         onLoadedMetadata={(e) => {
-          setDuration(e.currentTarget.duration);
-          e.currentTarget.preservesPitch = true;
-          e.currentTarget.playbackRate = rate;
+          const audio = e.currentTarget;
+          setDuration(audio.duration);
+          audio.preservesPitch = true;
+          audio.playbackRate = rate;
+          if (!restored.current && saved?.track === trackFile && saved.positionSec > 0) {
+            audio.currentTime = Math.min(saved.positionSec, Math.max(0, audio.duration - 0.1));
+            setPosition(audio.currentTime);
+            console.info('dewidebug looper resumed', {
+              track: trackFile,
+              at: audio.currentTime,
+              rate,
+              loop,
+            });
+          }
+          restored.current = true;
         }}
         onPlay={() => {
           setPlaying(true);
         }}
         onPause={() => {
           setPlaying(false);
+          remember();
         }}
         onEnded={() => {
           setPlaying(false);

@@ -1,8 +1,10 @@
-import { Link, Route, Switch, useRoute } from 'wouter';
+import { useEffect, useRef } from 'react';
+import { Link, Route, Switch, useLocation, useRoute } from 'wouter';
 import { LibraryPage } from './library/LibraryPage.tsx';
 import { MetronomeProvider, useMetronome } from './metronome/MetronomeProvider.tsx';
 import { PiecePage } from './piece/PiecePage.tsx';
 import { LogPage } from './practice/LogPage.tsx';
+import { readResume, shouldResumeTo, updateResume } from './resume/resume.ts';
 import { SyncPill } from './sync/SyncPill.tsx';
 import { ToolsPage } from './ui/ToolsPage.tsx';
 import './ui/shell.css';
@@ -32,9 +34,28 @@ function MiniMetronome() {
   );
 }
 
+function ResumeTracker() {
+  const [location, navigate] = useLocation();
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      const target = shouldResumeTo(location, readResume());
+      console.info('dewidebug resume on open', { at: location, target });
+      if (target) {
+        navigate(target, { replace: true });
+        return;
+      }
+    }
+    updateResume((s) => ({ ...s, lastPath: location }));
+  }, [location, navigate]);
+  return null;
+}
+
 export function App() {
   return (
     <MetronomeProvider>
+      <ResumeTracker />
       <div className="shell">
         <header className="topbar">
           <Link href="/" className="brand" aria-label="Per chordas ad astra: library">

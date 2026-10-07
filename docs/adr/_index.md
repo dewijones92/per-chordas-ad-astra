@@ -15,6 +15,7 @@ updated: 2026-10-07
 | [0006](0006-google-gate-is-the-auth.md)          | The Google gate is the only auth                     | accepted |
 | [0007](0007-native-pitch-preserving-playback.md) | Native pitch-preserving playback for the looper      | accepted |
 | [0008](0008-pdfjs-legacy-build.md)               | pdf.js legacy build, lazily loaded                   | accepted |
+| [0009](0009-resume-state-per-browser.md)         | Resume state per browser (localStorage)              | accepted |
 
 Format: `NNNN-title.md` with frontmatter (`status`, `date`, `updated`). Change a decision by updating
 its ADR; reverse one by marking it `superseded by NNNN` and writing the new one, in the same commit as

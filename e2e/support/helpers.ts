@@ -57,12 +57,18 @@ export const toneFile = (name: string, seconds = 8) => ({
   buffer: Buffer.from(makeToneWav({ frequencyHz: 196, seconds })),
 });
 
+export async function openLibrary(page: Page): Promise<void> {
+  await page.goto('/');
+  await page.locator('.nav').getByRole('link', { name: 'Library', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Your library' })).toBeVisible();
+}
+
 export async function createPiece(
   page: Page,
   title: string,
   opts: { tags?: string; pdf?: boolean } = {},
 ): Promise<string> {
-  await page.goto('/');
+  await openLibrary(page);
   await page.getByTestId('new-piece').click();
   const dialog = page.getByTestId('new-piece-dialog');
   await dialog.locator('input[name="title"]').fill(title);

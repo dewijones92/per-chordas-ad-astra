@@ -1,5 +1,5 @@
 import { newId, type TextItem } from '@pcaa/shared';
-import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
+import { useEffect, useEffectEvent, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import type { TextEditRequest } from '../annotate/AnnotationLayer.tsx';
 import { itemsOn, type HistoryAction, type History } from '../annotate/history.ts';
 import { SIZES, type ToolState } from '../annotate/tools.ts';
@@ -31,6 +31,8 @@ interface Props {
   selected: string | null;
   onSelect: (id: string | null) => void;
   handleRef: Ref<ScoreViewerHandle>;
+  initialPosition?: ScorePosition | null;
+  onPositionChange?: (position: ScorePosition) => void;
 }
 
 interface Editing extends TextEditRequest {
@@ -48,6 +50,7 @@ export function ScoreViewer(props: Props) {
     error: string | null;
   } | null>(null);
   const [available, setAvailable] = useState({ width: 800, height: 900 });
+  const [measured, setMeasured] = useState(false);
   const [editing, setEditing] = useState<Editing | null>(null);
 
   useEffect(() => {
@@ -73,6 +76,7 @@ export function ScoreViewer(props: Props) {
     if (!el) return;
     const observer = new ResizeObserver(() => {
       setAvailable({ width: el.clientWidth - 48, height: el.clientHeight - 56 });
+      setMeasured(true);
     });
     observer.observe(el);
     return () => {
@@ -93,6 +97,30 @@ export function ScoreViewer(props: Props) {
   const pageElements = (): HTMLElement[] =>
     scroller.current ? [...scroller.current.querySelectorAll<HTMLElement>('.page')] : [];
 
+  const positionOf = (): ScorePosition | null => {
+    const el = scroller.current;
+    if (!el || !pages) return null;
+    const top = el.scrollTop + PAGE_GAP;
+    const elements = pageElements();
+    const current = [...elements].reverse().find((p) => p.offsetTop <= top) ?? elements[0];
+    if (!current) return null;
+    const number = Number(current.dataset['page']);
+    const page = pages[number - 1];
+    if (!page) return null;
+    const scale = cssWidth / page.getViewport({ scale: 1 }).width;
+    return { page: number, y: Math.max(0, Math.round((top - current.offsetTop) / scale)) };
+  };
+
+  const scrollToPosition = ({ page, y }: ScorePosition, behavior: ScrollBehavior): boolean => {
+    const el = scroller.current;
+    const target = pageElements().find((p) => Number(p.dataset['page']) === page);
+    const proxy = pages?.[page - 1];
+    if (!el || !target || !proxy) return false;
+    const scale = cssWidth / proxy.getViewport({ scale: 1 }).width;
+    el.scrollTo({ top: target.offsetTop + y * scale - PAGE_GAP, behavior });
+    return true;
+  };
+
   useImperativeHandle(props.handleRef, () => ({
     turn(direction) {
       const el = scroller.current;
@@ -103,28 +131,53 @@ export function ScoreViewer(props: Props) {
       console.info('dewidebug score turn', { direction, from: view.top, to: top, mode });
       el.scrollTo({ top, behavior: 'smooth' });
     },
-    position() {
-      const el = scroller.current;
-      if (!el || !pages) return null;
-      const top = el.scrollTop + PAGE_GAP;
-      const elements = pageElements();
-      const current = [...elements].reverse().find((p) => p.offsetTop <= top) ?? elements[0];
-      if (!current) return null;
-      const number = Number(current.dataset['page']);
-      const page = pages[number - 1];
-      if (!page) return null;
-      const scale = cssWidth / page.getViewport({ scale: 1 }).width;
-      return { page: number, y: Math.max(0, Math.round((top - current.offsetTop) / scale)) };
-    },
-    goTo({ page, y }) {
-      const el = scroller.current;
-      const target = pageElements().find((p) => Number(p.dataset['page']) === page);
-      const proxy = pages?.[page - 1];
-      if (!el || !target || !proxy) return;
-      const scale = cssWidth / proxy.getViewport({ scale: 1 }).width;
-      el.scrollTo({ top: target.offsetTop + y * scale - PAGE_GAP, behavior: 'smooth' });
+    position: positionOf,
+    goTo(position) {
+      scrollToPosition(position, 'smooth');
     },
   }));
+
+  const lastPosition = useRef<ScorePosition | null>(null);
+  const restoreTo = useEffectEvent(() => {
+    const target = lastPosition.current ?? props.initialPosition ?? null;
+    if (!target) return;
+    const done = scrollToPosition(target, 'instant');
+    console.info('dewidebug score restore position', { target, done, cssWidth, mode });
+  });
+  const report = useEffectEvent(() => {
+    const position = positionOf();
+    if (!position) return;
+    lastPosition.current = position;
+    props.onPositionChange?.(position);
+  });
+
+  const ready = pages !== null && measured;
+  useEffect(() => {
+    if (!ready) return;
+    const frame = requestAnimationFrame(() => {
+      restoreTo();
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [ready, cssWidth]);
+
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || !ready) return;
+    let timer: number | undefined;
+    const onScroll = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        report();
+      }, 300);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.clearTimeout(timer);
+      el.removeEventListener('scroll', onScroll);
+    };
+  }, [ready]);
 
   const commitText = () => {
     if (!editing) return;

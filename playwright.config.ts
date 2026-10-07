@@ -8,6 +8,15 @@ mkdirSync(tmp, { recursive: true });
 const fakeMic = join(tmp, 'mic-a2-110hz.wav');
 writeFileSync(fakeMic, makeToneWav({ frequencyHz: 110, seconds: 4 }));
 
+const silentAudioEnv = {
+  ...Object.fromEntries(
+    Object.entries(process.env).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  ),
+  PULSE_SERVER: 'unix:/nonexistent/per-chordas-ad-astra-e2e-is-silent',
+};
+
 const port = 8799;
 const executablePath = process.env['PW_CHROMIUM_PATH'];
 
@@ -34,6 +43,7 @@ export default defineConfig({
         viewport: { width: 1440, height: 900 },
         launchOptions: {
           ...(executablePath ? { executablePath } : {}),
+          env: silentAudioEnv,
           args: [
             '--use-fake-ui-for-media-stream',
             '--use-fake-device-for-media-stream',
