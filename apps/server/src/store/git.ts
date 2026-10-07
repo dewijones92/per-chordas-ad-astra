@@ -41,7 +41,7 @@ export function createGit(opts: GitOptions): Git {
       ? `-o UserKnownHostsFile=${opts.knownHostsFile} -o StrictHostKeyChecking=yes`
       : '-o StrictHostKeyChecking=yes';
     env['GIT_SSH_COMMAND'] =
-      `ssh -i ${opts.sshKeyFile} -o IdentitiesOnly=yes -o BatchMode=yes ${knownHosts}`;
+      `ssh -i ${opts.sshKeyFile} -o IdentitiesOnly=yes -o BatchMode=yes -o CheckHostIP=no ${knownHosts}`;
   }
   return (args) =>
     new Promise((resolve, reject) => {
