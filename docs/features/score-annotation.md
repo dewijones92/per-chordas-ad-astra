@@ -6,7 +6,10 @@ updated: 2026-10-07
 
 # Score viewer and annotation
 
-**Viewing.** pdf.js renders each page to a canvas when it nears the viewport, at device pixel ratio.
+**Viewing.** pdf.js renders a page to a canvas when it comes within 1½ screens of the score panel, at device pixel
+ratio, and frees the canvas and pdf.js caches once it is further away; the document is destroyed on leaving the
+score. Tested on real scans (2026-10-07): a 128-page JBIG2+JPX method book opens in ~0.3 s and paints its first
+page in ~1.1–1.4 s, mid-book pages in ~0.1 s, with ~9 MB of retained JS heap; CCITT fax and vector scores too.
 Layouts are **Page** (fit one whole page, the default), **Two** (a spread) and **Width**; the choice is
 remembered per browser. Zoom −/+. `→`/`PageDown` and `←`/`PageUp` turn pages; inside a page taller
 than the screen they scroll by 85% of the screen first.

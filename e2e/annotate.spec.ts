@@ -115,31 +115,21 @@ test('a long score only draws the pages near the screen, and redraws them on the
   const drawn = () =>
     page.evaluate(
       () =>
-        [...document.querySelectorAll('.page canvas')].filter(
-          (c) => (c as HTMLCanvasElement).width > 0,
-        ).length,
+        [...document.querySelectorAll<HTMLCanvasElement>('.page canvas')].filter((c) => c.width > 0)
+          .length,
+    );
+  const width = (n: number) =>
+    page.evaluate(
+      (n) =>
+        document.querySelector<HTMLCanvasElement>(`.page[data-page="${String(n)}"] canvas`)
+          ?.width ?? 0,
+      n,
     );
   expect(await drawn()).toBeLessThan(8);
   await page.locator('.page[data-page="40"]').scrollIntoViewIfNeeded();
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () => (document.querySelector('.page[data-page="40"] canvas') as HTMLCanvasElement).width,
-      ),
-    )
-    .toBeGreaterThan(0);
-  expect(
-    await page.evaluate(
-      () => (document.querySelector('.page[data-page="1"] canvas') as HTMLCanvasElement).width,
-    ),
-  ).toBe(0);
+  await expect.poll(() => width(40)).toBeGreaterThan(0);
+  expect(await width(1)).toBe(0);
   await page.locator('.page[data-page="1"]').scrollIntoViewIfNeeded();
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () => (document.querySelector('.page[data-page="1"] canvas') as HTMLCanvasElement).width,
-      ),
-    )
-    .toBeGreaterThan(0);
+  await expect.poll(() => width(1)).toBeGreaterThan(0);
   expect(await drawn()).toBeLessThan(8);
 });

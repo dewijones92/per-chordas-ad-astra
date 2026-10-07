@@ -18,3 +18,6 @@ See [ADR 0005](../adr/0005-ci-cd-to-the-pi.md) and [ADR 0006](../adr/0006-google
 
 Container environment: `DATA_REMOTE`, `DATA_SSH_KEY_FILE`, `DATA_KNOWN_HOSTS_FILE`, `TRUSTED_CIDRS`,
 `COMMIT_IDLE_MS` (ms), `PUSH_RETRY_DELAYS_MS` (comma-separated ms), `GIT_AUTHOR_NAME/EMAIL`, `LOG_LEVEL`.
+
+Uploads stream straight to disk with a running size cap (no multipart buffering): a 45 MB score peaked at
+107 MB container memory (was 291 MB), and git stores big files without delta compression (`core.bigFileThreshold=4m`).
