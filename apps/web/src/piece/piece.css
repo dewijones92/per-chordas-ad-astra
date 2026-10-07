@@ -1,0 +1,148 @@
+.piece-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.piece-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 18px;
+  border-bottom: 2px solid var(--ink);
+  background: var(--violet-wash);
+}
+
+.piece-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.piece-title h1 {
+  font-size: 24px;
+  cursor: text;
+}
+
+.piece-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 370px;
+}
+
+.piece-main {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.score-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.score-frame {
+  flex: 1;
+  min-height: 0;
+}
+
+.loading-strip {
+  margin: 0;
+  padding: 4px 12px;
+}
+
+.jump-bar {
+  padding: 6px 12px;
+  border-top: 2px solid var(--ink);
+  background: var(--sun-wash);
+}
+
+.jump {
+  display: inline-flex;
+  align-items: center;
+}
+
+.zoom-label {
+  min-width: 44px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.dock {
+  border-left: 2px solid var(--ink);
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.dock-section {
+  border-bottom: 2px solid var(--ink);
+}
+
+.dock-section summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 16px;
+  background: var(--panel);
+}
+
+.dock-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.dock-section[open] summary {
+  border-bottom: 2px dashed var(--line);
+}
+
+.dock-body {
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.small-print {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.no-score {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--panel);
+}
+
+.file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.piece-missing {
+  padding: 32px;
+}
+
+.tools-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.tools-page h1 {
+  grid-column: 1 / -1;
+}

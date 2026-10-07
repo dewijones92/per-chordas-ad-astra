@@ -8,3 +8,4 @@ e2e/.tmp/
 *.log
 .env
 .env.*
+apps/web/public/pdfjs/

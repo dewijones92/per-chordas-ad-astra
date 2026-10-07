@@ -32,8 +32,15 @@ export async function atomicWrite(path: string, data: string | Uint8Array): Prom
   await rename(tmp, path);
 }
 
+export function stringifyForGit(value: unknown): string {
+  return JSON.stringify(value, null, 2).replace(
+    /\[\s*(-?[\d.e+-]+(?:,\s*-?[\d.e+-]+)*)\s*\]/g,
+    (_match, inner: string) => `[${inner.split(/,\s*/).join(', ')}]`,
+  );
+}
+
 export async function writeJson(path: string, value: unknown): Promise<void> {
-  await atomicWrite(path, `${JSON.stringify(value, null, 2)}\n`);
+  await atomicWrite(path, `${stringifyForGit(value)}\n`);
 }
 
 export async function readJson<S extends z.ZodType>(

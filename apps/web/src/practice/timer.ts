@@ -41,3 +41,11 @@ export function formatDuration(ms: number): string {
   const ss = String(s).padStart(2, '0');
   return h > 0 ? `${String(h)}:${mm}:${ss}` : `${mm}:${ss}`;
 }
+
+export function formatMinutes(seconds: number): string {
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  if (minutes < 60) return `${String(minutes)} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${String(h)} h` : `${String(h)} h ${String(m)} min`;
+}

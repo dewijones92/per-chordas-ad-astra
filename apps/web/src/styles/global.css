@@ -1,0 +1,268 @@
+:root {
+  --ink: #1d1533;
+  --ink-soft: #5c5470;
+  --line: #e4def7;
+  --bg: #ffffff;
+  --panel: #f6f3ff;
+  --violet: #6d3df2;
+  --violet-deep: #4b22c9;
+  --violet-wash: #ece5ff;
+  --coral: #ff5d73;
+  --coral-wash: #ffe6ea;
+  --sun: #ffc53d;
+  --sun-wash: #fff3cf;
+  --teal: #13b9a6;
+  --teal-wash: #d9f7f2;
+  --sky: #3a8dff;
+  --danger: #d92d4a;
+  --ok: #0e9f6e;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --pop: 3px 3px 0 var(--ink);
+  --font-body: 'Nunito Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Fredoka Variable', 'Nunito Variable', system-ui, sans-serif;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  line-height: 1.15;
+  margin: 0;
+}
+
+h1 {
+  font-size: 30px;
+  font-weight: 650;
+}
+
+h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+a {
+  color: var(--violet-deep);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--sky);
+  outline-offset: 2px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 6px 14px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  box-shadow: var(--pop);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 60ms ease,
+    box-shadow 60ms ease;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: var(--panel);
+}
+
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: var(--pop);
+}
+
+.btn.primary {
+  background: var(--violet);
+  color: #fff;
+}
+
+.btn.primary:hover {
+  background: var(--violet-deep);
+}
+
+.btn.coral {
+  background: var(--coral);
+  color: #fff;
+}
+
+.btn.sun {
+  background: var(--sun);
+}
+
+.btn.teal {
+  background: var(--teal);
+  color: #fff;
+}
+
+.btn.ghost {
+  border-color: transparent;
+  box-shadow: none;
+  background: transparent;
+}
+
+.btn.ghost:hover {
+  background: var(--violet-wash);
+}
+
+.btn.small {
+  min-height: 30px;
+  padding: 2px 10px;
+  font-size: 14px;
+}
+
+.btn.icon {
+  width: 38px;
+  padding: 0;
+}
+
+.btn[aria-pressed='true'] {
+  background: var(--sun);
+  color: var(--ink);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.input {
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-weight: 500;
+}
+
+textarea.input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.card {
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--bg);
+  box-shadow: var(--pop);
+}
+
+.panel {
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--bg);
+  padding: 12px 14px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--teal-wash);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--teal);
+  color: #fff;
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+kbd {
+  display: inline-block;
+  padding: 0 5px;
+  border: 1.5px solid var(--ink-soft);
+  border-bottom-width: 3px;
+  border-radius: 5px;
+  font: 12px var(--font-body);
+  font-weight: 800;
+  background: var(--bg);
+}

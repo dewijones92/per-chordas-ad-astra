@@ -1,0 +1,86 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 18px;
+  border-bottom: 2px solid var(--ink);
+  background: var(--bg);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.brand em {
+  font-style: normal;
+  color: var(--violet);
+}
+
+.nav {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-link {
+  padding: 6px 12px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.nav-link:hover {
+  background: var(--violet-wash);
+}
+
+.nav-link.on {
+  border-color: var(--ink);
+  background: var(--sun);
+  box-shadow: var(--pop);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.content:has(.piece-page) {
+  overflow: hidden;
+}
+
+.mini-metro {
+  gap: 8px;
+}
+
+.mini-beat {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  animation: flash 0.25s ease-out;
+}
+
+.mini-beat.accent {
+  background: var(--sun);
+}
+
+@keyframes flash {
+  from {
+    transform: scale(1.8);
+  }
+}

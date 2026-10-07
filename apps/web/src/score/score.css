@@ -1,0 +1,131 @@
+.score-scroller {
+  position: relative;
+  height: 100%;
+  overflow: auto;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20px 20px, #ded6ff 2px, transparent 2.5px) 0 0 / 40px 40px,
+    var(--panel);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.page {
+  position: relative;
+  flex: none;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.page-canvas,
+.annotation-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.annotation-layer {
+  user-select: none;
+}
+
+.page-number {
+  position: absolute;
+  right: -2px;
+  bottom: -30px;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.score-message {
+  padding: 48px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.text-editor {
+  position: absolute;
+  min-width: 180px;
+  min-height: 2.6em;
+  padding: 2px 4px;
+  border: 2px dashed var(--sky);
+  background: rgb(255 255 255 / 0.92);
+  font-family: var(--font-body);
+  font-weight: 700;
+  line-height: 1.25;
+  resize: both;
+  z-index: 5;
+}
+
+.toolbar {
+  justify-content: space-between;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-bottom: 2px solid var(--ink);
+  background: var(--bg);
+}
+
+.toolbar .divider {
+  width: 2px;
+  align-self: stretch;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 2px solid var(--ink);
+  cursor: pointer;
+  padding: 0;
+}
+
+.swatch[aria-pressed='true'] {
+  outline: 3px solid var(--violet);
+  outline-offset: 2px;
+}
+
+.tool-btn {
+  font-size: 18px;
+}
+
+.stamp-picker {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.stamp-picker .btn {
+  min-width: 34px;
+  font-family: var(--font-display);
+}
+
+.score-scroller.mode-spread {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  row-gap: 40px;
+}
+
+.view-modes {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}

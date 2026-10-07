@@ -15,6 +15,8 @@ export default tseslint.config(
       '**/*.config.ts',
       'apps/server/build.mjs',
       'tools/**',
+      'apps/web/public/**',
+      'apps/web/scripts/**',
     ],
   },
   js.configs.recommended,
@@ -32,7 +34,7 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       '@typescript-eslint/consistent-type-imports': 'error',
-      'no-console': ['error', { allow: ['warn', 'error'] }],
+      'no-console': ['error', { allow: ['info', 'warn', 'error'] }],
     },
   },
   {

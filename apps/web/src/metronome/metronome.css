@@ -1,0 +1,99 @@
+.metronome {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.metro-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bpm {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 96px;
+  justify-content: center;
+}
+
+.bpm-number {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--violet);
+}
+
+.bpm-unit {
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+.metronome .play {
+  min-width: 96px;
+}
+
+.tempo-slider {
+  width: 100%;
+  accent-color: var(--violet);
+}
+
+.beats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.beat {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--bg);
+  transition: transform 40ms ease;
+}
+
+.beat.accent {
+  border-width: 3px;
+}
+
+.beat.on {
+  background: var(--sun);
+  transform: scale(1.25);
+}
+
+.beat.accent.on {
+  background: var(--coral);
+}
+
+.small-field {
+  gap: 4px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.input.mini {
+  width: 70px;
+  min-height: 30px;
+  padding: 2px 6px;
+}
+
+.row.tight {
+  gap: 4px;
+}
+
+.trainer summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.trainer-fields {
+  margin-top: 8px;
+  align-items: flex-end;
+}
+
+.metronome.compact .bpm-number {
+  font-size: 32px;
+}

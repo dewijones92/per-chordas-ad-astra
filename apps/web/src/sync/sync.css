@@ -1,0 +1,60 @@
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+  font-size: 14px;
+  background: var(--bg);
+  cursor: default;
+}
+
+.sync-pill:enabled {
+  cursor: pointer;
+}
+
+.sync-pill .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+}
+
+.tone-github {
+  background: var(--teal-wash);
+}
+
+.tone-github .dot {
+  background: var(--ok);
+}
+
+.tone-pi {
+  background: var(--sun-wash);
+}
+
+.tone-pi .dot {
+  background: var(--sun);
+}
+
+.tone-busy .dot {
+  background: var(--sky);
+  animation: pulse 0.9s ease-in-out infinite alternate;
+}
+
+.tone-error,
+.tone-offline {
+  background: var(--coral-wash);
+}
+
+.tone-error .dot,
+.tone-offline .dot {
+  background: var(--danger);
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0.3;
+  }
+}
