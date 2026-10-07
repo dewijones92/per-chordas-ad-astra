@@ -5,6 +5,7 @@ import { itemsOn, type HistoryAction, type History } from '../annotate/history.t
 import { SIZES, type ToolState } from '../annotate/tools.ts';
 import { openPdf, type PDFPageProxy } from './pdf.ts';
 import { PageView } from './PageView.tsx';
+import { turnTarget } from './turn.ts';
 import './score.css';
 
 export type ViewMode = 'page' | 'spread' | 'width';
@@ -96,16 +97,11 @@ export function ScoreViewer(props: Props) {
     turn(direction) {
       const el = scroller.current;
       if (!el) return;
-      const top = el.scrollTop;
-      const elements = pageElements();
-      const target =
-        direction > 0
-          ? elements.find((p) => p.offsetTop > top + 4)
-          : [...elements].reverse().find((p) => p.offsetTop < top - 4);
-      el.scrollTo({
-        top: target ? target.offsetTop - PAGE_GAP / 2 : direction > 0 ? el.scrollHeight : 0,
-        behavior: 'smooth',
-      });
+      const rows = pageElements().map((p) => ({ top: p.offsetTop, height: p.offsetHeight }));
+      const view = { top: el.scrollTop, height: el.clientHeight, scrollHeight: el.scrollHeight };
+      const top = turnTarget(rows, view, direction, PAGE_GAP);
+      console.info('dewidebug score turn', { direction, from: view.top, to: top, mode });
+      el.scrollTo({ top, behavior: 'smooth' });
     },
     position() {
       const el = scroller.current;

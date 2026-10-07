@@ -50,7 +50,12 @@ export function useTuner(): TunerState {
         const recent: number[] = [];
         let frame = 0;
         let silentFrames = 0;
+        const warmUntil = ctx.currentTime + (2 * FFT_SIZE) / ctx.sampleRate;
         const loop = () => {
+          if (ctx.currentTime < warmUntil) {
+            frame = requestAnimationFrame(loop);
+            return;
+          }
           analyser.getFloatTimeDomainData(buffer);
           const [pitch, quality] = detector.findPitch(buffer, ctx.sampleRate);
           if (quality >= MIN_CLARITY && pitch >= MIN_HZ && pitch <= MAX_HZ) {

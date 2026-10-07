@@ -17,6 +17,7 @@ export default tseslint.config(
       'tools/**',
       'apps/web/public/**',
       'apps/web/scripts/**',
+      'e2e/support/*.mjs',
     ],
   },
   js.configs.recommended,

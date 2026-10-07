@@ -93,6 +93,7 @@ export function TunerPanel() {
         data-testid="tuner-readout"
         data-note={reading ? `${reading.name}${String(reading.octave)}` : ''}
         data-cents={reading?.cents ?? ''}
+        data-hz={tuner.hz?.toFixed(3) ?? ''}
       >
         <Needle cents={reading?.cents ?? null} />
         <div className="note">
