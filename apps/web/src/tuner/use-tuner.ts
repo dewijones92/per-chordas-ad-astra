@@ -23,8 +23,12 @@ export function useTuner(): TunerState {
   const [clarity, setClarity] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const teardown = useRef<(() => void) | null>(null);
+  const starting = useRef(false);
+  const generation = useRef(0);
 
   const stop = useCallback(() => {
+    generation.current += 1;
+    starting.current = false;
     teardown.current?.();
     teardown.current = null;
     setListening(false);
@@ -32,13 +36,26 @@ export function useTuner(): TunerState {
   }, []);
 
   const start = useCallback(() => {
-    if (teardown.current) return;
+    if (teardown.current || starting.current) {
+      console.info('dewidebug tuner start ignored: already starting or running');
+      return;
+    }
+    starting.current = true;
+    const mine = ++generation.current;
     setError(null);
     navigator.mediaDevices
       .getUserMedia({
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
       })
       .then((stream) => {
+        starting.current = false;
+        if (mine !== generation.current) {
+          stream.getTracks().forEach((t) => {
+            t.stop();
+          });
+          console.info('dewidebug tuner stopped before the microphone opened; released it');
+          return;
+        }
         const ctx = new AudioContext();
         const source = ctx.createMediaStreamSource(stream);
         const analyser = ctx.createAnalyser();
@@ -84,6 +101,7 @@ export function useTuner(): TunerState {
         setListening(true);
       })
       .catch((e: unknown) => {
+        starting.current = false;
         const message = e instanceof Error ? e.message : String(e);
         console.warn('dewidebug tuner microphone refused', { message });
         setError(`Microphone unavailable: ${message}`);

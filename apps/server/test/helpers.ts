@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pino } from 'pino';
 import { createGit } from '../src/store/git.ts';
+import type { RepoGate } from '../src/store/repo-gate.ts';
 import { SyncEngine } from '../src/store/sync-engine.ts';
 
 export const silentLog = pino({ level: 'silent' });
@@ -39,6 +40,7 @@ export function engineFor(
   dir: string,
   remote: string,
   overrides: Partial<{ idleMs: number; retryDelaysMs: number[] }> = {},
+  gate?: RepoGate,
 ): SyncEngine {
   return new SyncEngine({
     git: createGit({ cwd: dir, authorName: 'tester', authorEmail: 'tester@example.com' }),
@@ -48,6 +50,7 @@ export function engineFor(
     idleMs: overrides.idleMs ?? 30,
     retryDelaysMs: overrides.retryDelaysMs ?? [50],
     log: silentLog,
+    ...(gate ? { gate } : {}),
   });
 }
 

@@ -11,18 +11,9 @@ export function allTags(pieces: readonly Piece[]): string[] {
   return [...new Set(pieces.flatMap((p) => p.tags))].sort((a, b) => a.localeCompare(b));
 }
 
-export function filterPieces(pieces: readonly Piece[], filter: PieceFilter): Piece[] {
-  let result = [...pieces];
-  if (filter.pieceIds) {
-    const order = new Map(filter.pieceIds.map((id, i) => [id, i]));
-    result = result
-      .filter((p) => order.has(p.id))
-      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-  }
-  if (filter.tags.length > 0)
-    result = result.filter((p) => filter.tags.every((t) => p.tags.includes(t)));
-  const query = filter.query.trim();
-  if (query === '') return result;
+export type PieceIndex = MiniSearch<Piece>;
+
+export function buildPieceIndex(pieces: readonly Piece[]): PieceIndex {
   const index = new MiniSearch<Piece>({
     fields: ['title', 'artist', 'tagText', 'notes'],
     storeFields: ['id'],
@@ -42,11 +33,29 @@ export function filterPieces(pieces: readonly Piece[], filter: PieceFilter): Pie
     },
     searchOptions: { prefix: true, fuzzy: 0.2, boost: { title: 3, artist: 2, tagText: 2 } },
   });
-  index.addAll(result);
-  const ranked = index.search(query).map((hit) => hit.id as string);
+  index.addAll(pieces);
+  return index;
+}
+
+export function filterPieces(
+  pieces: readonly Piece[],
+  filter: PieceFilter,
+  index: PieceIndex = buildPieceIndex(pieces),
+): Piece[] {
+  let result = [...pieces];
+  if (filter.pieceIds) {
+    const order = new Map(filter.pieceIds.map((id, i) => [id, i]));
+    result = result
+      .filter((p) => order.has(p.id))
+      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+  }
+  if (filter.tags.length > 0)
+    result = result.filter((p) => filter.tags.every((t) => p.tags.includes(t)));
+  const query = filter.query.trim();
+  if (query === '') return result;
   const byId = new Map(result.map((p) => [p.id as string, p]));
-  return ranked.flatMap((id) => {
-    const piece = byId.get(id);
+  return index.search(query).flatMap((hit) => {
+    const piece = byId.get(hit.id as string);
     return piece ? [piece] : [];
   });
 }

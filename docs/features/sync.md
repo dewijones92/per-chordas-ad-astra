@@ -10,13 +10,14 @@ See [ADR 0001](../adr/0001-data-in-a-private-github-repo.md) and [ADR 0002](../a
 
 The pill in the header:
 
-| Pill                           | Meaning                                                        |
-| ------------------------------ | -------------------------------------------------------------- |
-| Saving…                        | a request is in flight from this browser                       |
-| Saved on Pi                    | on disk, commit or push pending; click to push now             |
-| In GitHub                      | everything is pushed                                           |
-| GitHub unreachable             | committed on the Pi, retry time in the tooltip                 |
-| Not saved / Server unreachable | the browser could not reach the server; the change is not safe |
+| Pill                           | Meaning                                                                                                   |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| Saving…                        | a request is in flight from this browser                                                                  |
+| Saved on Pi                    | on disk, commit or push pending; click to push now                                                        |
+| In GitHub                      | everything is pushed                                                                                      |
+| GitHub unreachable             | committed on the Pi, retry time in the tooltip                                                            |
+| Not committed                  | on the Pi's disk but git could not commit (e.g. a stale lock); retried with backoff, error in the tooltip |
+| Not saved / Server unreachable | the browser could not reach the server; the change is not safe                                            |
 
 `/healthz` (open, no data) returns the version and the same sync status, for the deploy check.
 Server logs (`dewidebug sync …`) record every commit, push, retry and recovery.
@@ -27,3 +28,6 @@ remote edits, crash recovery, local mode), every e2e that reads the remote.
 
 The data repo's `.gitignore` lists `.state/` (added by the server on start): server-side state such as
 "where you left off" lives there and is never committed.
+
+Temporary files (JSON writes, uploads in progress) live in `.state/tmp`, so a commit can never pick up a
+half-written file. A rebase over an edit made on GitHub holds the repo gate, so no save can land mid-rebase.

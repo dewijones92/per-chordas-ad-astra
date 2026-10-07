@@ -46,7 +46,9 @@ export class MetronomeEngine {
   retune(settings: MetronomeSettings): void {
     if (!this.scheduler || !this.ctx) return;
     const at = Math.max(this.scheduler.peekTime(), this.ctx.currentTime + START_DELAY_SEC);
-    this.scheduler = new TickScheduler(settings, at);
+    const from = this.scheduler.position();
+    this.scheduler = new TickScheduler(settings, at, from);
+    console.info('dewidebug metronome retuned in place', { from, bpm: settings.bpm });
   }
 
   stop(): void {

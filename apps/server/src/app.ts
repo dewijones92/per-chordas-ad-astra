@@ -102,6 +102,20 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   const api = new Hono();
+
+  api.use('*', async (c, next) => {
+    const method = c.req.method;
+    const hasBody = method === 'POST' || method === 'PUT' || method === 'PATCH';
+    const isUpload = c.req.header('x-file-name') !== undefined;
+    const isFlush = c.req.path.endsWith('/sync/flush');
+    const type = c.req.header('content-type') ?? '';
+    if (hasBody && !isUpload && !isFlush && !type.toLowerCase().startsWith('application/json')) {
+      log.warn({ method, path: c.req.path, type }, 'dewidebug http refused: body is not JSON');
+      return c.json({ error: 'Send JSON (Content-Type: application/json)' }, 415);
+    }
+    await next();
+    return undefined;
+  });
   const slug = (c: Context) => Slug.parse(c.req.param('id'));
   const file = (c: Context) => FileName.parse(c.req.param('file'));
 
@@ -141,8 +155,8 @@ export function createApp(deps: AppDeps): Hono {
   );
 
   api.get('/pieces/:id/loops', async (c) => c.json(await repo.getLoops(slug(c))));
-  api.put('/pieces/:id/loops', async (c) =>
-    c.json(await repo.putLoops(slug(c), await c.req.json())),
+  api.put('/pieces/:id/loops/:file', async (c) =>
+    c.json(await repo.putTrackLoops(slug(c), file(c), await c.req.json())),
   );
 
   api.get('/setlists', async (c) => c.json(await repo.getSetlists()));

@@ -1,6 +1,13 @@
 import { z } from 'zod';
 
-export const SyncPhase = z.enum(['clean', 'dirty', 'committing', 'pushing', 'push-failed']);
+export const SyncPhase = z.enum([
+  'clean',
+  'dirty',
+  'committing',
+  'pushing',
+  'push-failed',
+  'commit-failed',
+]);
 export type SyncPhase = z.infer<typeof SyncPhase>;
 
 export const SyncStatus = z.object({

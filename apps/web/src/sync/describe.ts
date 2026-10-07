@@ -38,6 +38,12 @@ export function describeSync(
           ? `Everything is in GitHub (last push ${clock(server.lastPushAt)}).`
           : 'Everything is in GitHub.',
       };
+    case 'commit-failed':
+      return {
+        tone: 'error',
+        text: 'Not committed',
+        detail: `Saved on the Pi, but git could not commit it. Retrying ${clock(server.nextRetryAt)}. ${server.lastError ?? ''}`,
+      };
     case 'push-failed':
       return {
         tone: 'error',

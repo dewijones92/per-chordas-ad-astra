@@ -3,6 +3,7 @@ import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
 import { createLogger } from './log.ts';
 import { DataRepo } from './store/data-repo.ts';
+import { RepoGate } from './store/repo-gate.ts';
 import { ResumeStore } from './store/resume-store.ts';
 import { createGit } from './store/git.ts';
 import { SyncEngine } from './store/sync-engine.ts';
@@ -18,6 +19,8 @@ const git = createGit({
   ...(config.DATA_KNOWN_HOSTS_FILE ? { knownHostsFile: config.DATA_KNOWN_HOSTS_FILE } : {}),
 });
 
+const gate = new RepoGate();
+
 const sync = new SyncEngine({
   git,
   dir: config.DATA_DIR,
@@ -26,6 +29,7 @@ const sync = new SyncEngine({
   idleMs: config.COMMIT_IDLE_MS,
   retryDelaysMs: config.PUSH_RETRY_DELAYS_MS,
   log,
+  gate,
 });
 
 log.info(
@@ -41,7 +45,7 @@ log.info(
 
 await sync.init();
 
-const repo = new DataRepo({ dir: config.DATA_DIR, changes: sync, log });
+const repo = new DataRepo({ dir: config.DATA_DIR, changes: sync, log, gate });
 const resume = new ResumeStore(config.DATA_DIR, log);
 const app = createApp({
   repo,

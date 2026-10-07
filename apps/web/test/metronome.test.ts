@@ -109,3 +109,20 @@ describe('tapTempo', () => {
     expect(taps).toHaveLength(5);
   });
 });
+
+describe('changing tempo while running', () => {
+  it('continues from the same bar and beat, keeping the trainer’s progress', () => {
+    const trainer = { enabled: true, stepBpm: 10, everyBars: 1, maxBpm: 200 };
+    const first = new TickScheduler(settings({ bpm: 60, beatsPerBar: 4, trainer }), 0);
+    first.until(4 + 1.6);
+    const position = first.position();
+    expect(position).toMatchObject({ bar: 1, beat: 2, sub: 0 });
+    const resumed = new TickScheduler(
+      settings({ bpm: 61, beatsPerBar: 4, trainer }),
+      first.peekTime(),
+      position,
+    );
+    const next = resumed.next();
+    expect(next).toMatchObject({ bar: 1, beat: 2, kind: 'beat', bpm: 71 });
+  });
+});

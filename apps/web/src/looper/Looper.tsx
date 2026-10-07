@@ -1,7 +1,8 @@
-import { newId, type Loop, type Loops, type TrackRef } from '@pcaa/shared';
+import { newId, type Loop, type TrackRef } from '@pcaa/shared';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { api } from '../api/client.ts';
 import { readResume, rememberLooper } from '../resume/resume.ts';
+import { useAsync } from '../ui/use-async.ts';
 import {
   computePeaks,
   formatTime,
@@ -135,7 +136,10 @@ export function Looper({ pieceId, tracks }: Props) {
   const [rate, setRate] = useState(saved?.rate ?? 1);
   const [loop, setLoop] = useState<LoopWindow | null>(saved?.loop ?? null);
   const [looping, setLooping] = useState(true);
-  const [loops, setLoops] = useState<Loops>({ tracks: {} });
+  const loopsKey = `loops:${pieceId}:${tracks.map((t) => t.file).join(',')}`;
+  const loopsState = useAsync(() => api.getLoops(pieceId), loopsKey);
+  const loops = loopsState.data;
+  const [loopError, setLoopError] = useState<string | null>(null);
   const [mark, setMark] = useState<number | null>(null);
   const url = trackFile ? api.fileUrl(pieceId, trackFile) : null;
   const peaks = usePeaks(url);
@@ -165,12 +169,6 @@ export function Looper({ pieceId, tracks }: Props) {
       rememberLater();
     };
   }, []);
-
-  useEffect(() => {
-    api.getLoops(pieceId).then(setLoops, (e: unknown) => {
-      console.warn('dewidebug looper could not load loops', { error: String(e) });
-    });
-  }, [pieceId]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -223,11 +221,21 @@ export function Looper({ pieceId, tracks }: Props) {
       void a.play();
     } else a.pause();
   };
-  const savedLoops = loops.tracks[trackFile] ?? [];
+  const savedLoops = loops?.tracks[trackFile] ?? [];
   const persist = (next: Loop[]) => {
-    const updated: Loops = { tracks: { ...loops.tracks, [trackFile]: next } };
-    setLoops(updated);
-    void api.putLoops(pieceId, updated).catch(() => undefined);
+    if (!loops) return;
+    const track = trackFile;
+    loopsState.setData((d) => (d ? { tracks: { ...d.tracks, [track]: next } } : d));
+    api.putTrackLoops(pieceId, track, next).then(
+      (saved) => {
+        setLoopError(null);
+        loopsState.setData(() => saved);
+      },
+      (e: unknown) => {
+        setLoopError(`Loops not saved: ${e instanceof Error ? e.message : String(e)}`);
+        loopsState.reload();
+      },
+    );
   };
 
   return (
@@ -277,7 +285,15 @@ export function Looper({ pieceId, tracks }: Props) {
           setPlaying(false);
           remember();
         }}
-        onEnded={() => {
+        onEnded={(e) => {
+          const audio = e.currentTarget;
+          if (looping && loop) {
+            audio.currentTime = loop.startSec;
+            wraps.current += 1;
+            void audio.play();
+            console.info('dewidebug looper wrapped at the end of the track', { loop });
+            return;
+          }
           setPlaying(false);
         }}
       />
@@ -356,6 +372,7 @@ export function Looper({ pieceId, tracks }: Props) {
             <button
               type="button"
               className="btn small"
+              disabled={!loops}
               onClick={() => {
                 const name = window.prompt(
                   'Name this loop',
@@ -383,6 +400,14 @@ export function Looper({ pieceId, tracks }: Props) {
           </>
         )}
       </div>
+      {(loopError ?? loopsState.error) && (
+        <p className="error" data-testid="looper-error">
+          {loopError ?? `Saved loops could not be loaded: ${loopsState.error ?? ''}`}{' '}
+          <button type="button" className="btn small ghost" onClick={loopsState.reload}>
+            Retry
+          </button>
+        </p>
+      )}
       {savedLoops.length > 0 && (
         <ul className="saved-loops">
           {savedLoops.map((l) => (

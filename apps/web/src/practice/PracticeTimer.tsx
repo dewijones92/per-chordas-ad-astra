@@ -1,5 +1,5 @@
 import type { PracticeSession } from '@pcaa/shared';
-import { useEffect, useEffectEvent, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { api } from '../api/client.ts';
 import { useMetronome } from '../metronome/MetronomeProvider.tsx';
 import { rememberTimer, savedTimer } from '../resume/resume.ts';
@@ -34,15 +34,18 @@ export function PracticeTimer({ pieceId, onLogged }: Props) {
   const running = timer.runningSince !== null;
 
   const [initialTimer] = useState(timer);
+  const lastWritten = useRef<string | null>(null);
   const remember = useEffectEvent(() => {
     if (timer === initialTimer) return;
     const accumulatedMs = elapsedMs(timer, Date.now());
-    rememberTimer(
-      pieceId,
+    const spot =
       timer.startedAt === null || accumulatedMs <= 0
         ? null
-        : { accumulatedMs, startedAt: timer.startedAt },
-    );
+        : { accumulatedMs: Math.round(accumulatedMs / 1000) * 1000, startedAt: timer.startedAt };
+    const fingerprint = JSON.stringify(spot);
+    if (fingerprint === lastWritten.current) return;
+    lastWritten.current = fingerprint;
+    rememberTimer(pieceId, spot);
   });
 
   useEffect(() => {
@@ -54,13 +57,21 @@ export function PracticeTimer({ pieceId, onLogged }: Props) {
       remember();
     };
     window.addEventListener('pagehide', onHide);
-    const id = window.setInterval(onHide, 5000);
     return () => {
       window.removeEventListener('pagehide', onHide);
-      window.clearInterval(id);
       remember();
     };
   }, []);
+
+  useEffect(() => {
+    if (!running) return;
+    const id = window.setInterval(() => {
+      remember();
+    }, 5000);
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [running]);
   const elapsed = elapsedMs(timer, now);
 
   useEffect(() => {

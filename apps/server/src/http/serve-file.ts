@@ -1,21 +1,10 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
+import { contentTypeFor } from '@pcaa/shared';
 import type { Context } from 'hono';
 
-const TYPES: Record<string, string> = {
-  pdf: 'application/pdf',
-  mp3: 'audio/mpeg',
-  m4a: 'audio/mp4',
-  ogg: 'audio/ogg',
-  wav: 'audio/wav',
-  flac: 'audio/flac',
-};
-
-export function contentTypeFor(file: string): string {
-  const ext = file.slice(file.lastIndexOf('.') + 1).toLowerCase();
-  return TYPES[ext] ?? 'application/octet-stream';
-}
+export { contentTypeFor };
 
 export function parseRange(header: string, size: number): { start: number; end: number } | null {
   const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());

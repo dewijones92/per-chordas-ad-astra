@@ -2,6 +2,7 @@ import {
   Annotations,
   Health,
   Loops,
+  type Loop,
   Piece,
   PracticeSession,
   ScoreRef,
@@ -72,8 +73,8 @@ export const api = {
   getPiece: (id: string) => request(`/api/pieces/${enc(id)}`, Piece),
   createPiece: (draft: PieceDraft) =>
     tracked('new piece', request('/api/pieces', Piece, jsonInit('POST', draft))),
-  patchPiece: (id: string, patch: PiecePatch) =>
-    tracked('piece', request(`/api/pieces/${enc(id)}`, Piece, jsonInit('PATCH', patch))),
+  patchPiece: (id: string, patch: PiecePatch, keepalive = false) =>
+    tracked('piece', request(`/api/pieces/${enc(id)}`, Piece, jsonInit('PATCH', patch, keepalive))),
   deletePiece: (id: string) =>
     tracked('delete', request(`/api/pieces/${enc(id)}`, z.undefined(), { method: 'DELETE' })),
   uploadScore: (id: string, file: File) =>
@@ -98,8 +99,11 @@ export const api = {
       ),
     ),
   getLoops: (id: string) => request(`/api/pieces/${enc(id)}/loops`, Loops),
-  putLoops: (id: string, loops: Loops) =>
-    tracked('loops', request(`/api/pieces/${enc(id)}/loops`, Loops, jsonInit('PUT', loops))),
+  putTrackLoops: (id: string, track: string, loops: readonly Loop[]) =>
+    tracked(
+      'loops',
+      request(`/api/pieces/${enc(id)}/loops/${enc(track)}`, Loops, jsonInit('PUT', loops)),
+    ),
   getSetlists: () => request('/api/setlists', Setlists),
   putSetlists: (setlists: Setlists) =>
     tracked('setlists', request('/api/setlists', Setlists, jsonInit('PUT', setlists))),

@@ -133,3 +133,35 @@ test('a long score only draws the pages near the screen, and redraws them on the
   await expect.poll(() => width(1)).toBeGreaterThan(0);
   expect(await drawn()).toBeLessThan(8);
 });
+
+test('drawings survive failed saves and reach GitHub once the server answers again', async ({
+  page,
+}) => {
+  await createPiece(page, 'Flaky Network');
+  let failures = 0;
+  await page.route('**/api/pieces/flaky-network/annotations/**', async (route) => {
+    if (route.request().method() === 'PUT' && failures < 2) {
+      failures += 1;
+      await route.fulfill({
+        status: 502,
+        contentType: 'application/json',
+        body: '{"error":"Bad gateway"}',
+      });
+      return;
+    }
+    await route.continue();
+  });
+  const box = await page.getByTestId('annotation-layer-1').boundingBox();
+  if (!box) throw new Error('no layer');
+  await page.keyboard.press('s');
+  await page.mouse.click(box.x + 100, box.y + 100);
+  await expect(page.getByTestId('drawings-save-error')).toBeVisible();
+  await page.mouse.click(box.x + 160, box.y + 100);
+  const doc = await eventuallyInRemote(
+    'pieces/flaky-network/annotations/flaky-network.pdf.json',
+    (t) => (JSON.parse(t) as { pages: Record<string, unknown[]> }).pages['1']?.length === 2,
+  );
+  expect(failures).toBe(2);
+  expect(doc).toContain('"stamp"');
+  await expect(page.getByTestId('drawings-save-error')).toHaveCount(0);
+});

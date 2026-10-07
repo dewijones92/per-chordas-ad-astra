@@ -1,5 +1,5 @@
 import { mkdir, open, readFile, rename, unlink, writeFile } from 'node:fs/promises';
-import { dirname, resolve, sep } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import type { z } from 'zod';
 
 export class NotFoundError extends Error {
@@ -25,9 +25,18 @@ export function resolveInside(root: string, ...parts: string[]): string {
   return target;
 }
 
-export async function atomicWrite(path: string, data: string | Uint8Array): Promise<void> {
+function tempIn(tmpDir: string, suffix: string): string {
+  return join(tmpDir, `${String(process.pid)}.${crypto.randomUUID()}.${suffix}`);
+}
+
+export async function atomicWrite(
+  path: string,
+  data: string | Uint8Array,
+  tmpDir: string,
+): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  const tmp = `${path}.${String(process.pid)}.${crypto.randomUUID()}.tmp`;
+  await mkdir(tmpDir, { recursive: true });
+  const tmp = tempIn(tmpDir, 'tmp');
   await writeFile(tmp, data);
   await rename(tmp, path);
 }
@@ -39,8 +48,8 @@ export function stringifyForGit(value: unknown): string {
   );
 }
 
-export async function writeJson(path: string, value: unknown): Promise<void> {
-  await atomicWrite(path, `${stringifyForGit(value)}\n`);
+export async function writeJson(path: string, value: unknown, tmpDir: string): Promise<void> {
+  await atomicWrite(path, `${stringifyForGit(value)}\n`, tmpDir);
 }
 
 export async function readJson<S extends z.ZodType>(
@@ -75,9 +84,11 @@ export async function writeUpload(
   path: string,
   source: Upload,
   rules: UploadRules,
+  tmpDir: string,
 ): Promise<number> {
   await mkdir(dirname(path), { recursive: true });
-  const tmp = `${path}.${String(process.pid)}.${crypto.randomUUID()}.upload`;
+  await mkdir(tmpDir, { recursive: true });
+  const tmp = tempIn(tmpDir, 'upload');
   const stream = source instanceof Blob ? source.stream() : source;
   const out = await open(tmp, 'w');
   let written = 0;

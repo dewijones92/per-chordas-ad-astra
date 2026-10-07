@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AUDIO_EXTENSIONS, SCORE_EXTENSIONS } from './files.ts';
 
 export const SCHEMA_VERSION = 1;
 
@@ -16,7 +17,12 @@ export type Slug = z.infer<typeof Slug>;
 
 export const FileName = z
   .string()
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*\.(pdf|mp3|m4a|ogg|wav|flac)$/, 'safe file name')
+  .regex(
+    new RegExp(
+      `^[a-z0-9]+(?:-[a-z0-9]+)*\\.(${[...SCORE_EXTENSIONS, ...AUDIO_EXTENSIONS].join('|')})$`,
+    ),
+    'safe file name',
+  )
   .max(100)
   .brand<'FileName'>();
 export type FileName = z.infer<typeof FileName>;

@@ -1,6 +1,7 @@
-import { mkdir, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { RepoGate } from '../src/store/repo-gate.ts';
 import { commitMessage } from '../src/store/sync-engine.ts';
 import { engineFor, gitIn, makeBareRemote, tempDir, waitFor } from './helpers.ts';
 
@@ -173,5 +174,49 @@ describe('SyncEngine against a bare remote', () => {
         .filter((l) => l.startsWith('Ignore')),
     ).toHaveLength(1);
     await again.close();
+  });
+
+  it('reports a failing commit honestly and retries it until it succeeds', async () => {
+    const engine = engineFor(dir, remote, { idleMs: 60_000, retryDelaysMs: [150] });
+    await engine.init();
+    await writeFile(join(dir, 'f.txt'), 'f');
+    await writeFile(join(dir, '.git', 'index.lock'), '');
+    engine.markDirty('Edit F');
+    const failed = await engine.flush('test');
+    expect(failed.phase).toBe('commit-failed');
+    expect(failed.lastError).toMatch(/Commit failed/);
+    expect(failed.pendingChanges).toBe(1);
+    await rm(join(dir, '.git', 'index.lock'));
+    await waitFor(() => engine.status().phase === 'clean', 5_000);
+    expect(gitIn(remote, 'log', '-1', '--format=%s', 'main').trim()).toBe('Edit F');
+    await engine.close();
+  });
+
+  it('waits for an in-flight save before rebasing over a remote edit', async () => {
+    const gate = new RepoGate();
+    const engine = engineFor(dir, remote, { idleMs: 60_000 }, gate);
+    await engine.init();
+    await waitFor(() => engine.status().phase === 'clean');
+    const other = join(root, 'other');
+    gitIn(root, 'clone', '-q', remote, other);
+    await writeFile(join(other, 'remote.txt'), 'r');
+    gitIn(other, 'add', '-A');
+    gitIn(other, 'commit', '-q', '-m', 'Edited on GitHub');
+    gitIn(other, 'push', '-q', 'origin', 'main');
+
+    await writeFile(join(dir, 'tracked.txt'), 'v1');
+    engine.markDirty('Add tracked');
+    const pushing = engine.flush('test');
+    const saving = gate.write(async () => {
+      await new Promise((r) => setTimeout(r, 150));
+      await writeFile(join(dir, 'tracked.txt'), 'v2');
+      engine.markDirty('Edit tracked');
+    });
+    await Promise.all([pushing, saving]);
+    expect(await readFile(join(dir, 'tracked.txt'), 'utf8')).toBe('v2');
+    const status = await engine.flush('test');
+    expect(status.phase).toBe('clean');
+    expect(gitIn(remote, 'show', 'main:tracked.txt')).toBe('v2');
+    await engine.close();
   });
 });

@@ -1,21 +1,17 @@
-import { newId, type Piece, type Setlist, type Setlists } from '@pcaa/shared';
-import { useEffect, useRef, useState } from 'react';
+import {
+  newId,
+  parseTags,
+  SCORE_ACCEPT,
+  type Piece,
+  type Setlist,
+  type Setlists,
+} from '@pcaa/shared';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { api } from '../api/client.ts';
 import { useAsync } from '../ui/use-async.ts';
-import { allTags, filterPieces } from './search.ts';
+import { allTags, buildPieceIndex, filterPieces } from './search.ts';
 import './library.css';
-
-function parseTags(text: string): string[] {
-  return [
-    ...new Set(
-      text
-        .split(',')
-        .map((t) => t.trim().toLowerCase())
-        .filter(Boolean),
-    ),
-  ];
-}
 
 function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -26,6 +22,7 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdId, setCreatedId] = useState<string | null>(null);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -38,9 +35,10 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
     setBusy(true);
     setError(null);
     try {
-      const piece = await api.createPiece({ title, artist, tags: parseTags(tags) });
-      if (file) await api.uploadScore(piece.id, file);
-      navigate(`/piece/${piece.id}`);
+      const id = createdId ?? (await api.createPiece({ title, artist, tags: parseTags(tags) })).id;
+      setCreatedId(id);
+      if (file) await api.uploadScore(id, file);
+      navigate(`/piece/${id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -64,6 +62,7 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
             className="input"
             required
             autoFocus
+            readOnly={createdId !== null}
             value={title}
             onChange={(e) => {
               setTitle(e.target.value);
@@ -99,7 +98,7 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
           <input
             className="input"
             type="file"
-            accept="application/pdf,.pdf"
+            accept={SCORE_ACCEPT}
             name="score"
             onChange={(e) => {
               setFile(e.target.files?.[0] ?? null);
@@ -107,6 +106,20 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
           />
         </label>
         {error && <p className="error">{error}</p>}
+        {error && createdId && (
+          <p className="muted">
+            The piece was created. Pick another file and press Create again, or{' '}
+            <button
+              type="button"
+              className="btn small ghost"
+              onClick={() => {
+                navigate(`/piece/${createdId}`);
+              }}
+            >
+              open it without a score
+            </button>
+          </p>
+        )}
         <div className="row">
           <button type="submit" className="btn primary" disabled={busy || title.trim() === ''}>
             {busy ? 'Creating…' : 'Create'}
@@ -218,9 +231,12 @@ export function LibraryPage() {
     saveSetlists({ setlists: lists.map((s) => (s.id === active.id ? update(s) : s)) });
   };
 
-  const shown = pieces.data
-    ? filterPieces(pieces.data, { query, tags, pieceIds: active ? active.pieceIds : null })
-    : [];
+  const index = useMemo(() => (pieces.data ? buildPieceIndex(pieces.data) : null), [pieces.data]);
+  const tagList = useMemo(() => (pieces.data ? allTags(pieces.data) : []), [pieces.data]);
+  const shown =
+    pieces.data && index
+      ? filterPieces(pieces.data, { query, tags, pieceIds: active ? active.pieceIds : null }, index)
+      : [];
 
   return (
     <div className="library">
@@ -315,9 +331,9 @@ export function LibraryPage() {
             + New piece
           </button>
         </div>
-        {pieces.data && allTags(pieces.data).length > 0 && (
+        {tagList.length > 0 && (
           <div className="row tag-filter" aria-label="Filter by tag">
-            {allTags(pieces.data).map((t) => (
+            {tagList.map((t) => (
               <button
                 key={t}
                 type="button"

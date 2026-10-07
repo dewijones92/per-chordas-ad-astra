@@ -17,6 +17,12 @@ export interface MetronomeSettings {
 
 export type TickKind = 'bar' | 'beat' | 'sub';
 
+export interface BeatPosition {
+  bar: number;
+  beat: number;
+  sub: number;
+}
+
 export interface Tick {
   time: number;
   bar: number;
@@ -57,10 +63,21 @@ export class TickScheduler {
   private ticksSinceAnchor = 0;
   private readonly settings: MetronomeSettings;
 
-  constructor(settings: MetronomeSettings, startTime: number) {
+  constructor(settings: MetronomeSettings, startTime: number, from?: BeatPosition) {
     this.settings = settings;
     this.anchorTime = startTime;
-    this.anchorBpm = bpmForBar(settings, 0);
+    if (from) {
+      const beats = Math.max(1, settings.beatsPerBar);
+      const crossesBar = from.beat >= beats;
+      this.bar = crossesBar ? from.bar + 1 : from.bar;
+      this.beat = crossesBar ? 0 : from.beat;
+      this.sub = from.sub < settings.subdivision && !crossesBar ? from.sub : 0;
+    }
+    this.anchorBpm = bpmForBar(settings, this.bar);
+  }
+
+  position(): BeatPosition {
+    return { bar: this.bar, beat: this.beat, sub: this.sub };
   }
 
   peekTime(): number {

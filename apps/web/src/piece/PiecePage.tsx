@@ -1,4 +1,13 @@
-import { newId, type Piece, type PiecePatch, type PracticeSession } from '@pcaa/shared';
+import {
+  AUDIO_ACCEPT,
+  kindOfFile,
+  newId,
+  parseTags,
+  SCORE_ACCEPT,
+  type Piece,
+  type PiecePatch,
+  type PracticeSession,
+} from '@pcaa/shared';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { api } from '../api/client.ts';
@@ -13,8 +22,15 @@ import { PracticeTimer } from '../practice/PracticeTimer.tsx';
 import { bestBpmByDay } from '../practice/stats.ts';
 import { formatMinutes } from '../practice/timer.ts';
 import { ScoreViewer, type ScoreViewerHandle, type ViewMode } from '../score/ScoreViewer.tsx';
-import { readResume, rememberPieceScore, rememberScore, scoreKey } from '../resume/resume.ts';
+import {
+  pullResume,
+  readResume,
+  rememberPieceScore,
+  rememberScore,
+  scoreKey,
+} from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
+import { useDraft } from '../ui/use-draft.ts';
 import './piece.css';
 
 function Section({
@@ -71,7 +87,7 @@ function ScoreArea({
   file: string;
   onPatch: (p: PiecePatch) => void;
 }) {
-  const { history, dispatch, load, error } = useAnnotations(piece.id, file);
+  const { history, dispatch, load, error, reload } = useAnnotations(piece.id, file);
   const [tools, setTools] = useState<ToolState>(defaultToolState);
   const [zoom, setZoom] = useState(1);
   const [mode, setMode] = useState<ViewMode>(loadViewMode);
@@ -181,10 +197,23 @@ function ScoreArea({
           </span>
         }
       />
-      {load === 'error' && <p className="error">Could not load drawings: {error}</p>}
+      {load === 'error' && (
+        <p className="error loading-strip" data-testid="drawings-error">
+          Could not load the drawings, so drawing is paused to protect them: {error}{' '}
+          <button type="button" className="btn small" onClick={reload}>
+            Retry
+          </button>
+        </p>
+      )}
+      {load === 'ready' && error && (
+        <p className="error loading-strip" data-testid="drawings-save-error">
+          Drawings not saved yet: {error}
+        </p>
+      )}
       {load === 'loading' && <p className="muted loading-strip">Loading drawings…</p>}
       <div className="score-frame">
         <ScoreViewer
+          readOnly={load !== 'ready'}
           url={api.fileUrl(piece.id, file)}
           history={history}
           dispatch={dispatch}
@@ -348,17 +377,12 @@ function UploadButton({
   );
 }
 
-function NotesEditor({ piece, onPatch }: { piece: Piece; onPatch: (p: PiecePatch) => void }) {
-  const [notes, setNotes] = useState(piece.notes);
-  useEffect(() => {
-    if (notes === piece.notes) return;
-    const timer = window.setTimeout(() => {
-      onPatch({ notes });
-    }, 900);
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [notes, piece.notes, onPatch]);
+type Patcher = (p: PiecePatch, keepalive?: boolean) => void;
+
+function NotesEditor({ piece, onPatch }: { piece: Piece; onPatch: Patcher }) {
+  const [notes, setNotes] = useDraft(piece.notes, (value, keepalive) => {
+    if (value !== piece.notes) onPatch({ notes: value }, keepalive);
+  });
   return (
     <textarea
       className="input"
@@ -373,13 +397,52 @@ function NotesEditor({ piece, onPatch }: { piece: Piece; onPatch: (p: PiecePatch
   );
 }
 
+function TargetTempoField({ piece, onPatch }: { piece: Piece; onPatch: Patcher }) {
+  const [text, setText] = useDraft(String(piece.targetBpm ?? ''), (value, keepalive) => {
+    const parsed = value.trim() === '' ? null : Math.round(Number(value));
+    const next =
+      parsed !== null && Number.isFinite(parsed) && parsed >= 20 && parsed <= 400 ? parsed : null;
+    if (next !== piece.targetBpm && (value.trim() === '' || next !== null))
+      onPatch({ targetBpm: next }, keepalive);
+  });
+  return (
+    <input
+      className="input mini"
+      type="number"
+      min={20}
+      max={400}
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+      }}
+      data-testid="target-bpm"
+    />
+  );
+}
+
+function TagsField({ piece, onPatch }: { piece: Piece; onPatch: Patcher }) {
+  const [text, setText] = useDraft(piece.tags.join(', '), (value, keepalive) => {
+    const tags = parseTags(value);
+    if (tags.join(',') !== piece.tags.join(',')) onPatch({ tags }, keepalive);
+  });
+  return (
+    <input
+      className="input"
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+      }}
+      data-testid="piece-tags"
+    />
+  );
+}
+
 export function PiecePage({ id }: { id: string }) {
   const piece = useAsync(() => api.getPiece(id), `piece:${id}`);
+  const freshResume = useAsync(() => pullResume(800), `resume:${id}`);
   const sessions = useAsync(() => api.listSessions(id), `sessions:${id}`);
   const setlists = useAsync(() => api.getSetlists(), 'setlists');
-  const [chosenScore, setChosenScore] = useState<string | null>(
-    () => readResume().pieceScore[id]?.file ?? null,
-  );
+  const [chosenScore, setChosenScore] = useState<string | null>(null);
   const setScoreFile = useCallback(
     (file: string) => {
       setChosenScore(file);
@@ -393,8 +456,8 @@ export function PiecePage({ id }: { id: string }) {
 
   const { setData, reload } = piece;
   const stablePatch = useCallback(
-    (p: PiecePatch) => {
-      api.patchPiece(id, p).then(
+    (p: PiecePatch, keepalive = false) => {
+      api.patchPiece(id, p, keepalive).then(
         (next) => {
           setData(() => next);
         },
@@ -415,10 +478,11 @@ export function PiecePage({ id }: { id: string }) {
       </div>
     );
   }
-  if (!current) return <p className="muted piece-missing">Loading…</p>;
+  if (!current || freshResume.loading) return <p className="muted piece-missing">Loading…</p>;
 
-  const scoreFile = current.scores.some((s) => s.file === chosenScore)
-    ? chosenScore
+  const preferredScore = chosenScore ?? readResume().pieceScore[id]?.file ?? null;
+  const scoreFile = current.scores.some((s) => s.file === preferredScore)
+    ? preferredScore
     : (current.scores[0]?.file ?? null);
   const lists = setlists.data?.setlists ?? [];
   const pieceSessions = sessions.data ?? [];
@@ -475,7 +539,7 @@ export function PiecePage({ id }: { id: string }) {
                 <p>Upload a PDF and draw fingerings, strum arrows and notes straight onto it.</p>
                 <UploadButton
                   label="Upload PDF"
-                  accept="application/pdf,.pdf"
+                  accept={SCORE_ACCEPT}
                   testId="upload-score-empty"
                   onFile={async (f) => {
                     await api.uploadScore(current.id, f);
@@ -515,19 +579,7 @@ export function PiecePage({ id }: { id: string }) {
             </p>
             <label className="row small-field">
               Target tempo
-              <input
-                className="input mini"
-                type="number"
-                min={20}
-                max={400}
-                defaultValue={current.targetBpm ?? ''}
-                onBlur={(e) => {
-                  const value =
-                    e.target.value.trim() === '' ? null : Math.round(Number(e.target.value));
-                  if (value !== current.targetBpm) stablePatch({ targetBpm: value });
-                }}
-                data-testid="target-bpm"
-              />
+              <TargetTempoField piece={current} onPatch={stablePatch} />
             </label>
             <BpmChart points={bestBpmByDay(pieceSessions)} target={current.targetBpm} />
           </Section>
@@ -537,7 +589,7 @@ export function PiecePage({ id }: { id: string }) {
             <div className="row">
               <UploadButton
                 label="+ Add backing track"
-                accept="audio/*,.mp3,.m4a,.ogg,.wav,.flac"
+                accept={AUDIO_ACCEPT}
                 testId="upload-track"
                 onFile={async (f) => {
                   await api.uploadTrack(current.id, f);
@@ -554,21 +606,7 @@ export function PiecePage({ id }: { id: string }) {
           <Section title="🏷 Tags & setlists" open={false}>
             <label className="field">
               Tags (comma separated)
-              <input
-                className="input"
-                defaultValue={current.tags.join(', ')}
-                onBlur={(e) => {
-                  const tags = [
-                    ...new Set(
-                      e.target.value
-                        .split(',')
-                        .map((t) => t.trim().toLowerCase())
-                        .filter(Boolean),
-                    ),
-                  ];
-                  if (tags.join(',') !== current.tags.join(',')) stablePatch({ tags });
-                }}
-              />
+              <TagsField piece={current} onPatch={stablePatch} />
             </label>
             {lists.length === 0 && <p className="muted">Create setlists from the library.</p>}
             {lists.map((s) => (
@@ -602,7 +640,7 @@ export function PiecePage({ id }: { id: string }) {
             <ul className="file-list">
               {[...current.scores, ...current.tracks].map((f) => (
                 <li key={f.file} className="row">
-                  <span>{f.file.endsWith('.pdf') ? '📄' : '🎧'}</span>
+                  <span>{kindOfFile(f.file) === 'scores' ? '📄' : '🎧'}</span>
                   <a href={api.fileUrl(current.id, f.file)} target="_blank" rel="noreferrer">
                     {f.name}
                   </a>
@@ -614,7 +652,7 @@ export function PiecePage({ id }: { id: string }) {
                     onClick={() => {
                       if (
                         !window.confirm(
-                          `Remove “${f.name}”${f.file.endsWith('.pdf') ? ' and its drawings' : ''}? It stays in the GitHub history.`,
+                          `Remove “${f.name}”${kindOfFile(f.file) === 'scores' ? ' and its drawings' : ''}? It stays in the GitHub history.`,
                         )
                       )
                         return;
@@ -631,7 +669,7 @@ export function PiecePage({ id }: { id: string }) {
             <div className="row">
               <UploadButton
                 label="+ Add PDF"
-                accept="application/pdf,.pdf"
+                accept={SCORE_ACCEPT}
                 testId="upload-score"
                 onFile={async (f) => {
                   const ref = await api.uploadScore(current.id, f);

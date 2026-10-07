@@ -40,6 +40,7 @@ interface Props {
   onSelect: (id: string | null) => void;
   handleRef: Ref<ScoreViewerHandle>;
   initialPosition?: ScorePosition | null;
+  readOnly?: boolean;
   onPositionChange?: (position: ScorePosition) => void;
 }
 
@@ -54,6 +55,8 @@ export function ScoreViewer(props: Props) {
   const { url, history, dispatch, tools, zoom, mode, selected, onSelect } = props;
   const scroller = useRef<HTMLDivElement>(null);
   const pendingTurn = useRef<{ top: number; until: number } | null>(null);
+  const lastPosition = useRef<ScorePosition | null>(null);
+  const userDriven = useRef(false);
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
   const attachScroller = useCallback((el: HTMLDivElement | null) => {
     scroller.current = el;
@@ -159,26 +162,31 @@ export function ScoreViewer(props: Props) {
       const view = { top: from, height: el.clientHeight, scrollHeight: el.scrollHeight };
       const top = turnTarget(rows, view, direction, PAGE_GAP);
       pendingTurn.current = { top, until: performance.now() + TURN_SETTLE_MS };
+      userDriven.current = true;
       console.info('dewidebug score turn', { direction, from, to: top, inFlight, mode });
       el.scrollTo({ top, behavior: 'smooth' });
     },
     position: positionOf,
     goTo(position) {
+      userDriven.current = true;
       scrollToPosition(position, 'smooth');
     },
   }));
 
-  const lastPosition = useRef<ScorePosition | null>(null);
   const restoreTo = useEffectEvent(() => {
     const target = lastPosition.current ?? props.initialPosition ?? null;
     if (!target) return;
+    userDriven.current = false;
     const done = scrollToPosition(target, 'instant');
     console.info('dewidebug score restore position', { target, done, cssWidth, mode });
   });
   const report = useEffectEvent(() => {
     const position = positionOf();
     if (!position) return;
+    const previous = lastPosition.current;
     lastPosition.current = position;
+    if (!userDriven.current) return;
+    if (previous?.page === position.page && Math.abs(previous.y - position.y) < 2) return;
     props.onPositionChange?.(position);
   });
 
@@ -203,10 +211,16 @@ export function ScoreViewer(props: Props) {
         report();
       }, 300);
     };
+    const onIntent = () => {
+      userDriven.current = true;
+    };
+    const intents = ['wheel', 'pointerdown', 'touchstart', 'keydown'] as const;
     el.addEventListener('scroll', onScroll, { passive: true });
+    for (const name of intents) el.addEventListener(name, onIntent, { passive: true });
     return () => {
       window.clearTimeout(timer);
       el.removeEventListener('scroll', onScroll);
+      for (const name of intents) el.removeEventListener(name, onIntent);
     };
   }, [ready]);
 
@@ -257,6 +271,7 @@ export function ScoreViewer(props: Props) {
             dispatch={dispatch}
             selected={selected}
             onSelect={onSelect}
+            readOnly={props.readOnly ?? false}
             scrollRoot={scrollRoot}
             onEditText={(request) => {
               setEditing({ ...request, text: request.item?.text ?? '' });

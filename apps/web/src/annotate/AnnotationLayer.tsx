@@ -31,6 +31,7 @@ interface Props {
   selected: string | null;
   onSelect: (id: string | null) => void;
   onEditText: (request: TextEditRequest) => void;
+  readOnly?: boolean;
 }
 
 type Gesture =
@@ -193,7 +194,7 @@ export function AnnotationLayer(props: Props) {
   };
 
   const onPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (event.button !== 0 || !svgRef.current) return;
+    if (event.button !== 0 || !svgRef.current || props.readOnly) return;
     const svg = svgRef.current;
     const p = toPoint(svg, event);
     const pressure = event.pointerType === 'mouse' ? 0.5 : round2(event.pressure || 0.5);

@@ -34,6 +34,17 @@ describe('describeSync', () => {
         text: 'Saved on Pi',
       });
     }
+    expect(
+      describeSync(
+        idle,
+        status({
+          phase: 'commit-failed',
+          pendingChanges: 1,
+          lastError: 'Commit failed: index.lock',
+        }),
+        true,
+      ),
+    ).toMatchObject({ tone: 'error', text: 'Not committed' });
     const failed = describeSync(
       idle,
       status({

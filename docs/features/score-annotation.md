@@ -23,7 +23,9 @@ double-click text to edit. `Ctrl+Z` / `Ctrl+Shift+Z`. A drag (move or erase) is 
 bar scrolls back to it.
 
 **Saving.** 800 ms after the last change the document is PUT; the server describes which pages
-changed. Hiding the page or leaving the piece sends a keepalive save and a flush.
+changed. Hiding the page or leaving the piece sends a keepalive save and a flush. A failed save is retried
+(2 s, 5 s, 15 s, then every 30 s) with a visible "Drawings not saved yet" strip; if the existing drawings could not
+be loaded, drawing is paused (with Retry) so a save can never overwrite them.
 
 Files: `apps/web/src/score/*`, `apps/web/src/annotate/*`, `DataRepo.putAnnotations`.
 Tests: `history`, `geometry`, `turn` unit tests; `e2e/annotate.spec.ts`.

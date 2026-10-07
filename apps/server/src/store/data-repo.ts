@@ -1,8 +1,11 @@
-import { appendFile, mkdir, readdir, readFile, rm } from 'node:fs/promises';
+import { appendFile, mkdir, open, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import {
   Annotations,
+  AUDIO_EXTENSIONS,
   emptyAnnotations,
+  kindOfFile,
+  Loop,
   type FileName,
   Loops,
   MAX_SCORE_BYTES,
@@ -31,6 +34,7 @@ import {
   type Upload,
   type UploadRules,
 } from './files.ts';
+import { RepoGate } from './repo-gate.ts';
 
 export class RejectedError extends Error {
   constructor(message: string) {
@@ -48,18 +52,15 @@ export interface DataRepoOptions {
   changes: ChangeRecorder;
   log: Logger;
   now?: () => Date;
+  gate?: RepoGate;
 }
-
-const AUDIO_EXTENSIONS = new Set(['mp3', 'm4a', 'ogg', 'wav', 'flac']);
 
 export function kindOf(file: FileName): 'scores' | 'tracks' {
-  return file.endsWith('.pdf') ? 'scores' : 'tracks';
+  return kindOfFile(file) ?? 'tracks';
 }
 
-function extensionOf(name: string): string {
-  const dot = name.lastIndexOf('.');
-  return dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';
-}
+const LoopList = Loop.array();
+const audioList = AUDIO_EXTENSIONS.join(', ');
 
 function quote(title: string): string {
   return `'${title}'`;
@@ -79,9 +80,13 @@ export class DataRepo {
   private readonly log: Logger;
   private readonly now: () => Date;
   private readonly locks = new Map<string, Promise<unknown>>();
+  private readonly gate: RepoGate;
+  private readonly tmp: string;
 
   constructor(opts: DataRepoOptions) {
     this.dir = opts.dir;
+    this.gate = opts.gate ?? new RepoGate();
+    this.tmp = resolveInside(opts.dir, '.state', 'tmp');
     this.changes = opts.changes;
     this.log = opts.log.child({ component: 'repo' });
     this.now = opts.now ?? (() => new Date());
@@ -133,7 +138,7 @@ export class DataRepo {
         createdAt: at,
         updatedAt: at,
       });
-      await writeJson(this.path('pieces', piece.id, 'piece.json'), piece);
+      await this.writeJson(this.path('pieces', piece.id, 'piece.json'), piece);
       this.changes.markDirty(`Add piece ${quote(piece.title)}`);
       return piece;
     });
@@ -155,7 +160,7 @@ export class DataRepo {
         }
       }
       const next = Piece.parse({ ...current, ...patch, updatedAt: this.now().toISOString() });
-      await writeJson(this.path('pieces', id, 'piece.json'), next);
+      await this.writeJson(this.path('pieces', id, 'piece.json'), next);
       this.changes.markDirty(`Edit ${quote(next.title)}`);
       return next;
     });
@@ -165,14 +170,17 @@ export class DataRepo {
     return this.locked(`piece:${id}`, async () => {
       const piece = await this.getPiece(id);
       await rm(this.path('pieces', id), { recursive: true, force: true });
-      const lists = await this.getSetlists();
-      const pruned = {
-        setlists: lists.setlists.map((s) => ({
-          ...s,
-          pieceIds: s.pieceIds.filter((p) => p !== id),
-        })),
-      };
-      await writeJson(this.path('setlists.json'), pruned);
+      await this.locked('setlists', async () => {
+        const lists = await this.getSetlists();
+        const pruned = {
+          setlists: lists.setlists.map((s) => ({
+            ...s,
+            pieceIds: s.pieceIds.filter((p) => p !== id),
+          })),
+        };
+        await this.writeJson(this.path('setlists.json'), pruned);
+      });
+      this.log.info({ id }, 'dewidebug repo piece deleted and removed from setlists');
       this.changes.markDirty(`Delete piece ${quote(piece.title)}`);
     });
   }
@@ -197,8 +205,8 @@ export class DataRepo {
         `Audio is over ${String(MAX_TRACK_BYTES / 1024 / 1024)} MB (GitHub rejects files over 100 MB)`,
       );
     if (source instanceof Blob && source.size > MAX_TRACK_BYTES) throw tooLarge();
-    if (!AUDIO_EXTENSIONS.has(extensionOf(originalName))) {
-      throw new RejectedError(`Audio must be one of: ${[...AUDIO_EXTENSIONS].join(', ')}`);
+    if (kindOfFile(originalName) !== 'tracks') {
+      throw new RejectedError(`Audio must be one of: ${audioList}`);
     }
     return this.addFile(id, originalName, source, 'tracks', {
       maxBytes: MAX_TRACK_BYTES,
@@ -217,7 +225,7 @@ export class DataRepo {
       } else {
         const loops = await this.getLoops(id);
         const { [file]: _removed, ...rest } = loops.tracks;
-        await writeJson(this.path('pieces', id, 'loops.json'), { tracks: rest });
+        await this.writeJson(this.path('pieces', id, 'loops.json'), { tracks: rest });
       }
       const next = Piece.parse({
         ...piece,
@@ -226,7 +234,7 @@ export class DataRepo {
         bookmarks: piece.bookmarks.filter((b) => b.score !== file),
         updatedAt: this.now().toISOString(),
       });
-      await writeJson(this.path('pieces', id, 'piece.json'), next);
+      await this.writeJson(this.path('pieces', id, 'piece.json'), next);
       this.changes.markDirty(`Remove ${file} from ${quote(piece.title)}`);
       return next;
     });
@@ -250,12 +258,12 @@ export class DataRepo {
 
   async putAnnotations(id: Slug, file: FileName, input: unknown): Promise<Annotations> {
     const next = Annotations.parse(input);
-    return this.locked(`annotations:${id}:${file}`, async () => {
+    return this.locked(`piece:${id}`, async () => {
       const piece = await this.getPiece(id);
       const before = await this.getAnnotations(id, file);
       const pages = changedPages(before, next);
       if (pages.length === 0) return next;
-      await writeJson(this.path('pieces', id, 'annotations', `${file}.json`), next);
+      await this.writeJson(this.path('pieces', id, 'annotations', `${file}.json`), next);
       const where = pages.map((p) => `p.${String(p)}`).join(', ');
       this.changes.markDirty(`Annotate ${quote(piece.title)} (${file} ${where})`);
       return next;
@@ -267,20 +275,21 @@ export class DataRepo {
     return readJson(this.path('pieces', id, 'loops.json'), Loops, () => ({ tracks: {} }));
   }
 
-  async putLoops(id: Slug, input: unknown): Promise<Loops> {
-    const next = Loops.parse(input);
-    return this.locked(`loops:${id}`, async () => {
+  async putTrackLoops(id: Slug, track: FileName, input: unknown): Promise<Loops> {
+    const loops = LoopList.parse(input);
+    if (loops.some((l) => l.endSec <= l.startSec)) {
+      throw new RejectedError('A loop must end after it starts');
+    }
+    return this.locked(`piece:${id}`, async () => {
       const piece = await this.getPiece(id);
-      const known = new Set(piece.tracks.map((t) => t.file as string));
-      const unknown = Object.keys(next.tracks).filter((t) => !known.has(t));
-      if (unknown.length > 0) throw new RejectedError(`Unknown track(s): ${unknown.join(', ')}`);
-      for (const loops of Object.values(next.tracks)) {
-        if (loops.some((l) => l.endSec <= l.startSec)) {
-          throw new RejectedError('A loop must end after it starts');
-        }
+      if (!piece.tracks.some((t) => t.file === track)) {
+        throw new RejectedError(`Unknown track: ${track}`);
       }
-      await writeJson(this.path('pieces', id, 'loops.json'), next);
-      this.changes.markDirty(`Save loops for ${quote(piece.title)}`);
+      const current = await this.getLoops(id);
+      const { [track]: _previous, ...others } = current.tracks;
+      const next: Loops = { tracks: loops.length > 0 ? { ...others, [track]: loops } : others };
+      await this.writeJson(this.path('pieces', id, 'loops.json'), next);
+      this.changes.markDirty(`Save loops for ${quote(piece.title)} (${track})`);
       return next;
     });
   }
@@ -293,9 +302,10 @@ export class DataRepo {
     const next = Setlists.parse(input);
     return this.locked('setlists', async () => {
       const ids = await this.listPieceIds();
+      this.log.debug({ setlists: next.setlists.length }, 'dewidebug repo setlists validated');
       const missing = next.setlists.flatMap((s) => s.pieceIds).filter((p) => !ids.has(p));
       if (missing.length > 0) throw new RejectedError(`Unknown piece(s): ${missing.join(', ')}`);
-      await writeJson(this.path('setlists.json'), next);
+      await this.writeJson(this.path('setlists.json'), next);
       this.changes.markDirty('Update setlists');
       return next;
     });
@@ -318,7 +328,13 @@ export class DataRepo {
         const text = await readFile(this.path('log', year, month), 'utf8');
         text.split('\n').forEach((line, index) => {
           if (line.trim() === '') return;
-          const parsed = PracticeSession.safeParse(JSON.parse(line));
+          let json: unknown;
+          try {
+            json = JSON.parse(line);
+          } catch {
+            json = undefined;
+          }
+          const parsed = PracticeSession.safeParse(json);
           if (!parsed.success) {
             this.log.error(
               { file: `log/${year}/${month}`, line: index + 1 },
@@ -346,7 +362,9 @@ export class DataRepo {
         `${String(at.getUTCMonth() + 1).padStart(2, '0')}.jsonl`,
       );
       await mkdir(dirname(file), { recursive: true });
-      await appendFile(file, `${JSON.stringify(session)}\n`);
+      const lead = (await this.endsWithoutNewline(file)) ? '\n' : '';
+      if (lead) this.log.warn({ file }, 'dewidebug repo log did not end with a newline; repairing');
+      await appendFile(file, `${lead}${JSON.stringify(session)}\n`);
       const minutes = Math.max(1, Math.round(session.durationSec / 60));
       this.changes.markDirty(
         `Practise ${quote(piece.title)} for ${String(minutes)} min${session.bpm ? ` at ${String(session.bpm)} bpm` : ''}`,
@@ -371,20 +389,47 @@ export class DataRepo {
       } catch {
         throw new RejectedError(`Unsupported file name: ${originalName}`);
       }
-      const size = await writeUpload(this.path('pieces', id, kind, file), source, rules);
+      if (kindOfFile(file) !== kind) {
+        throw new RejectedError(
+          kind === 'scores' ? 'A score must be a .pdf file' : `Audio must be one of: ${audioList}`,
+        );
+      }
+      const size = await writeUpload(this.path('pieces', id, kind, file), source, rules, this.tmp);
       const ref = { file, name: originalName.replace(/\.[^.]+$/, '') || file };
       const next = Piece.parse({
         ...piece,
         [kind]: [...piece[kind], ref],
         updatedAt: this.now().toISOString(),
       });
-      await writeJson(this.path('pieces', id, 'piece.json'), next);
+      await this.writeJson(this.path('pieces', id, 'piece.json'), next);
       this.log.info({ id, file, kind, bytes: size }, 'dewidebug repo file stored');
       this.changes.markDirty(
         `Add ${kind === 'scores' ? 'score' : 'track'} ${file} to ${quote(piece.title)}`,
       );
       return ref;
     });
+  }
+
+  private writeJson(path: string, value: unknown): Promise<void> {
+    return writeJson(path, value, this.tmp);
+  }
+
+  private async endsWithoutNewline(file: string): Promise<boolean> {
+    let size: number;
+    try {
+      size = (await stat(file)).size;
+    } catch {
+      return false;
+    }
+    if (size === 0) return false;
+    const handle = await open(file, 'r');
+    try {
+      const last = Buffer.alloc(1);
+      await handle.read(last, 0, 1, size - 1);
+      return last[0] !== 0x0a;
+    } finally {
+      await handle.close();
+    }
   }
 
   private async listPieceIds(): Promise<Set<string>> {
@@ -398,7 +443,8 @@ export class DataRepo {
 
   private locked<T>(key: string, fn: () => Promise<T>): Promise<T> {
     const previous = this.locks.get(key) ?? Promise.resolve();
-    const run = previous.then(fn, fn);
+    const guarded = () => this.gate.write(fn);
+    const run = previous.then(guarded, guarded);
     const settled = run.catch(() => undefined);
     this.locks.set(key, settled);
     void settled.then(() => {

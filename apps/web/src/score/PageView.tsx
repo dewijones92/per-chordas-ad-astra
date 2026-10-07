@@ -16,6 +16,7 @@ interface Props {
   onSelect: (id: string | null) => void;
   onEditText: (request: TextEditRequest) => void;
   scrollRoot: HTMLElement | null;
+  readOnly: boolean;
   children?: React.ReactNode;
 }
 
@@ -92,6 +93,7 @@ export function PageView(props: Props) {
         dispatch={props.dispatch}
         selected={props.selected}
         onSelect={props.onSelect}
+        readOnly={props.readOnly}
         onEditText={props.onEditText}
       />
       {props.children}

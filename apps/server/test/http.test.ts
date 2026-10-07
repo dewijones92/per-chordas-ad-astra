@@ -160,7 +160,7 @@ describe('HTTP API', () => {
       method: 'POST',
       body: makePdf(['x']),
     });
-    expect(unnamed.status).toBe(422);
+    expect(unnamed.status).toBe(415);
   });
 
   it('serves an uploaded file whole and by byte range', async () => {
@@ -279,5 +279,17 @@ describe('HTTP API', () => {
     expect(await res.json()).toEqual({ error: 'PDF is over 50 MB' });
     expect(sent).toBeLessThan(56);
     expect(await leftovers(piece.id)).toEqual(['romanza.pdf']);
+  });
+
+  it('refuses JSON endpoints a cross-site form could reach (text/plain bodies)', async () => {
+    const forged = await app.request('/api/pieces', {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain' },
+      body: JSON.stringify({ title: 'Forged' }),
+    });
+    expect(forged.status).toBe(415);
+    const pieces = (await (await app.request('/api/pieces')).json()) as unknown[];
+    expect(pieces).toHaveLength(0);
+    expect((await app.request('/api/sync/flush', { method: 'POST' })).status).toBe(200);
   });
 });

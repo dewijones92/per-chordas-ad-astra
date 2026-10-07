@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { SCHEMA_VERSION, type SyncPhase, type SyncStatus } from '@pcaa/shared';
 import type { Logger } from '../log.ts';
 import { GitError, type Git } from './git.ts';
+import { RepoGate } from './repo-gate.ts';
 
 export interface SyncEngineOptions {
   git: Git;
@@ -13,6 +14,7 @@ export interface SyncEngineOptions {
   retryDelaysMs: readonly number[];
   log: Logger;
   now?: () => Date;
+  gate?: RepoGate;
 }
 
 type Activity = 'idle' | 'committing' | 'pushing';
@@ -61,12 +63,15 @@ export class SyncEngine {
   private retryTimer: NodeJS.Timeout | undefined;
   private chain: Promise<unknown> = Promise.resolve();
   private closed = false;
+  private commitError: string | null = null;
+  private readonly gate: RepoGate;
 
   constructor(opts: SyncEngineOptions) {
     this.opts = opts;
     this.git = opts.git;
     this.log = opts.log.child({ component: 'sync' });
     this.now = opts.now ?? (() => new Date());
+    this.gate = opts.gate ?? new RepoGate();
   }
 
   get hasRemote(): boolean {
@@ -108,7 +113,7 @@ export class SyncEngine {
 
     if (this.hasRemote && (await this.remoteBranchExists())) {
       try {
-        await this.git(['rebase', '-q', `origin/${branch}`]);
+        await this.gate.exclusive(() => this.git(['rebase', '-q', `origin/${branch}`]));
       } catch (error) {
         await this.git(['rebase', '--abort']).catch(() => undefined);
         this.lastError = `Local and GitHub copies have diverged: ${String(error)}`;
@@ -173,7 +178,7 @@ export class SyncEngine {
 
   private phase(): SyncPhase {
     if (this.activity !== 'idle') return this.activity;
-    if (this.pending.length > 0) return 'dirty';
+    if (this.pending.length > 0) return this.commitError ? 'commit-failed' : 'dirty';
     if (this.unpushed > 0) return this.lastError ? 'push-failed' : 'dirty';
     return 'clean';
   }
@@ -199,6 +204,11 @@ export class SyncEngine {
       }
       const message = commitMessage(descriptions);
       await this.git(['commit', '-q', '-m', message]);
+      if (this.commitError) {
+        this.log.info({ previous: this.commitError }, 'dewidebug sync commit recovered');
+        if (this.lastError === this.commitError) this.lastError = null;
+        this.commitError = null;
+      }
       this.lastCommitAt = this.now().toISOString();
       this.unpushed += 1;
       this.log.info(
@@ -208,8 +218,13 @@ export class SyncEngine {
       return true;
     } catch (error) {
       this.pending.unshift(...descriptions);
-      this.lastError = `Commit failed: ${String(error)}`;
-      this.log.error({ err: error, reason }, 'dewidebug sync commit failed, changes kept pending');
+      this.commitError = `Commit failed: ${error instanceof Error ? error.message : String(error)}`;
+      this.lastError = this.commitError;
+      this.scheduleRetry();
+      this.log.error(
+        { err: error, reason, nextRetryAt: this.nextRetryAt },
+        'dewidebug sync commit failed, changes kept pending; retry scheduled',
+      );
       return false;
     } finally {
       this.activity = 'idle';
@@ -232,12 +247,15 @@ export class SyncEngine {
         if (!isNonFastForward(error)) throw error;
         this.log.warn('dewidebug sync push rejected as non-fast-forward, rebasing onto GitHub');
         await this.git(['fetch', '-q', 'origin', branch]);
-        try {
-          await this.git(['rebase', '-q', `origin/${branch}`]);
-        } catch (rebaseError) {
-          await this.git(['rebase', '--abort']).catch(() => undefined);
-          throw rebaseError;
-        }
+        await this.gate.exclusive(async () => {
+          this.log.info('dewidebug sync rebase holding the repo gate; saves wait');
+          try {
+            await this.git(['rebase', '-q', '--autostash', `origin/${branch}`]);
+          } catch (rebaseError) {
+            await this.git(['rebase', '--abort']).catch(() => undefined);
+            throw rebaseError;
+          }
+        });
         await this.git(['push', '-q', 'origin', `HEAD:${branch}`]);
       }
       this.unpushed = await this.countUnpushed();
@@ -265,7 +283,7 @@ export class SyncEngine {
     this.nextRetryAt = new Date(this.now().getTime() + delay).toISOString();
     clearTimeout(this.retryTimer);
     this.retryTimer = setTimeout(() => {
-      void this.enqueue(() => this.push(`retry ${String(this.retryAttempt)}`));
+      void this.flush(`retry ${String(this.retryAttempt)}`);
     }, delay);
   }
 

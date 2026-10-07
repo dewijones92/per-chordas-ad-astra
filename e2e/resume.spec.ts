@@ -92,3 +92,38 @@ test('another device opens where this one left off', async ({ browser, page }) =
     .toBeGreaterThan(900);
   await phone.close();
 });
+
+test('a stale tab opening a piece takes the newer position instead of overwriting it', async ({
+  browser,
+  page,
+}) => {
+  const id = await createPiece(page, 'Stale Tab');
+  await expect(page.locator('.page')).toHaveCount(3);
+  const laptop = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const stale = await laptop.newPage();
+  await stale.goto(`/piece/${id}`);
+  await expect(stale.locator('.page')).toHaveCount(3);
+  await stale.locator('.nav').getByRole('link', { name: 'Library', exact: true }).click();
+
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  const key = `${id}/${id}.pdf`;
+  const serverPage = async () =>
+    (
+      (await (await page.request.get('/api/resume')).json()) as {
+        scores: Record<string, { page: number }>;
+      }
+    ).scores[key]?.page;
+  await expect.poll(serverPage, { timeout: 8000 }).toBe(3);
+
+  await stale.locator(`a[href="/piece/${id}"]`).click();
+  await expect(stale.locator('.page')).toHaveCount(3);
+  await expect
+    .poll(() => stale.getByTestId('score-scroller').evaluate((el) => el.scrollTop), {
+      timeout: 5000,
+    })
+    .toBeGreaterThan(900);
+  await stale.waitForTimeout(2000);
+  expect(await serverPage()).toBe(3);
+  await laptop.close();
+});

@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { makePdf } from '@pcaa/fixtures';
 import { emptyAnnotations, FileName, Slug, type Annotations } from '@pcaa/shared';
@@ -125,13 +125,13 @@ describe('DataRepo', () => {
     const piece = await repo.createPiece({ title: 'Jam' });
     const track = await repo.addTrack(piece.id, 'Backing.mp3', new Blob([new Uint8Array(16)]));
     const loop = { id: 'l1', name: 'Solo', startSec: 10, endSec: 20, rate: 0.75 };
-    await repo.putLoops(piece.id, { tracks: { [track.file]: [loop] } });
+    await repo.putTrackLoops(piece.id, track.file, [loop]);
     expect((await repo.getLoops(piece.id)).tracks[track.file]).toEqual([loop]);
-    await expect(repo.putLoops(piece.id, { tracks: { 'other.mp3': [loop] } })).rejects.toThrow(
+    await expect(repo.putTrackLoops(piece.id, file('other.mp3'), [loop])).rejects.toThrow(
       /Unknown track/,
     );
     await expect(
-      repo.putLoops(piece.id, { tracks: { [track.file]: [{ ...loop, endSec: 5 }] } }),
+      repo.putTrackLoops(piece.id, track.file, [{ ...loop, endSec: 5 }]),
     ).rejects.toThrow(/end after it starts/);
   });
 
@@ -195,6 +195,114 @@ describe('DataRepo', () => {
     await expect(repo.filePath(slug('missing'), file('x.pdf'))).rejects.toBeInstanceOf(
       NotFoundError,
     );
+  });
+});
+
+describe('DataRepo review fixes', () => {
+  let dir: string;
+  let cleanup: () => Promise<void>;
+  let repo: DataRepo;
+
+  beforeEach(async () => {
+    ({ path: dir, cleanup } = await tempDir());
+    repo = new DataRepo({ dir, changes: new RecordingChanges(), log: silentLog });
+  });
+  afterEach(async () => cleanup());
+
+  it('refuses a score whose name is not .pdf, and a track whose name is .pdf', async () => {
+    const piece = await repo.createPiece({ title: 'Chart' });
+    await expect(repo.addScore(piece.id, 'chart.mp3', new Blob([pdf]))).rejects.toThrow(/\.pdf/);
+    await expect(repo.addTrack(piece.id, 'song.pdf', new Blob([pdf]))).rejects.toThrow(
+      /Audio must be/,
+    );
+  });
+
+  it('skips a corrupt log line instead of failing the whole history', async () => {
+    const a = await repo.createPiece({ title: 'A' });
+    await repo.addSession({
+      pieceId: a.id,
+      startedAt: '2026-10-01T08:00:00.000Z',
+      durationSec: 60,
+      bpm: null,
+      note: '',
+    });
+    await writeFile(join(dir, 'log/2026/10.jsonl'), '{"truncated": tr', { flag: 'a' });
+    await repo.addSession({
+      pieceId: a.id,
+      startedAt: '2026-10-02T08:00:00.000Z',
+      durationSec: 90,
+      bpm: null,
+      note: '',
+    });
+    const sessions = await repo.listSessions();
+    expect(sessions.map((s) => s.durationSec)).toEqual([60, 90]);
+  });
+
+  it('keeps an in-flight upload out of the git working tree', async () => {
+    const piece = await repo.createPiece({ title: 'Temp' });
+    let release: () => void = () => undefined;
+    const paused = new Promise<void>((r) => {
+      release = r;
+    });
+    let step = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        step += 1;
+        if (step === 1) controller.enqueue(pdf);
+        else if (step === 2) {
+          await paused;
+          controller.enqueue(new Uint8Array(10));
+        } else controller.close();
+      },
+    });
+    const upload = repo.addScore(piece.id, 'slow.pdf', stream);
+    await new Promise((r) => setTimeout(r, 50));
+    const during = (await readdir(dir, { recursive: true })).filter((f) => !f.startsWith('.state'));
+    release();
+    await upload;
+    expect(during.filter((f) => /\.(tmp|upload)$/.test(f))).toEqual([]);
+  });
+
+  it('a save that arrives while a piece is being deleted does not resurrect it', async () => {
+    const piece = await repo.createPiece({ title: 'Doomed' });
+    const ref = await repo.addScore(piece.id, 'doomed.pdf', new Blob([pdf]));
+    const doc = {
+      version: 1,
+      pages: {
+        '1': [{ kind: 'stamp', id: 's', colour: '#000000', glyph: '1', x: 1, y: 1, size: 10 }],
+      },
+    };
+    const results = await Promise.allSettled([
+      repo.deletePiece(piece.id),
+      repo.putAnnotations(piece.id, ref.file, doc),
+    ]);
+    expect(results[0].status).toBe('fulfilled');
+    await expect(readdir(join(dir, 'pieces'))).resolves.toEqual([]);
+  });
+
+  it('a setlist save racing a delete never keeps the deleted piece', async () => {
+    for (let round = 0; round < 12; round++) {
+      const a = await repo.createPiece({ title: `A ${String(round)}` });
+      const b = await repo.createPiece({ title: `B ${String(round)}` });
+      const save = () =>
+        repo.putSetlists({ setlists: [{ id: 's', name: 'S', pieceIds: [a.id, b.id] }] });
+      const del = () => repo.deletePiece(a.id);
+      await Promise.allSettled(round % 2 === 0 ? [save(), del()] : [del(), save()]);
+      const ids = (await repo.getSetlists()).setlists.flatMap((s) => s.pieceIds);
+      expect(ids).not.toContain(a.id);
+    }
+  });
+
+  it('saves loops one track at a time without touching other tracks', async () => {
+    const piece = await repo.createPiece({ title: 'Loops' });
+    const t1 = await repo.addTrack(piece.id, 'one.mp3', new Blob([new Uint8Array(8)]));
+    const t2 = await repo.addTrack(piece.id, 'two.mp3', new Blob([new Uint8Array(8)]));
+    const loop = { id: 'l', name: 'L', startSec: 1, endSec: 2, rate: 1 };
+    await repo.putTrackLoops(piece.id, t1.file, [loop]);
+    await repo.putTrackLoops(piece.id, t2.file, [{ ...loop, id: 'm' }]);
+    await repo.putTrackLoops(piece.id, t1.file, []);
+    expect((await repo.getLoops(piece.id)).tracks).toEqual({ [t2.file]: [{ ...loop, id: 'm' }] });
+    await expect(repo.putTrackLoops(piece.id, file('gone.mp3'), [loop])).rejects.toThrow();
   });
 });
 

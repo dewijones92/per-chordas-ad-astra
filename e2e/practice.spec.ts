@@ -55,3 +55,34 @@ test('a backing track slows down, loops, and its saved loop reaches GitHub', asy
   };
   expect(loops.tracks['backing.wav']?.[0]).toMatchObject({ name: 'Middle bit', rate: 0.75 });
 });
+
+test('a note typed just before leaving the piece is still saved', async ({ page }) => {
+  await createPiece(page, 'Quick Note', { pdf: false });
+  await page.getByText('📝 Notes').click();
+  await page.getByTestId('piece-notes').fill('use the thumb on bar 12');
+  await page.locator('.nav').getByRole('link', { name: 'Library', exact: true }).click();
+  await eventuallyInRemote('pieces/quick-note/piece.json', (t) =>
+    t.includes('use the thumb on bar 12'),
+  );
+});
+
+test('a loop that ends at the end of the track keeps looping', async ({ page }) => {
+  await createPiece(page, 'Loop To End', { pdf: false });
+  await page.getByTestId('upload-track').setInputFiles(toneFile('Tail.wav', 4));
+  await expect(page.locator('.waveform canvas')).toBeVisible();
+  const wave = await page.getByTestId('waveform').boundingBox();
+  if (!wave) throw new Error('no waveform');
+  await page.mouse.move(wave.x + wave.width * 0.5, wave.y + wave.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(wave.x + wave.width - 1, wave.y + wave.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await expect(page.getByTestId('looper-loop')).toContainText('→ 0:04.0');
+  await page.getByTestId('looper-play').click();
+  await page.waitForTimeout(3500);
+  const state = await page
+    .getByTestId('looper-audio')
+    .evaluate((a: HTMLAudioElement) => ({ paused: a.paused, t: a.currentTime }));
+  expect(state.paused).toBe(false);
+  expect(state.t).toBeGreaterThanOrEqual(1.9);
+  await page.getByTestId('looper-play').click();
+});
