@@ -47,7 +47,15 @@ export function createGit(opts: GitOptions): Git {
     new Promise((resolve, reject) => {
       execFile(
         'git',
-        ['-c', 'core.quotePath=false', '-c', 'color.ui=never', ...args],
+        [
+          '-c',
+          'core.quotePath=false',
+          '-c',
+          'color.ui=never',
+          '-c',
+          'core.bigFileThreshold=4m',
+          ...args,
+        ],
         { cwd: opts.cwd, env, timeout: opts.timeoutMs ?? 120_000, maxBuffer: 16 * 1024 * 1024 },
         (error, stdout, stderr) => {
           if (error) {

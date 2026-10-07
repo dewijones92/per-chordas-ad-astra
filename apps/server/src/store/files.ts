@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import type { z } from 'zod';
 
@@ -61,4 +61,47 @@ export async function readJson<S extends z.ZodType>(
   const parsed = schema.safeParse(JSON.parse(text));
   if (!parsed.success) throw new InvalidDataError(path, parsed.error.message);
   return parsed.data;
+}
+
+export type Upload = Blob | ReadableStream<Uint8Array>;
+
+export interface UploadRules {
+  maxBytes: number;
+  tooLarge: () => Error;
+  checkHead?: (head: Uint8Array) => Error | null;
+}
+
+export async function writeUpload(
+  path: string,
+  source: Upload,
+  rules: UploadRules,
+): Promise<number> {
+  await mkdir(dirname(path), { recursive: true });
+  const tmp = `${path}.${String(process.pid)}.${crypto.randomUUID()}.upload`;
+  const stream = source instanceof Blob ? source.stream() : source;
+  const out = await open(tmp, 'w');
+  let written = 0;
+  let head = new Uint8Array(0);
+  try {
+    for await (const chunk of stream as AsyncIterable<Uint8Array>) {
+      written += chunk.byteLength;
+      if (written > rules.maxBytes) throw rules.tooLarge();
+      if (head.byteLength < 16) {
+        const next = new Uint8Array(Math.min(16, head.byteLength + chunk.byteLength));
+        next.set(head);
+        next.set(chunk.subarray(0, next.byteLength - head.byteLength), head.byteLength);
+        head = next;
+      }
+      await out.write(chunk);
+    }
+    await out.close();
+    const problem = rules.checkHead?.(head) ?? null;
+    if (problem) throw problem;
+    await rename(tmp, path);
+    return written;
+  } catch (error) {
+    await out.close().catch(() => undefined);
+    await unlink(tmp).catch(() => undefined);
+    throw error;
+  }
 }

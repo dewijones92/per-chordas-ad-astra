@@ -1,5 +1,13 @@
 import { newId, type TextItem } from '@pcaa/shared';
-import { useEffect, useEffectEvent, useImperativeHandle, useRef, useState, type Ref } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type Ref,
+} from 'react';
 import type { TextEditRequest } from '../annotate/AnnotationLayer.tsx';
 import { itemsOn, type HistoryAction, type History } from '../annotate/history.ts';
 import { SIZES, type ToolState } from '../annotate/tools.ts';
@@ -46,6 +54,11 @@ export function ScoreViewer(props: Props) {
   const { url, history, dispatch, tools, zoom, mode, selected, onSelect } = props;
   const scroller = useRef<HTMLDivElement>(null);
   const pendingTurn = useRef<{ top: number; until: number } | null>(null);
+  const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
+  const attachScroller = useCallback((el: HTMLDivElement | null) => {
+    scroller.current = el;
+    setScrollRoot(el);
+  }, []);
   const [opened, setOpened] = useState<{
     url: string;
     pages: PDFPageProxy[] | null;
@@ -57,9 +70,18 @@ export function ScoreViewer(props: Props) {
 
   useEffect(() => {
     let cancelled = false;
+    let destroy: (() => void) | null = null;
     openPdf(url).then(
-      ({ pages: loaded }) => {
-        if (!cancelled) setOpened({ url, pages: loaded, error: null });
+      ({ doc, pages: loaded }) => {
+        destroy = () => {
+          void doc.loadingTask.destroy();
+          console.info('dewidebug pdf closed', { url, pages: loaded.length });
+        };
+        if (cancelled) {
+          destroy();
+          return;
+        }
+        setOpened({ url, pages: loaded, error: null });
       },
       (e: unknown) => {
         if (!cancelled)
@@ -68,6 +90,7 @@ export function ScoreViewer(props: Props) {
     );
     return () => {
       cancelled = true;
+      destroy?.();
     };
   }, [url]);
   const pages = opened?.url === url ? opened.pages : null;
@@ -214,7 +237,7 @@ export function ScoreViewer(props: Props) {
   return (
     <div
       className={`score-scroller mode-${mode}`}
-      ref={scroller}
+      ref={attachScroller}
       data-testid="score-scroller"
       data-mode={mode}
     >
@@ -234,6 +257,7 @@ export function ScoreViewer(props: Props) {
             dispatch={dispatch}
             selected={selected}
             onSelect={onSelect}
+            scrollRoot={scrollRoot}
             onEditText={(request) => {
               setEditing({ ...request, text: request.item?.text ?? '' });
             }}

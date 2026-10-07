@@ -53,27 +53,27 @@ describe('DataRepo', () => {
   it('stores a PDF score and refuses things that are not PDFs', async () => {
     const piece = await repo.createPiece({ title: 'Étude No. 1' });
     expect(piece.id).toBe('etude-no-1');
-    const ref = await repo.addScore(piece.id, 'Carcassi Op.60 No.1.pdf', pdf);
+    const ref = await repo.addScore(piece.id, 'Carcassi Op.60 No.1.pdf', new Blob([pdf]));
     expect(ref).toEqual({ file: 'carcassi-op-60-no-1.pdf', name: 'Carcassi Op.60 No.1' });
     expect(await readFile(await repo.filePath(piece.id, ref.file))).toEqual(Buffer.from(pdf));
     await expect(
-      repo.addScore(piece.id, 'notes.pdf', new TextEncoder().encode('hello')),
+      repo.addScore(piece.id, 'notes.pdf', new Blob([new TextEncoder().encode('hello')])),
     ).rejects.toBeInstanceOf(RejectedError);
   });
 
   it('refuses audio of an unsupported type or over the size cap', async () => {
     const piece = await repo.createPiece({ title: 'Loop' });
-    await expect(repo.addTrack(piece.id, 'song.exe', new Uint8Array(4))).rejects.toThrow(
-      /Audio must be/,
-    );
     await expect(
-      repo.addTrack(piece.id, 'big.mp3', new Uint8Array(51 * 1024 * 1024)),
+      repo.addTrack(piece.id, 'song.exe', new Blob([new Uint8Array(4)])),
+    ).rejects.toThrow(/Audio must be/);
+    await expect(
+      repo.addTrack(piece.id, 'big.mp3', new Blob([new Uint8Array(51 * 1024 * 1024)])),
     ).rejects.toThrow(/over 50 MB/);
   });
 
   it('only lets a patch rename or reorder files, never invent them', async () => {
     const piece = await repo.createPiece({ title: 'Tune' });
-    const ref = await repo.addScore(piece.id, 'tune.pdf', pdf);
+    const ref = await repo.addScore(piece.id, 'tune.pdf', new Blob([pdf]));
     const renamed = await repo.updatePiece(piece.id, { scores: [{ ...ref, name: 'Lead sheet' }] });
     expect(renamed.scores[0]?.name).toBe('Lead sheet');
     await expect(
@@ -83,7 +83,7 @@ describe('DataRepo', () => {
 
   it('saves annotations, describing the pages that changed, and skips no-op saves', async () => {
     const piece = await repo.createPiece({ title: 'Air' });
-    const ref = await repo.addScore(piece.id, 'air.pdf', pdf);
+    const ref = await repo.addScore(piece.id, 'air.pdf', new Blob([pdf]));
     const doc: Annotations = {
       version: 1,
       pages: {
@@ -99,13 +99,13 @@ describe('DataRepo', () => {
 
   it('returns empty annotations for a score nobody has drawn on', async () => {
     const piece = await repo.createPiece({ title: 'Blank' });
-    const ref = await repo.addScore(piece.id, 'blank.pdf', pdf);
+    const ref = await repo.addScore(piece.id, 'blank.pdf', new Blob([pdf]));
     expect(await repo.getAnnotations(piece.id, ref.file)).toEqual(emptyAnnotations());
   });
 
   it('removing a score also removes its annotations and bookmarks', async () => {
     const piece = await repo.createPiece({ title: 'Gone' });
-    const ref = await repo.addScore(piece.id, 'gone.pdf', pdf);
+    const ref = await repo.addScore(piece.id, 'gone.pdf', new Blob([pdf]));
     await repo.updatePiece(piece.id, {
       bookmarks: [{ id: 'b1', name: 'Bridge', score: ref.file, page: 2, y: 100 }],
     });
@@ -123,7 +123,7 @@ describe('DataRepo', () => {
 
   it('validates loops against the piece’s tracks', async () => {
     const piece = await repo.createPiece({ title: 'Jam' });
-    const track = await repo.addTrack(piece.id, 'Backing.mp3', new Uint8Array(16));
+    const track = await repo.addTrack(piece.id, 'Backing.mp3', new Blob([new Uint8Array(16)]));
     const loop = { id: 'l1', name: 'Solo', startSec: 10, endSec: 20, rate: 0.75 };
     await repo.putLoops(piece.id, { tracks: { [track.file]: [loop] } });
     expect((await repo.getLoops(piece.id)).tracks[track.file]).toEqual([loop]);

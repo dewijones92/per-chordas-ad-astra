@@ -67,14 +67,15 @@ export async function openLibrary(page: Page): Promise<void> {
 export async function createPiece(
   page: Page,
   title: string,
-  opts: { tags?: string; pdf?: boolean } = {},
+  opts: { tags?: string; pdf?: boolean; pages?: number } = {},
 ): Promise<string> {
   await openLibrary(page);
   await page.getByTestId('new-piece').click();
   const dialog = page.getByTestId('new-piece-dialog');
   await dialog.locator('input[name="title"]').fill(title);
   if (opts.tags) await dialog.locator('input[name="tags"]').fill(opts.tags);
-  if (opts.pdf !== false) await dialog.locator('input[name="score"]').setInputFiles(pdfFile(title));
+  if (opts.pdf !== false)
+    await dialog.locator('input[name="score"]').setInputFiles(pdfFile(title, opts.pages));
   await dialog.getByRole('button', { name: 'Create' }).click();
   await expect(page).toHaveURL(/\/piece\//);
   return new URL(page.url()).pathname.split('/').pop() ?? '';

@@ -51,9 +51,14 @@ const jsonInit = (method: string, body: unknown, keepalive = false): RequestInit
 });
 
 function upload(file: File): RequestInit {
-  const form = new FormData();
-  form.set('file', file);
-  return { method: 'POST', body: form };
+  return {
+    method: 'POST',
+    headers: {
+      'x-file-name': encodeURIComponent(file.name),
+      'content-type': file.type || 'application/octet-stream',
+    },
+    body: file,
+  };
 }
 
 function tracked<T>(label: string, promise: Promise<T>): Promise<T> {

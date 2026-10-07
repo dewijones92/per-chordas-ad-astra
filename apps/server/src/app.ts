@@ -40,11 +40,18 @@ function remoteFromConnInfo(c: Context): string | undefined {
   }
 }
 
-async function uploadedFile(c: Context): Promise<{ name: string; bytes: Uint8Array }> {
-  const body = await c.req.parseBody();
-  const file = body['file'];
-  if (!(file instanceof File)) throw new RejectedError('Expected a multipart field named "file"');
-  return { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
+function uploadFrom(c: Context): { name: string; body: ReadableStream<Uint8Array> } {
+  const header = c.req.header('x-file-name');
+  if (!header) throw new RejectedError('Missing the X-File-Name header');
+  const body = c.req.raw.body;
+  if (!body) throw new RejectedError('The upload was empty');
+  let name: string;
+  try {
+    name = decodeURIComponent(header);
+  } catch {
+    throw new RejectedError('X-File-Name must be URI-encoded');
+  }
+  return { name, body };
 }
 
 export function createApp(deps: AppDeps): Hono {
@@ -110,12 +117,12 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   api.post('/pieces/:id/scores', async (c) => {
-    const { name, bytes } = await uploadedFile(c);
-    return c.json(await repo.addScore(slug(c), name, bytes), 201);
+    const { name, body } = uploadFrom(c);
+    return c.json(await repo.addScore(slug(c), name, body), 201);
   });
   api.post('/pieces/:id/tracks', async (c) => {
-    const { name, bytes } = await uploadedFile(c);
-    return c.json(await repo.addTrack(slug(c), name, bytes), 201);
+    const { name, body } = uploadFrom(c);
+    return c.json(await repo.addTrack(slug(c), name, body), 201);
   });
   api.get('/pieces/:id/files/:file', async (c) => {
     const id = slug(c);

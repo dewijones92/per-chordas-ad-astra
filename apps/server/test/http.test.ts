@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { makePdf } from '@pcaa/fixtures';
 import type { Health, Piece } from '@pcaa/shared';
@@ -83,16 +83,27 @@ describe('HTTP API', () => {
     body: JSON.stringify(body),
   });
 
+  const raw = (
+    bytes: Uint8Array | ReadableStream<Uint8Array>,
+    name: string,
+  ): RequestInit & { duplex: 'half' } => ({
+    method: 'POST',
+    headers: { 'x-file-name': encodeURIComponent(name) },
+    body: bytes,
+    duplex: 'half',
+  });
+
+  const leftovers = async (id: string): Promise<string[]> =>
+    readdir(join(dir, 'data', 'pieces', id, 'scores')).catch(() => []);
+
   async function createPieceWithScore(): Promise<Piece> {
     const piece = (await (
       await app.request('/api/pieces', json({ title: 'Romanza' }))
     ).json()) as Piece;
-    const form = new FormData();
-    form.set('file', new File([makePdf(['Romanza'])], 'Romanza.pdf', { type: 'application/pdf' }));
-    const upload = await app.request(`/api/pieces/${piece.id}/scores`, {
-      method: 'POST',
-      body: form,
-    });
+    const upload = await app.request(
+      `/api/pieces/${piece.id}/scores`,
+      raw(makePdf(['Romanza']), 'Romanza.pdf'),
+    );
     expect(upload.status).toBe(201);
     return piece;
   }
@@ -138,11 +149,18 @@ describe('HTTP API', () => {
     expect((await app.request('/api/pieces', json({ title: '' }))).status).toBe(400);
     expect((await app.request('/api/pieces/Not A Slug')).status).toBe(400);
     const piece = await createPieceWithScore();
-    const form = new FormData();
-    form.set('file', new File(['not a pdf'], 'x.pdf'));
-    const res = await app.request(`/api/pieces/${piece.id}/scores`, { method: 'POST', body: form });
+    const res = await app.request(
+      `/api/pieces/${piece.id}/scores`,
+      raw(new TextEncoder().encode('not a pdf'), 'x.pdf'),
+    );
     expect(res.status).toBe(422);
     expect(await res.json()).toEqual({ error: 'That file is not a PDF' });
+    expect(await leftovers(piece.id)).toEqual(['romanza.pdf']);
+    const unnamed = await app.request(`/api/pieces/${piece.id}/scores`, {
+      method: 'POST',
+      body: makePdf(['x']),
+    });
+    expect(unnamed.status).toBe(422);
   });
 
   it('serves an uploaded file whole and by byte range', async () => {
@@ -242,5 +260,24 @@ describe('HTTP API', () => {
       phase: string;
     };
     expect(flushed.phase).toBe('clean');
+  });
+
+  it('streams uploads to disk and cuts off one that grows past the cap, leaving nothing behind', async () => {
+    const piece = await createPieceWithScore();
+    const first = new Uint8Array(1024 * 1024);
+    first.set(new TextEncoder().encode('%PDF-'));
+    let sent = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        sent += 1;
+        controller.enqueue(sent === 1 ? first : new Uint8Array(1024 * 1024));
+        if (sent > 60) controller.close();
+      },
+    });
+    const res = await app.request(`/api/pieces/${piece.id}/scores`, raw(endless, 'Huge.pdf'));
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({ error: 'PDF is over 50 MB' });
+    expect(sent).toBeLessThan(56);
+    expect(await leftovers(piece.id)).toEqual(['romanza.pdf']);
   });
 });

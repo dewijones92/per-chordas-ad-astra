@@ -105,3 +105,41 @@ test('a bookmark is saved and jumps back to its page', async ({ page }) => {
     })
     .toBeGreaterThan(300);
 });
+
+test('a long score only draws the pages near the screen, and redraws them on the way back', async ({
+  page,
+}) => {
+  await createPiece(page, 'Long Book', { pages: 40 });
+  await expect(page.locator('.page')).toHaveCount(40);
+  await page.waitForTimeout(800);
+  const drawn = () =>
+    page.evaluate(
+      () =>
+        [...document.querySelectorAll('.page canvas')].filter(
+          (c) => (c as HTMLCanvasElement).width > 0,
+        ).length,
+    );
+  expect(await drawn()).toBeLessThan(8);
+  await page.locator('.page[data-page="40"]').scrollIntoViewIfNeeded();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (document.querySelector('.page[data-page="40"] canvas') as HTMLCanvasElement).width,
+      ),
+    )
+    .toBeGreaterThan(0);
+  expect(
+    await page.evaluate(
+      () => (document.querySelector('.page[data-page="1"] canvas') as HTMLCanvasElement).width,
+    ),
+  ).toBe(0);
+  await page.locator('.page[data-page="1"]').scrollIntoViewIfNeeded();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (document.querySelector('.page[data-page="1"] canvas') as HTMLCanvasElement).width,
+      ),
+    )
+    .toBeGreaterThan(0);
+  expect(await drawn()).toBeLessThan(8);
+});

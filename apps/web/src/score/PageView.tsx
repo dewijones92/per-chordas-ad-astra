@@ -15,6 +15,7 @@ interface Props {
   selected: string | null;
   onSelect: (id: string | null) => void;
   onEditText: (request: TextEditRequest) => void;
+  scrollRoot: HTMLElement | null;
   children?: React.ReactNode;
 }
 
@@ -27,24 +28,34 @@ export function PageView(props: Props) {
   const scale = cssWidth / base.width;
   const cssHeight = base.height * scale;
 
+  const { scrollRoot } = props;
   useEffect(() => {
     const el = holderRef.current;
-    if (!el) return;
+    if (!el || !scrollRoot) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) setVisible(true);
+        const entry = entries.at(-1);
+        if (entry) setVisible(entry.isIntersecting);
       },
-      { rootMargin: '1200px 0px' },
+      { root: scrollRoot, rootMargin: '150% 0px' },
     );
     observer.observe(el);
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [scrollRoot]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!visible || !canvas || cssWidth <= 0) return;
+    if (!canvas || cssWidth <= 0) return;
+    if (!visible) {
+      if (canvas.width > 0) {
+        canvas.width = 0;
+        canvas.height = 0;
+        page.cleanup();
+      }
+      return;
+    }
     const ratio = Math.min(window.devicePixelRatio || 1, 3);
     const viewport = page.getViewport({ scale: scale * ratio });
     canvas.width = Math.floor(viewport.width);

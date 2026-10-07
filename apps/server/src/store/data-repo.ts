@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readdir, readFile, rm, stat } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import {
   Annotations,
@@ -22,12 +22,14 @@ import {
 } from '@pcaa/shared';
 import type { Logger } from '../log.ts';
 import {
-  atomicWrite,
   InvalidDataError,
   NotFoundError,
   readJson,
   resolveInside,
   writeJson,
+  writeUpload,
+  type Upload,
+  type UploadRules,
 } from './files.ts';
 
 export class RejectedError extends Error {
@@ -175,26 +177,33 @@ export class DataRepo {
     });
   }
 
-  async addScore(id: Slug, originalName: string, bytes: Uint8Array): Promise<ScoreRef> {
-    if (bytes.byteLength > MAX_SCORE_BYTES) {
-      throw new RejectedError(`PDF is over ${String(MAX_SCORE_BYTES / 1024 / 1024)} MB`);
-    }
-    if (new TextDecoder().decode(bytes.subarray(0, 5)) !== '%PDF-') {
-      throw new RejectedError('That file is not a PDF');
-    }
-    return this.addFile(id, originalName, bytes, 'scores');
+  async addScore(id: Slug, originalName: string, source: Upload): Promise<ScoreRef> {
+    const tooLarge = () =>
+      new RejectedError(`PDF is over ${String(MAX_SCORE_BYTES / 1024 / 1024)} MB`);
+    if (source instanceof Blob && source.size > MAX_SCORE_BYTES) throw tooLarge();
+    return this.addFile(id, originalName, source, 'scores', {
+      maxBytes: MAX_SCORE_BYTES,
+      tooLarge,
+      checkHead: (head) =>
+        new TextDecoder().decode(head.subarray(0, 5)) === '%PDF-'
+          ? null
+          : new RejectedError('That file is not a PDF'),
+    });
   }
 
-  async addTrack(id: Slug, originalName: string, bytes: Uint8Array): Promise<TrackRef> {
-    if (bytes.byteLength > MAX_TRACK_BYTES) {
-      throw new RejectedError(
+  async addTrack(id: Slug, originalName: string, source: Upload): Promise<TrackRef> {
+    const tooLarge = () =>
+      new RejectedError(
         `Audio is over ${String(MAX_TRACK_BYTES / 1024 / 1024)} MB (GitHub rejects files over 100 MB)`,
       );
-    }
+    if (source instanceof Blob && source.size > MAX_TRACK_BYTES) throw tooLarge();
     if (!AUDIO_EXTENSIONS.has(extensionOf(originalName))) {
       throw new RejectedError(`Audio must be one of: ${[...AUDIO_EXTENSIONS].join(', ')}`);
     }
-    return this.addFile(id, originalName, bytes, 'tracks');
+    return this.addFile(id, originalName, source, 'tracks', {
+      maxBytes: MAX_TRACK_BYTES,
+      tooLarge,
+    });
   }
 
   async removeFile(id: Slug, file: FileName): Promise<Piece> {
@@ -349,8 +358,9 @@ export class DataRepo {
   private addFile(
     id: Slug,
     originalName: string,
-    bytes: Uint8Array,
+    source: Upload,
     kind: 'scores' | 'tracks',
+    rules: UploadRules,
   ): Promise<ScoreRef> {
     return this.locked(`piece:${id}`, async () => {
       const piece = await this.getPiece(id);
@@ -361,7 +371,7 @@ export class DataRepo {
       } catch {
         throw new RejectedError(`Unsupported file name: ${originalName}`);
       }
-      await atomicWrite(this.path('pieces', id, kind, file), bytes);
+      const size = await writeUpload(this.path('pieces', id, kind, file), source, rules);
       const ref = { file, name: originalName.replace(/\.[^.]+$/, '') || file };
       const next = Piece.parse({
         ...piece,
@@ -369,7 +379,6 @@ export class DataRepo {
         updatedAt: this.now().toISOString(),
       });
       await writeJson(this.path('pieces', id, 'piece.json'), next);
-      const size = (await stat(this.path('pieces', id, kind, file))).size;
       this.log.info({ id, file, kind, bytes: size }, 'dewidebug repo file stored');
       this.changes.markDirty(
         `Add ${kind === 'scores' ? 'score' : 'track'} ${file} to ${quote(piece.title)}`,
