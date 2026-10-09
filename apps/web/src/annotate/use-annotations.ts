@@ -118,6 +118,11 @@ export function useAnnotations(pieceId: string, file: string) {
   const reload = useCallback(() => {
     setLoadNonce((n) => n + 1);
   }, []);
+  const adopt = useCallback((doc: Annotations) => {
+    confirmed.current = doc;
+    latest.current = doc;
+    dispatch({ type: 'reset', doc });
+  }, []);
 
-  return { history, dispatch: act, load, error: loadError ?? saveError, reload };
+  return { history, dispatch: act, load, error: loadError ?? saveError, reload, adopt };
 }

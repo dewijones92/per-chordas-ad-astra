@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { makePdf, makeToneWav } from '../../packages/fixtures/src/index.ts';
+import { makePdf, makeToneWav, type FixtureMark } from '../../packages/fixtures/src/index.ts';
 import { expect, type Page } from '@playwright/test';
 
 export const remote = join(import.meta.dirname, '..', '.tmp', 'run', 'remote.git');
@@ -43,11 +43,19 @@ export async function eventuallyInRemote(
   return seen.text;
 }
 
-export const pdfFile = (title: string, pages = 3) => ({
+export const pdfFile = (
+  title: string,
+  pages = 3,
+  marks: readonly (readonly FixtureMark[])[] = [],
+) => ({
   name: `${title}.pdf`,
   mimeType: 'application/pdf',
   buffer: Buffer.from(
-    makePdf(Array.from({ length: pages }, (_, i) => `${title} page ${String(i + 1)}`)),
+    makePdf(
+      Array.from({ length: pages }, (_, i) => `${title} page ${String(i + 1)}`),
+      [595, 842],
+      marks,
+    ),
   ),
 });
 
@@ -67,7 +75,12 @@ export async function openLibrary(page: Page): Promise<void> {
 export async function createPiece(
   page: Page,
   title: string,
-  opts: { tags?: string; pdf?: boolean; pages?: number } = {},
+  opts: {
+    tags?: string;
+    pdf?: boolean;
+    pages?: number;
+    marks?: readonly (readonly FixtureMark[])[];
+  } = {},
 ): Promise<string> {
   await openLibrary(page);
   await page.getByTestId('new-piece').click();
@@ -75,7 +88,9 @@ export async function createPiece(
   await dialog.locator('input[name="title"]').fill(title);
   if (opts.tags) await dialog.locator('input[name="tags"]').fill(opts.tags);
   if (opts.pdf !== false)
-    await dialog.locator('input[name="score"]').setInputFiles(pdfFile(title, opts.pages));
+    await dialog
+      .locator('input[name="score"]')
+      .setInputFiles(pdfFile(title, opts.pages, opts.marks));
   await dialog.getByRole('button', { name: 'Create' }).click();
   await expect(page).toHaveURL(/\/piece\//);
   return new URL(page.url()).pathname.split('/').pop() ?? '';

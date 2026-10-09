@@ -19,6 +19,8 @@ arrow `A`, box `R`, circle `O`, stamp `S`. Six ink colours and four highlighter 
 Stamps: fingers 1–4 and T, strum ↑↓, P/H/S, repeat signs, ✓ and !. Select to move; `Delete` removes;
 double-click text to edit. `Ctrl+Z` / `Ctrl+Shift+Z`. A drag (move or erase) is one undo step.
 
+**Marks from other apps.** The first time a score opens, marks made in other apps (Preview's handwriting, highlights, strike-outs, lines and text boxes) are copied into the app's own drawings, with the same shape, colour and place, and the PDF's copies stop being painted, so each mark shows once and can be selected, moved, erased and undone. The PDF file itself is untouched. If a PDF holds a kind of mark the app cannot convert, it is left exactly as it was. See [ADR 0011](../adr/0011-import-pdf-annotations-as-drawings.md).
+
 **Bookmarks.** "🔖 Bookmark" under the score saves the current page and offset with a name; the jump
 bar scrolls back to it.
 
@@ -27,5 +29,5 @@ changed. Hiding the page or leaving the piece sends a keepalive save and a flush
 (2 s, 5 s, 15 s, then every 30 s) with a visible "Drawings not saved yet" strip; if the existing drawings could not
 be loaded, drawing is paused (with Retry) so a save can never overwrite them.
 
-Files: `apps/web/src/score/*`, `apps/web/src/annotate/*`, `DataRepo.putAnnotations`.
-Tests: `history`, `geometry`, `turn`, `zoom` unit tests; `e2e/annotate.spec.ts`, `e2e/zoom.spec.ts`.
+Files: `apps/web/src/score/*`, `apps/web/src/annotate/*`, `DataRepo.putAnnotations`, `DataRepo.importPdfMarks`.
+Tests: `history`, `geometry`, `turn`, `zoom`, `pdf-marks` unit tests; `e2e/annotate.spec.ts`, `e2e/zoom.spec.ts`, `e2e/pdf-marks.spec.ts`.

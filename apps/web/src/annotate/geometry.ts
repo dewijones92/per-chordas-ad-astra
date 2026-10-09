@@ -1,4 +1,4 @@
-import type { AnnotationItem, ShapeItem, StrokeItem } from '@pcaa/shared';
+import type { AnnotationItem, InkItem, ShapeItem, StrokeItem } from '@pcaa/shared';
 import { getStroke } from 'perfect-freehand';
 
 export interface Point {
@@ -59,6 +59,52 @@ function strokeBox(item: StrokeItem): Box {
   return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
 }
 
+function inkBox(item: InkItem): Box {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const path of item.paths)
+    for (const [x, y] of path) {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+function insideInk(item: InkItem, p: Point): boolean {
+  let winding = 0;
+  let crossings = 0;
+  for (const path of item.paths) {
+    for (let i = 0; i < path.length; i++) {
+      const a = path[i];
+      const b = path[(i + 1) % path.length];
+      if (!a || !b) continue;
+      const [ax, ay] = a;
+      const [bx, by] = b;
+      if (ay <= p.y === by <= p.y) continue;
+      const x = ax + ((p.y - ay) / (by - ay)) * (bx - ax);
+      if (x <= p.x) continue;
+      crossings++;
+      winding += by > ay ? 1 : -1;
+    }
+  }
+  return item.fillRule === 'evenodd' ? crossings % 2 === 1 : winding !== 0;
+}
+
+function nearInkEdge(item: InkItem, p: Point, reach: number): boolean {
+  for (const path of item.paths)
+    for (let i = 0; i < path.length; i++) {
+      const a = path[i];
+      const b = path[(i + 1) % path.length];
+      if (a && b && distanceToSegment(p, { x: a[0], y: a[1] }, { x: b[0], y: b[1] }) <= reach)
+        return true;
+    }
+  return false;
+}
+
 export function boundsOf(item: AnnotationItem): Box {
   switch (item.kind) {
     case 'stroke':
@@ -69,6 +115,8 @@ export function boundsOf(item: AnnotationItem): Box {
       return textBox(item);
     case 'stamp':
       return stampBox(item);
+    case 'ink':
+      return inkBox(item);
   }
 }
 
@@ -126,6 +174,10 @@ export function hitTest(item: AnnotationItem, p: Point, tolerance: number): bool
       return inBox(p, textBox(item), tolerance);
     case 'stamp':
       return inBox(p, stampBox(item), tolerance);
+    case 'ink':
+      return (
+        inBox(p, inkBox(item), tolerance) && (insideInk(item, p) || nearInkEdge(item, p, tolerance))
+      );
   }
 }
 
@@ -153,6 +205,13 @@ export function translate(item: AnnotationItem, dx: number, dy: number): Annotat
     case 'text':
     case 'stamp':
       return { ...item, x: item.x + dx, y: item.y + dy };
+    case 'ink':
+      return {
+        ...item,
+        paths: item.paths.map((path) =>
+          path.map(([x, y]) => [round2(x + dx), round2(y + dy)] as [number, number]),
+        ),
+      };
   }
 }
 
@@ -212,4 +271,17 @@ export function arrowHead(item: {
     y: item.y2 - length * Math.sin(angle + spread),
   };
   return `M${round2(a.x).toString()} ${round2(a.y).toString()} L${round2(item.x2).toString()} ${round2(item.y2).toString()} L${round2(b.x).toString()} ${round2(b.y).toString()}`;
+}
+
+export function inkPath(paths: readonly (readonly (readonly [number, number])[])[]): string {
+  return paths
+    .map(
+      (path) =>
+        path
+          .map(
+            ([x, y], i) => `${i === 0 ? 'M' : 'L'}${round2(x).toString()} ${round2(y).toString()}`,
+          )
+          .join('') + 'Z',
+    )
+    .join(' ');
 }

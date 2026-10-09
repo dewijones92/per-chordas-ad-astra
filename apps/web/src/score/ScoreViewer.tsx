@@ -42,6 +42,8 @@ interface Props {
   initialPosition?: ScorePosition | null;
   readOnly?: boolean;
   onPositionChange?: (position: ScorePosition) => void;
+  hidePdfAnnotations?: boolean;
+  onPages?: (opened: { url: string; pages: PDFPageProxy[] } | null) => void;
 }
 
 interface Editing extends TextEditRequest {
@@ -97,6 +99,10 @@ export function ScoreViewer(props: Props) {
     };
   }, [url]);
   const pages = opened?.url === url ? opened.pages : null;
+  const { onPages } = props;
+  useEffect(() => {
+    onPages?.(pages ? { url, pages } : null);
+  }, [onPages, url, pages]);
   const error = opened?.url === url ? opened.error : null;
 
   useEffect(() => {
@@ -272,6 +278,7 @@ export function ScoreViewer(props: Props) {
             selected={selected}
             onSelect={onSelect}
             readOnly={props.readOnly ?? false}
+            hidePdfAnnotations={props.hidePdfAnnotations ?? false}
             scrollRoot={scrollRoot}
             onEditText={(request) => {
               setEditing({ ...request, text: request.item?.text ?? '' });

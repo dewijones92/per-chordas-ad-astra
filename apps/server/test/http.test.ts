@@ -184,6 +184,34 @@ describe('HTTP API', () => {
     expect(bad.status).toBe(416);
   });
 
+  it('imports PDF marks once through the API and rejects a malformed import', async () => {
+    const piece = await createPieceWithScore();
+    const url = `/api/pieces/${piece.id}/annotations/romanza.pdf/import`;
+    const body = {
+      version: 1,
+      pages: {
+        '1': [{ kind: 'stamp', id: 'a', colour: '#123456', glyph: 'P', x: 1, y: 2, size: 20 }],
+      },
+      converted: 1,
+      hidePdfAnnotations: true,
+      skipped: [],
+    };
+    const post = (b: unknown) =>
+      app.request(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(b),
+      });
+    const first = await post(body);
+    expect(first.status).toBe(200);
+    const doc = (await first.json()) as { pages: Record<string, unknown[]>; pdfImport: unknown };
+    expect(doc.pages['1']).toHaveLength(1);
+    expect(doc.pdfImport).toMatchObject({ converted: 1, hidePdfAnnotations: true });
+    const second = await post({ ...body, converted: 9 });
+    expect(await second.json()).toEqual(doc);
+    expect((await post({ pages: 'nope' })).status).toBe(400);
+  });
+
   it('round-trips annotations and reports dirty sync state until flushed', async () => {
     const piece = await createPieceWithScore();
     const doc = {

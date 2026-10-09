@@ -3,6 +3,7 @@ import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   arrowHead,
   boundsOf,
+  inkPath,
   outlinePath,
   polylinePath,
   round2,
@@ -143,6 +144,8 @@ export function ItemView({ item, selected = false }: { item: AnnotationItem; sel
             {item.glyph}
           </text>
         );
+      case 'ink':
+        return <path d={inkPath(item.paths)} fill={item.colour} fillRule={item.fillRule} />;
     }
   })();
   if (!selected) return <g data-item={item.id}>{body}</g>;

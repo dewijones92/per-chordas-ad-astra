@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnnotationLayer, type TextEditRequest } from '../annotate/AnnotationLayer.tsx';
 import type { HistoryAction } from '../annotate/history.ts';
 import type { ToolState } from '../annotate/tools.ts';
-import type { PDFPageProxy } from './pdf.ts';
+import { annotationMode, type PDFPageProxy } from './pdf.ts';
 
 interface Props {
   page: PDFPageProxy;
@@ -17,11 +17,12 @@ interface Props {
   onEditText: (request: TextEditRequest) => void;
   scrollRoot: HTMLElement | null;
   readOnly: boolean;
+  hidePdfAnnotations: boolean;
   children?: React.ReactNode;
 }
 
 export function PageView(props: Props) {
-  const { page, number, cssWidth } = props;
+  const { page, number, cssWidth, hidePdfAnnotations } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const holderRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -61,7 +62,10 @@ export function PageView(props: Props) {
     const viewport = page.getViewport({ scale: scale * ratio });
     canvas.width = Math.floor(viewport.width);
     canvas.height = Math.floor(viewport.height);
-    const task = page.render({ canvas, viewport });
+    const mode = annotationMode(hidePdfAnnotations);
+    const task = page.render(
+      mode === undefined ? { canvas, viewport } : { canvas, viewport, annotationMode: mode },
+    );
     task.promise.catch((e: unknown) => {
       if (e instanceof Error && e.name === 'RenderingCancelledException') return;
       console.warn('dewidebug pdf page render failed', { page: number, error: String(e) });
@@ -69,13 +73,14 @@ export function PageView(props: Props) {
     return () => {
       task.cancel();
     };
-  }, [visible, page, scale, cssWidth, number]);
+  }, [visible, page, scale, cssWidth, number, hidePdfAnnotations]);
 
   return (
     <div
       ref={holderRef}
       className="page"
       data-page={number}
+      data-pdf-annotations={hidePdfAnnotations ? 'hidden' : 'shown'}
       style={{ width: cssWidth, height: cssHeight }}
     >
       <canvas

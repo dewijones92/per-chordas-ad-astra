@@ -5,6 +5,7 @@ import {
   boundsOf,
   distanceToSegment,
   hitTest,
+  inkPath,
   outlinePath,
   polylinePath,
   topHit,
@@ -147,5 +148,72 @@ describe('geometry', () => {
       ]),
     ).toBe('M0 0 L1.23 2');
     expect(arrowHead({ x1: 0, y1: 0, x2: 10, y2: 0, size: 2 })).toMatch(/^M.* L10 0 L/);
+  });
+});
+
+describe('ink (a filled outline imported from a PDF)', () => {
+  const ink: AnnotationItem = {
+    kind: 'ink',
+    id: 'i',
+    colour: '#ff2600',
+    fillRule: 'nonzero',
+    paths: [
+      [
+        [10, 10],
+        [30, 10],
+        [30, 40],
+        [10, 40],
+      ],
+      [
+        [50, 50],
+        [60, 50],
+        [55, 60],
+      ],
+    ],
+  };
+
+  it('is bounded by every path', () => {
+    expect(boundsOf(ink)).toEqual({ x: 10, y: 10, width: 50, height: 50 });
+  });
+
+  it('is hit inside a path and near its edge, not in the gap between paths', () => {
+    expect(hitTest(ink, { x: 20, y: 25 }, 2)).toBe(true);
+    expect(hitTest(ink, { x: 31.5, y: 25 }, 2)).toBe(true);
+    expect(hitTest(ink, { x: 55, y: 54 }, 2)).toBe(true);
+    expect(hitTest(ink, { x: 42, y: 45 }, 2)).toBe(false);
+  });
+
+  it('honours even-odd holes', () => {
+    const ring: AnnotationItem = {
+      ...ink,
+      fillRule: 'evenodd',
+      paths: [
+        [
+          [0, 0],
+          [100, 0],
+          [100, 100],
+          [0, 100],
+        ],
+        [
+          [40, 40],
+          [60, 40],
+          [60, 60],
+          [40, 60],
+        ],
+      ],
+    };
+    expect(hitTest(ring, { x: 20, y: 20 }, 1)).toBe(true);
+    expect(hitTest(ring, { x: 50, y: 50 }, 1)).toBe(false);
+    expect(hitTest({ ...ring, fillRule: 'nonzero' }, { x: 50, y: 50 }, 1)).toBe(true);
+  });
+
+  it('moves every point', () => {
+    const moved = translate(ink, 5, -5);
+    expect(moved.kind === 'ink' && moved.paths[0]?.[0]).toEqual([15, 5]);
+    expect(moved.kind === 'ink' && moved.paths[1]?.[2]).toEqual([60, 55]);
+  });
+
+  it('draws one closed subpath per path', () => {
+    expect(inkPath(ink.paths)).toBe('M10 10L30 10L30 40L10 40Z M50 50L60 50L55 60Z');
   });
 });

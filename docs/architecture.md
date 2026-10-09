@@ -1,6 +1,6 @@
 ---
 title: Architecture
-updated: 2026-10-07
+updated: 2026-10-09
 ---
 
 # Architecture
@@ -44,8 +44,10 @@ pushing → clean | push-failed`.
 - `api/client.ts`: fetch wrapper that parses every response with the shared schemas, and tracks saves
   for the status pill.
 - `score/`: `pdf.ts` (lazy legacy pdf.js), `ScoreViewer` (layouts, page turning, text editor),
-  `PageView` (lazy canvas render per page plus the annotation layer), `turn.ts` (pure).
+  `PageView` (lazy canvas render per page plus the annotation layer), `turn.ts` (pure),
+  `pdf-marks.ts` (converts a PDF's own annotations into drawings, ADR 0011).
 - `annotate/`: `AnnotationLayer` (pointer input → items), `history.ts` (pure reducer, coalesced
-  groups), `geometry.ts` (hit-testing, paths), `use-annotations.ts` (load and autosave).
+  groups), `geometry.ts` (hit-testing, paths), `use-annotations.ts` (load and autosave),
+  `use-pdf-marks.ts` (one-time import of a PDF's marks on first open).
 - `metronome/`: `scheduler.ts` (pure), `engine.ts` (Web Audio), `MetronomeProvider` (app-wide).
 - `tuner/`, `looper/`, `practice/`, `library/`, `sync/`.

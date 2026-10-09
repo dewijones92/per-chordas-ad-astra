@@ -97,6 +97,96 @@ describe('DataRepo', () => {
     expect(await repo.getAnnotations(piece.id, ref.file)).toEqual(doc);
   });
 
+  it('imports PDF marks once, beneath drawings already made, and keeps the marker on later saves', async () => {
+    const piece = await repo.createPiece({ title: 'Air' });
+    const ref = await repo.addScore(piece.id, 'air.pdf', new Blob([pdf]));
+    const mine = {
+      kind: 'stamp',
+      id: 'mine',
+      colour: '#ff0000',
+      glyph: '1',
+      x: 10,
+      y: 20,
+      size: 18,
+    } as const;
+    await repo.putAnnotations(piece.id, ref.file, { version: 1, pages: { '1': [mine] } });
+    const ink = {
+      kind: 'ink',
+      id: 'pdf1',
+      colour: '#ff2600',
+      fillRule: 'nonzero',
+      paths: [
+        [
+          [1, 1],
+          [5, 1],
+          [5, 5],
+        ],
+      ],
+    } as const;
+    const request = {
+      version: 1,
+      pages: { '1': [ink], '2': [{ ...ink, id: 'pdf2' }] },
+      converted: 2,
+      hidePdfAnnotations: true,
+      skipped: [],
+    };
+
+    const imported = await repo.importPdfMarks(piece.id, ref.file, request);
+    expect(imported.pages['1']?.map((i) => i.id)).toEqual(['pdf1', 'mine']);
+    expect(imported.pages['2']?.map((i) => i.id)).toEqual(['pdf2']);
+    expect(imported.pdfImport).toEqual({
+      version: 1,
+      at: '2026-10-07T12:00:00.000Z',
+      converted: 2,
+      hidePdfAnnotations: true,
+      skipped: [],
+    });
+    expect(changes.descriptions.at(-1)).toBe("Import 2 PDF marks into 'Air' (air.pdf)");
+
+    const again = await repo.importPdfMarks(piece.id, ref.file, {
+      ...request,
+      pages: { '1': [{ ...ink, id: 'pdf3' }] },
+    });
+    expect(again).toEqual(imported);
+    expect(changes.descriptions.filter((d) => d.startsWith('Import'))).toHaveLength(1);
+
+    await repo.putAnnotations(piece.id, ref.file, { version: 1, pages: { '1': [mine] } });
+    const saved = await repo.getAnnotations(piece.id, ref.file);
+    expect(saved.pages['1']?.map((i) => i.id)).toEqual(['mine']);
+    expect(saved.pdfImport).toEqual(imported.pdfImport);
+  });
+
+  it('records a PDF with nothing to import so it is never scanned again', async () => {
+    const piece = await repo.createPiece({ title: 'Air' });
+    const ref = await repo.addScore(piece.id, 'air.pdf', new Blob([pdf]));
+    const doc = await repo.importPdfMarks(piece.id, ref.file, {
+      version: 1,
+      pages: {},
+      converted: 0,
+      hidePdfAnnotations: false,
+      skipped: ['Text (page 1)'],
+    });
+    expect(doc.pages).toEqual({});
+    expect(doc.pdfImport?.skipped).toEqual(['Text (page 1)']);
+    expect(changes.descriptions.at(-1)).toBe(
+      "Check 'Air' (air.pdf) for PDF marks: left as they are (Text (page 1))",
+    );
+  });
+
+  it('refuses to hide the PDF marks without importing any', async () => {
+    const piece = await repo.createPiece({ title: 'Air' });
+    const ref = await repo.addScore(piece.id, 'air.pdf', new Blob([pdf]));
+    await expect(
+      repo.importPdfMarks(piece.id, ref.file, {
+        version: 1,
+        pages: {},
+        converted: 0,
+        hidePdfAnnotations: true,
+        skipped: [],
+      }),
+    ).rejects.toBeInstanceOf(RejectedError);
+  });
+
   it('returns empty annotations for a score nobody has drawn on', async () => {
     const piece = await repo.createPiece({ title: 'Blank' });
     const ref = await repo.addScore(piece.id, 'blank.pdf', new Blob([pdf]));

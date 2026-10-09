@@ -14,6 +14,7 @@ import { api } from '../api/client.ts';
 import { Toolbar } from '../annotate/Toolbar.tsx';
 import { defaultToolState, isTypingTarget, TOOL_KEYS, type ToolState } from '../annotate/tools.ts';
 import { useAnnotations } from '../annotate/use-annotations.ts';
+import { usePdfMarks } from '../annotate/use-pdf-marks.ts';
 import { Looper } from '../looper/Looper.tsx';
 import { MetronomePanel } from '../metronome/MetronomePanel.tsx';
 import { useMetronome } from '../metronome/MetronomeProvider.tsx';
@@ -21,6 +22,7 @@ import { BpmChart } from '../practice/BpmChart.tsx';
 import { PracticeTimer } from '../practice/PracticeTimer.tsx';
 import { bestBpmByDay } from '../practice/stats.ts';
 import { formatMinutes } from '../practice/timer.ts';
+import type { PDFPageProxy } from '../score/pdf.ts';
 import { ScoreViewer, type ScoreViewerHandle, type ViewMode } from '../score/ScoreViewer.tsx';
 import { stepZoom, wheelZoom, zoomKeyOf } from '../score/zoom.ts';
 import {
@@ -88,7 +90,17 @@ function ScoreArea({
   file: string;
   onPatch: (p: PiecePatch) => void;
 }) {
-  const { history, dispatch, load, error, reload } = useAnnotations(piece.id, file);
+  const { history, dispatch, load, error, reload, adopt } = useAnnotations(piece.id, file);
+  const scoreUrl = api.fileUrl(piece.id, file);
+  const [opened, setOpened] = useState<{ url: string; pages: PDFPageProxy[] } | null>(null);
+  const pdfMarks = usePdfMarks({
+    pieceId: piece.id,
+    file,
+    pages: opened?.url === scoreUrl ? opened.pages : null,
+    load,
+    doc: history.present,
+    adopt,
+  });
   const [tools, setTools] = useState<ToolState>(defaultToolState);
   const [zoom, setZoom] = useState(1);
   const [mode, setMode] = useState<ViewMode>(loadViewMode);
@@ -248,10 +260,17 @@ function ScoreArea({
         </p>
       )}
       {load === 'loading' && <p className="muted loading-strip">Loading drawings…</p>}
+      {load === 'ready' && pdfMarks.importing && (
+        <p className="muted loading-strip" data-testid="pdf-marks-importing">
+          Checking the PDF for marks made in other apps…
+        </p>
+      )}
       <div className="score-frame">
         <ScoreViewer
-          readOnly={load !== 'ready'}
-          url={api.fileUrl(piece.id, file)}
+          readOnly={load !== 'ready' || pdfMarks.importing}
+          hidePdfAnnotations={pdfMarks.hidePdfAnnotations}
+          onPages={setOpened}
+          url={scoreUrl}
           history={history}
           dispatch={dispatch}
           tools={tools}

@@ -18,37 +18,39 @@ adapters over browser or process APIs; their logic lives in pure modules that ar
 
 ## Unit and integration (Vitest)
 
-| Suite                                  | Covers                                                                                      |
-| -------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `apps/server/test/sync-engine.test.ts` | batching, flush, outage then retry, rebase over a remote commit, crash recovery, local mode |
-| `apps/server/test/data-repo.test.ts`   | slugs, uploads and caps, patch rules, annotations, loops, setlists, log, path traversal     |
-| `apps/server/test/http.test.ts`        | trusted networks, CRUD, error mapping, byte ranges, SPA caching                             |
-| `apps/server/test/files.test.ts`       | git-friendly JSON, path containment                                                         |
-| `apps/web/test/metronome.test.ts`      | spacing, accents, subdivisions, no drift over an hour, trainer, tap tempo                   |
-| `apps/web/test/tuner.test.ts`          | note maths, cents, nearest string, median                                                   |
-| `apps/web/test/looper.test.ts`         | loop normalising, wrap, peaks, time format                                                  |
-| `apps/web/test/history.test.ts`        | undo/redo, coalesced drags, no-ops, limits                                                  |
-| `apps/web/test/geometry.test.ts`       | hit-testing every item kind, bounds, paths                                                  |
-| `apps/web/test/turn.test.ts`           | page turns from the top, tall pages, spreads, bounds                                        |
-| `apps/web/test/practice.test.ts`       | timer, durations, totals, best tempo, streaks                                               |
-| `apps/web/test/search.test.ts`         | fuzzy search, tags, setlist ordering                                                        |
-| `apps/web/test/use-draft.test.tsx`     | edits save after a pause and are flushed with keepalive when the field goes away            |
-| `apps/web/test/use-tuner.test.ts`      | one microphone request per double click; a mic that opens after stop is released            |
-| `apps/server/test/repo-gate.test.ts`   | writers share the gate, a rebase holds it alone, errors release it                          |
-| `apps/web/test/resume.test.ts`         | resume store round trip, corrupt data, only safe resume targets                             |
-| `apps/web/test/zoom.test.ts`           | Ctrl/Cmd zoom keys, tenth steps, wheel and pinch scaling, limits                            |
+| Suite                                  | Covers                                                                                                        |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `apps/server/test/sync-engine.test.ts` | batching, flush, outage then retry, rebase over a remote commit, crash recovery, local mode                   |
+| `apps/server/test/data-repo.test.ts`   | slugs, uploads and caps, patch rules, annotations, PDF-mark import once, loops, setlists, log, path traversal |
+| `apps/server/test/http.test.ts`        | trusted networks, CRUD, error mapping, byte ranges, SPA caching                                               |
+| `apps/server/test/files.test.ts`       | git-friendly JSON, path containment                                                                           |
+| `apps/web/test/metronome.test.ts`      | spacing, accents, subdivisions, no drift over an hour, trainer, tap tempo                                     |
+| `apps/web/test/tuner.test.ts`          | note maths, cents, nearest string, median                                                                     |
+| `apps/web/test/looper.test.ts`         | loop normalising, wrap, peaks, time format                                                                    |
+| `apps/web/test/history.test.ts`        | undo/redo, coalesced drags, no-ops, limits                                                                    |
+| `apps/web/test/geometry.test.ts`       | hit-testing every item kind, bounds, paths                                                                    |
+| `apps/web/test/turn.test.ts`           | page turns from the top, tall pages, spreads, bounds                                                          |
+| `apps/web/test/practice.test.ts`       | timer, durations, totals, best tempo, streaks                                                                 |
+| `apps/web/test/search.test.ts`         | fuzzy search, tags, setlist ordering                                                                          |
+| `apps/web/test/use-draft.test.tsx`     | edits save after a pause and are flushed with keepalive when the field goes away                              |
+| `apps/web/test/use-tuner.test.ts`      | one microphone request per double click; a mic that opens after stop is released                              |
+| `apps/server/test/repo-gate.test.ts`   | writers share the gate, a rebase holds it alone, errors release it                                            |
+| `apps/web/test/resume.test.ts`         | resume store round trip, corrupt data, only safe resume targets                                               |
+| `apps/web/test/zoom.test.ts`           | Ctrl/Cmd zoom keys, tenth steps, wheel and pinch scaling, limits                                              |
+| `apps/web/test/pdf-marks.test.ts`      | real pdf.js on annotated fixtures: each mark kind, page coordinates, fill rule, all-or-nothing skip           |
 
 ## End to end (Playwright)
 
-| Spec               | Flows                                                                                                                                                                                                                                                                                          |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `library.spec.ts`  | create piece with PDF → in the remote; search and tag filters; setlist saved                                                                                                                                                                                                                   |
-| `annotate.spec.ts` | pen, stamp, text → remote → survive reload; undo/redo/eraser reach the remote; bookmark saved and jumps; a 40-page score only draws pages near the screen and frees them when far away; drawings survive two failed saves                                                                      |
-| `tools.spec.ts`    | metronome ticks and stops; tuner hears A2 within 2 cents                                                                                                                                                                                                                                       |
-| `practice.spec.ts` | timed session logged with tempo; looper speed, playback, drag-loop, saved loop in the remote; a note typed just before leaving is saved; a loop to the end of the track keeps looping                                                                                                          |
-| `zoom.spec.ts`     | Ctrl `=`/`−`/`0` and Ctrl+wheel zoom the score (wider pages), leave the metronome alone and stop the browser's own zoom                                                                                                                                                                        |
-| `health.spec.ts`   | health reports version and sync; unknown routes                                                                                                                                                                                                                                                |
-| `resume.spec.ts`   | reopening returns to the last piece, its page, a paused timer and the looper speed; leaving from the library reopens the library; a second browser profile opens on the first's piece and page; two quick turns move two pages; a stale tab takes the newer position instead of overwriting it |
+| Spec                | Flows                                                                                                                                                                                                                                                                                          |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `library.spec.ts`   | create piece with PDF → in the remote; search and tag filters; setlist saved                                                                                                                                                                                                                   |
+| `annotate.spec.ts`  | pen, stamp, text → remote → survive reload; undo/redo/eraser reach the remote; bookmark saved and jumps; a 40-page score only draws pages near the screen and frees them when far away; drawings survive two failed saves                                                                      |
+| `tools.spec.ts`     | metronome ticks and stops; tuner hears A2 within 2 cents                                                                                                                                                                                                                                       |
+| `practice.spec.ts`  | timed session logged with tempo; looper speed, playback, drag-loop, saved loop in the remote; a note typed just before leaving is saved; a loop to the end of the track keeps looping                                                                                                          |
+| `zoom.spec.ts`      | Ctrl `=`/`−`/`0` and Ctrl+wheel zoom the score (wider pages), leave the metronome alone and stop the browser's own zoom                                                                                                                                                                        |
+| `pdf-marks.spec.ts` | a PDF with Preview-style marks: marks become drawings, the PDF's copies are not painted (canvas pixels), a moved mark reaches the remote, one copy after reload and in a second browser                                                                                                        |
+| `health.spec.ts`    | health reports version and sync; unknown routes                                                                                                                                                                                                                                                |
+| `resume.spec.ts`    | reopening returns to the last piece, its page, a paused timer and the looper speed; leaving from the library reopens the library; a second browser profile opens on the first's piece and page; two quick turns move two pages; a stale tab takes the newer position instead of overwriting it |
 
 **Not covered automatically:** the real GitHub push (covered by the bare-repo stand-in and checked by
 hand after deploy), the Google gate (checked by response body after deploy), and audio quality.

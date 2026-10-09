@@ -1,5 +1,6 @@
 import {
   Annotations,
+  type PdfImportRequest,
   Health,
   Loops,
   type Loop,
@@ -96,6 +97,15 @@ export const api = {
         `/api/pieces/${enc(id)}/annotations/${enc(file)}`,
         Annotations,
         jsonInit('PUT', doc, keepalive),
+      ),
+    ),
+  importPdfMarks: (id: string, file: string, marks: PdfImportRequest) =>
+    tracked(
+      'drawing',
+      request(
+        `/api/pieces/${enc(id)}/annotations/${enc(file)}/import`,
+        Annotations,
+        jsonInit('POST', marks),
       ),
     ),
   getLoops: (id: string) => request(`/api/pieces/${enc(id)}/loops`, Loops),

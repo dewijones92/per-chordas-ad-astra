@@ -14,6 +14,8 @@ import {
   PieceDraft,
   PiecePatch,
   Piece,
+  PdfImportRequest,
+  type PdfImport,
   PracticeSession,
   safeFileName,
   Setlists,
@@ -72,6 +74,10 @@ export function changedPages(before: Annotations, after: Annotations): number[] 
     .filter((k) => JSON.stringify(before.pages[k] ?? []) !== JSON.stringify(after.pages[k] ?? []))
     .map(Number)
     .sort((a, b) => a - b);
+}
+
+function withMarker(doc: Annotations, marker: PdfImport | undefined): Annotations {
+  return marker ? { ...doc, pdfImport: marker } : { version: doc.version, pages: doc.pages };
 }
 
 export class DataRepo {
@@ -257,15 +263,66 @@ export class DataRepo {
   }
 
   async putAnnotations(id: Slug, file: FileName, input: unknown): Promise<Annotations> {
-    const next = Annotations.parse(input);
+    const parsed = Annotations.parse(input);
     return this.locked(`piece:${id}`, async () => {
       const piece = await this.getPiece(id);
       const before = await this.getAnnotations(id, file);
+      const next = withMarker(parsed, before.pdfImport);
       const pages = changedPages(before, next);
       if (pages.length === 0) return next;
       await this.writeJson(this.path('pieces', id, 'annotations', `${file}.json`), next);
       const where = pages.map((p) => `p.${String(p)}`).join(', ');
       this.changes.markDirty(`Annotate ${quote(piece.title)} (${file} ${where})`);
+      return next;
+    });
+  }
+
+  async importPdfMarks(id: Slug, file: FileName, input: unknown): Promise<Annotations> {
+    const { pages: imported, ...result } = PdfImportRequest.parse(input);
+    if (result.hidePdfAnnotations && result.converted === 0) {
+      throw new RejectedError('Cannot hide the PDF marks without importing them');
+    }
+    return this.locked(`piece:${id}`, async () => {
+      const piece = await this.getPiece(id);
+      const before = await this.getAnnotations(id, file);
+      if (before.pdfImport) {
+        this.log.info(
+          { id, file, earlier: before.pdfImport.at },
+          'dewidebug repo pdf marks already imported; keeping the earlier import',
+        );
+        return before;
+      }
+      const pages = { ...before.pages };
+      for (const [page, items] of Object.entries(imported)) {
+        pages[page] = [...items, ...(before.pages[page] ?? [])];
+      }
+      const next = Annotations.parse({
+        version: 1,
+        pages,
+        pdfImport: { ...result, at: this.now().toISOString() },
+      });
+      await this.writeJson(this.path('pieces', id, 'annotations', `${file}.json`), next);
+      const items = Object.values(imported).reduce((n, list) => n + list.length, 0);
+      this.log.info(
+        {
+          id,
+          file,
+          converted: result.converted,
+          items,
+          hidden: result.hidePdfAnnotations,
+          skipped: result.skipped,
+        },
+        'dewidebug repo pdf marks imported',
+      );
+      this.changes.markDirty(
+        result.converted > 0
+          ? `Import ${String(result.converted)} PDF marks into ${quote(piece.title)} (${file})`
+          : `Check ${quote(piece.title)} (${file}) for PDF marks: ${
+              result.skipped.length > 0
+                ? `left as they are (${result.skipped.join(', ')})`
+                : 'none to import'
+            }`,
+      );
       return next;
     });
   }

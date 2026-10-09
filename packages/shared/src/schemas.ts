@@ -142,23 +142,50 @@ export const StampItem = ItemBase.extend({
   size: z.number().positive().max(96),
 });
 
+const InkPoint = z.tuple([z.number(), z.number()]);
+
+export const InkItem = ItemBase.extend({
+  kind: z.literal('ink'),
+  fillRule: z.enum(['nonzero', 'evenodd']),
+  paths: z.array(z.array(InkPoint).min(2).max(5000)).min(1).max(200),
+});
+
 export const AnnotationItem = z.discriminatedUnion('kind', [
   StrokeItem,
   TextItem,
   ShapeItem,
   StampItem,
+  InkItem,
 ]);
 export type AnnotationItem = z.infer<typeof AnnotationItem>;
 export type StrokeItem = z.infer<typeof StrokeItem>;
 export type TextItem = z.infer<typeof TextItem>;
 export type ShapeItem = z.infer<typeof ShapeItem>;
 export type StampItem = z.infer<typeof StampItem>;
+export type InkItem = z.infer<typeof InkItem>;
+
+export const PDF_MARKS_VERSION = 1;
+
+export const PdfImport = z.object({
+  version: z.int().min(1),
+  at: isoTimestamp,
+  converted: z.int().min(0),
+  hidePdfAnnotations: z.boolean(),
+  skipped: z.array(z.string().max(80)).max(20),
+});
+export type PdfImport = z.infer<typeof PdfImport>;
+
+const AnnotationPages = z.record(z.string().regex(/^[1-9][0-9]*$/), z.array(AnnotationItem));
 
 export const Annotations = z.object({
   version: z.literal(1),
-  pages: z.record(z.string().regex(/^[1-9][0-9]*$/), z.array(AnnotationItem)),
+  pages: AnnotationPages,
+  pdfImport: PdfImport.optional(),
 });
 export type Annotations = z.infer<typeof Annotations>;
+
+export const PdfImportRequest = PdfImport.omit({ at: true }).extend({ pages: AnnotationPages });
+export type PdfImportRequest = z.infer<typeof PdfImportRequest>;
 export const emptyAnnotations = (): Annotations => ({ version: 1, pages: {} });
 
 export const Loop = z.object({
