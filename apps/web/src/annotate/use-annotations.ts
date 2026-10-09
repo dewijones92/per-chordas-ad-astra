@@ -118,10 +118,22 @@ export function useAnnotations(pieceId: string, file: string) {
   const reload = useCallback(() => {
     setLoadNonce((n) => n + 1);
   }, []);
-  const adopt = useCallback((doc: Annotations) => {
-    confirmed.current = doc;
-    latest.current = doc;
-    dispatch({ type: 'reset', doc });
+  const adopt = useCallback((saved: Annotations) => {
+    if (!saved.pdfImport) return;
+    const before = new Set(
+      Object.values(confirmed.current?.pages ?? {}).flatMap((items) => items.map((i) => i.id)),
+    );
+    const pages = Object.fromEntries(
+      Object.entries(saved.pages)
+        .map(([page, items]) => [page, items.filter((i) => !before.has(i.id))] as const)
+        .filter(([, items]) => items.length > 0),
+    );
+    console.info('dewidebug annotations adopted an import', {
+      added: Object.values(pages).reduce((n, items) => n + items.length, 0),
+      localEditsPending: latest.current !== confirmed.current,
+    });
+    confirmed.current = saved;
+    dispatch({ type: 'import', pages, pdfImport: saved.pdfImport });
   }, []);
 
   return { history, dispatch: act, load, error: loadError ?? saveError, reload, adopt };

@@ -41,8 +41,10 @@ same score at once safe. All-or-nothing hiding guarantees no mark is ever lost o
 
 ## Consequences
 
-- Each score is converted the first time it is opened anywhere, not at upload. While it runs, the
-  score is read-only for a moment ("Checking the PDF for marks made in other apps…").
+- Each score is converted the first time it is opened anywhere, not at upload. Drawing is never
+  blocked while it runs and nothing is shown that moves the layout (a status strip above the score
+  resized every page in Page layout and moved the reader's place, which failed CI); the imported
+  marks are merged into whatever was drawn, moved or erased meanwhile.
 - The converter reads pdf.js's drawing-instruction format, which a pdf.js upgrade could change; its
   unit test runs real pdf.js on generated annotated PDFs, so such a change fails CI.
 - Measured on Dewi's five annotated scores (2026-10-09): 7, 55, 91, 69 and 68 marks, 7–88 KB of

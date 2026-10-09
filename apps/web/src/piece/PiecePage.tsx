@@ -260,14 +260,9 @@ function ScoreArea({
         </p>
       )}
       {load === 'loading' && <p className="muted loading-strip">Loading drawings…</p>}
-      {load === 'ready' && pdfMarks.importing && (
-        <p className="muted loading-strip" data-testid="pdf-marks-importing">
-          Checking the PDF for marks made in other apps…
-        </p>
-      )}
-      <div className="score-frame">
+      <div className="score-frame" data-pdf-marks={pdfMarks.importing ? 'checking' : 'checked'}>
         <ScoreViewer
-          readOnly={load !== 'ready' || pdfMarks.importing}
+          readOnly={load !== 'ready'}
           hidePdfAnnotations={pdfMarks.hidePdfAnnotations}
           onPages={setOpened}
           url={scoreUrl}

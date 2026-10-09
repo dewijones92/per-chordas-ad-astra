@@ -93,3 +93,34 @@ test('marks made in another app become drawings you can move, shown once', async
   await expect(other.getByTestId('annotation-layer-1')).toHaveAttribute('data-items', '2');
   await other.context().close();
 });
+
+test('a slow check for PDF marks neither blocks drawing nor moves your place', async ({ page }) => {
+  await page.route('**/annotations/*/import', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await createPiece(page, 'Slow Check', { pages: 3 });
+  const frame = page.locator('.score-frame');
+  await expect(frame).toHaveAttribute('data-pdf-marks', 'checking');
+
+  const from = await layerPoint(page, 100, 100);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(from.x + i * 6, from.y + i * 2);
+  await page.mouse.up();
+  await expect(page.getByTestId('annotation-layer-1')).toHaveAttribute('data-items', '1');
+
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(800);
+  const second = page.locator('.page[data-page="2"]');
+  const before = await second.boundingBox();
+  await expect(frame).toHaveAttribute('data-pdf-marks', 'checked', { timeout: 10_000 });
+  await page.waitForTimeout(500);
+  const after = await second.boundingBox();
+  expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThan(2);
+  expect(after?.height).toBeCloseTo(before?.height ?? 0, 0);
+
+  await expect(page.getByTestId('annotation-layer-1')).toHaveAttribute('data-items', '1');
+  await page.keyboard.press('Control+z');
+  await expect(page.getByTestId('annotation-layer-1')).toHaveAttribute('data-items', '0');
+});

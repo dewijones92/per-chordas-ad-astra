@@ -104,4 +104,34 @@ describe('annotation history', () => {
       h = historyReducer(h, { type: 'add', page: 1, item: stamp(String(i)) });
     expect(h.past.length).toBe(200);
   });
+
+  it('adds imported marks to every undo step, so undo and redo still work and keep them', () => {
+    const marker = {
+      version: 1,
+      at: '2026-10-09T12:00:00.000Z',
+      converted: 1,
+      hidePdfAnnotations: true,
+      skipped: [],
+    };
+    const drawn = run([{ type: 'add', page: 1, item: stamp('mine') }]);
+    const imported = historyReducer(drawn, {
+      type: 'import',
+      pages: { '1': [stamp('pdf')], '2': [stamp('pdf2')] },
+      pdfImport: marker,
+    });
+    expect(itemsOn(imported.present, 1).map((i) => i.id)).toEqual(['pdf', 'mine']);
+    expect(imported.present.pdfImport).toEqual(marker);
+    const undone = historyReducer(imported, { type: 'undo' });
+    expect(itemsOn(undone.present, 1).map((i) => i.id)).toEqual(['pdf']);
+    expect(itemsOn(undone.present, 2).map((i) => i.id)).toEqual(['pdf2']);
+    expect(undone.present.pdfImport).toEqual(marker);
+    const redone = historyReducer(undone, { type: 'redo' });
+    expect(itemsOn(redone.present, 1).map((i) => i.id)).toEqual(['pdf', 'mine']);
+    const twice = historyReducer(imported, {
+      type: 'import',
+      pages: { '1': [stamp('pdf')] },
+      pdfImport: marker,
+    });
+    expect(itemsOn(twice.present, 1).map((i) => i.id)).toEqual(['pdf', 'mine']);
+  });
 });

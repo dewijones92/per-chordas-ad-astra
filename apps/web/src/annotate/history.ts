@@ -1,4 +1,4 @@
-import type { AnnotationItem, Annotations } from '@pcaa/shared';
+import type { AnnotationItem, Annotations, PdfImport } from '@pcaa/shared';
 
 export const HISTORY_LIMIT = 200;
 
@@ -15,6 +15,7 @@ export type HistoryAction =
   | { type: 'update'; page: number; item: AnnotationItem; group?: string }
   | { type: 'remove'; page: number; ids: readonly string[]; group?: string }
   | { type: 'clear-page'; page: number }
+  | { type: 'import'; pages: Annotations['pages']; pdfImport: PdfImport }
   | { type: 'end-group' }
   | { type: 'undo' }
   | { type: 'redo' };
@@ -44,6 +45,20 @@ function commit(history: History, next: Annotations, group: string | null): Hist
   }
   const past = [...history.past, history.present].slice(-HISTORY_LIMIT);
   return { past, present: next, future: [], group };
+}
+
+function withImport(
+  doc: Annotations,
+  pages: Annotations['pages'],
+  pdfImport: PdfImport,
+): Annotations {
+  const present = new Set(Object.values(doc.pages).flatMap((items) => items.map((i) => i.id)));
+  const next = { ...doc.pages };
+  for (const [page, items] of Object.entries(pages)) {
+    const fresh = items.filter((i) => !present.has(i.id));
+    if (fresh.length > 0) next[page] = [...fresh, ...(next[page] ?? [])];
+  }
+  return { ...doc, pages: next, pdfImport };
 }
 
 export function historyReducer(history: History, action: HistoryAction): History {
@@ -79,6 +94,15 @@ export function historyReducer(history: History, action: HistoryAction): History
     case 'clear-page':
       if (itemsOn(doc, action.page).length === 0) return history;
       return commit(history, withPage(doc, action.page, []), null);
+    case 'import': {
+      const apply = (d: Annotations) => withImport(d, action.pages, action.pdfImport);
+      return {
+        ...history,
+        past: history.past.map(apply),
+        present: apply(history.present),
+        future: history.future.map(apply),
+      };
+    }
     case 'end-group':
       return history.group === null ? history : { ...history, group: null };
     case 'undo': {
