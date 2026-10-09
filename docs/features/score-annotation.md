@@ -1,7 +1,7 @@
 ---
 title: Score viewer and annotation
 status: shipped
-updated: 2026-10-07
+updated: 2026-10-09
 ---
 
 # Score viewer and annotation
@@ -11,7 +11,7 @@ ratio, and frees the canvas and pdf.js caches once it is further away; the docum
 score. Tested on real scans (2026-10-07): a 128-page JBIG2+JPX method book opens in ~0.3 s and paints its first
 page in ~1.1–1.4 s, mid-book pages in ~0.1 s, with ~9 MB of retained JS heap; CCITT fax and vector scores too.
 Layouts are **Page** (fit one whole page, the default), **Two** (a spread) and **Width**; the choice is
-remembered per browser. Zoom −/+. `→`/`PageDown` and `←`/`PageUp` turn pages; inside a page taller
+remembered per browser. Zoom −/+, or on the piece page `Ctrl` `+`/`−`/`0` and `Ctrl`+scroll or a trackpad pinch, which zoom the score instead of the whole browser (40–250%). `→`/`PageDown` and `←`/`PageUp` turn pages; inside a page taller
 than the screen they scroll by 85% of the screen first.
 
 **Drawing.** Tools, with keys: select `V`, pen `P`, highlighter `H`, eraser `E`, text `T`, line `L`,
@@ -28,4 +28,4 @@ changed. Hiding the page or leaving the piece sends a keepalive save and a flush
 be loaded, drawing is paused (with Retry) so a save can never overwrite them.
 
 Files: `apps/web/src/score/*`, `apps/web/src/annotate/*`, `DataRepo.putAnnotations`.
-Tests: `history`, `geometry`, `turn` unit tests; `e2e/annotate.spec.ts`.
+Tests: `history`, `geometry`, `turn`, `zoom` unit tests; `e2e/annotate.spec.ts`, `e2e/zoom.spec.ts`.

@@ -1,4 +1,5 @@
 import { STAMP_GLYPHS } from '@pcaa/shared';
+import { stepZoom } from '../score/zoom.ts';
 import {
   COLOURS,
   HIGHLIGHTS,
@@ -126,18 +127,20 @@ export function Toolbar(props: Props) {
             className="btn small icon"
             aria-label="Zoom out"
             onClick={() => {
-              props.onZoom(Math.max(0.4, props.zoom - 0.1));
+              props.onZoom(stepZoom(props.zoom, -1));
             }}
           >
             −
           </button>
-          <span className="muted zoom-label">{Math.round(props.zoom * 100)}%</span>
+          <span className="muted zoom-label" data-testid="zoom-level">
+            {Math.round(props.zoom * 100)}%
+          </span>
           <button
             type="button"
             className="btn small icon"
             aria-label="Zoom in"
             onClick={() => {
-              props.onZoom(Math.min(2.5, props.zoom + 0.1));
+              props.onZoom(stepZoom(props.zoom, 1));
             }}
           >
             +

@@ -22,6 +22,7 @@ import { PracticeTimer } from '../practice/PracticeTimer.tsx';
 import { bestBpmByDay } from '../practice/stats.ts';
 import { formatMinutes } from '../practice/timer.ts';
 import { ScoreViewer, type ScoreViewerHandle, type ViewMode } from '../score/ScoreViewer.tsx';
+import { stepZoom, wheelZoom, zoomKeyOf } from '../score/zoom.ts';
 import {
   pullResume,
   readResume,
@@ -114,6 +115,16 @@ function ScoreArea({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const zoomKey = zoomKeyOf(e);
+      if (zoomKey) {
+        e.preventDefault();
+        setZoom((from) => {
+          const to = zoomKey === 'reset' ? 1 : stepZoom(from, zoomKey === 'in' ? 1 : -1);
+          console.info('dewidebug score zoom by key', { key: e.key, action: zoomKey, from, to });
+          return to;
+        });
+        return;
+      }
       if (isTypingTarget(e.target)) return;
       const key = e.key.toLowerCase();
       if ((e.ctrlKey || e.metaKey) && key === 'z') {
@@ -156,6 +167,32 @@ function ScoreArea({
       window.removeEventListener('keydown', onKey);
     };
   }, [dispatch, deleteSelected, metronome]);
+
+  useEffect(() => {
+    let gesture: { events: number; from: number; to: number } | null = null;
+    let quiet = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      setZoom((from) => {
+        const to = wheelZoom(from, e.deltaY, e.deltaMode);
+        gesture = gesture
+          ? { ...gesture, events: gesture.events + 1, to }
+          : { events: 1, from, to };
+        return to;
+      });
+      window.clearTimeout(quiet);
+      quiet = window.setTimeout(() => {
+        console.info('dewidebug score zoom by ctrl+wheel or pinch', gesture);
+        gesture = null;
+      }, 400);
+    };
+    window.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      window.clearTimeout(quiet);
+      window.removeEventListener('wheel', onWheel);
+    };
+  }, []);
 
   return (
     <div className="score-area">

@@ -1,6 +1,6 @@
 ---
 title: Testing strategy and coverage map
-updated: 2026-10-07
+updated: 2026-10-09
 ---
 
 # Tests
@@ -36,6 +36,7 @@ adapters over browser or process APIs; their logic lives in pure modules that ar
 | `apps/web/test/use-tuner.test.ts`      | one microphone request per double click; a mic that opens after stop is released            |
 | `apps/server/test/repo-gate.test.ts`   | writers share the gate, a rebase holds it alone, errors release it                          |
 | `apps/web/test/resume.test.ts`         | resume store round trip, corrupt data, only safe resume targets                             |
+| `apps/web/test/zoom.test.ts`           | Ctrl/Cmd zoom keys, tenth steps, wheel and pinch scaling, limits                            |
 
 ## End to end (Playwright)
 
@@ -45,6 +46,7 @@ adapters over browser or process APIs; their logic lives in pure modules that ar
 | `annotate.spec.ts` | pen, stamp, text → remote → survive reload; undo/redo/eraser reach the remote; bookmark saved and jumps; a 40-page score only draws pages near the screen and frees them when far away; drawings survive two failed saves                                                                      |
 | `tools.spec.ts`    | metronome ticks and stops; tuner hears A2 within 2 cents                                                                                                                                                                                                                                       |
 | `practice.spec.ts` | timed session logged with tempo; looper speed, playback, drag-loop, saved loop in the remote; a note typed just before leaving is saved; a loop to the end of the track keeps looping                                                                                                          |
+| `zoom.spec.ts`     | Ctrl `=`/`−`/`0` and Ctrl+wheel zoom the score (wider pages), leave the metronome alone and stop the browser's own zoom                                                                                                                                                                        |
 | `health.spec.ts`   | health reports version and sync; unknown routes                                                                                                                                                                                                                                                |
 | `resume.spec.ts`   | reopening returns to the last piece, its page, a paused timer and the looper speed; leaving from the library reopens the library; a second browser profile opens on the first's piece and page; two quick turns move two pages; a stale tab takes the newer position instead of overwriting it |
 
