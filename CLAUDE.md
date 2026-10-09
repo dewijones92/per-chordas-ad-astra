@@ -115,3 +115,8 @@ With no `DATA_REMOTE` it keeps a local-only git repo (dev mode).
 - **After a failed save, keep the last _confirmed_ version, not null.** One 502 used to stop every later drawing
   save, silently.
 - **Only user intent records a resume position.** A restore scroll re-stamped stale positions as newest.
+- **Nothing may appear or vanish above the score while it is open.** In Page layout pages are fitted to the score
+  area's height, so a status strip that shows during a background check resizes every page and moves the reader's
+  place; it failed CI (bookmark and cross-device resume) while passing locally, because the check was faster here.
+  Reproduce timing bugs with `page.route` delaying the request, and never make the score read-only for a background
+  task (strokes drawn meanwhile were dropped). (PDF-mark import, 9 Oct 2026.)
