@@ -1,19 +1,5 @@
-import type { Piece, PracticeSession } from '@pcaa/shared';
-import { z } from 'zod';
+import type { LibrarySort, Piece, PracticeSession } from '@pcaa/shared';
 
-export const LIBRARY_SORTS = [
-  'title',
-  'artist',
-  'added',
-  'edited',
-  'opened',
-  'practised',
-  'neglected',
-  'most-practised',
-  'tempo',
-] as const;
-export const LibrarySort = z.enum(LIBRARY_SORTS);
-export type LibrarySort = z.infer<typeof LibrarySort>;
 export type SortKey = LibrarySort | 'setlist';
 
 export const SORT_LABELS: Record<SortKey, string> = {
@@ -28,10 +14,6 @@ export const SORT_LABELS: Record<SortKey, string> = {
   'most-practised': 'Most practised',
   tempo: 'Target tempo, slowest first',
 };
-
-export const SortChoice = z.object({ sort: LibrarySort, reversed: z.boolean() });
-export type SortChoice = z.infer<typeof SortChoice>;
-export const DEFAULT_SORT: SortChoice = { sort: 'title', reversed: false };
 
 export interface PieceStats {
   lastOpenedAt: number | null;
@@ -172,25 +154,4 @@ export function ago(at: number, now: number): string {
   if (days < 60) return `${String(Math.floor(days / 7))} weeks ago`;
   if (days < 730) return `${String(Math.floor(days / 30))} months ago`;
   return `${String(Math.floor(days / 365))} years ago`;
-}
-
-const SORT_STORAGE_KEY = 'pcaa.library.sort.v1';
-
-export function loadSortChoice(): SortChoice {
-  try {
-    const raw = localStorage.getItem(SORT_STORAGE_KEY);
-    if (!raw) return DEFAULT_SORT;
-    const parsed = SortChoice.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : DEFAULT_SORT;
-  } catch {
-    return DEFAULT_SORT;
-  }
-}
-
-export function saveSortChoice(choice: SortChoice): void {
-  try {
-    localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(choice));
-  } catch {
-    return;
-  }
 }

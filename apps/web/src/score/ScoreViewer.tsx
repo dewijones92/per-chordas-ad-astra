@@ -1,4 +1,4 @@
-import { newId, type TextItem } from '@pcaa/shared';
+import { newId, type TextItem, type ViewMode } from '@pcaa/shared';
 import {
   useCallback,
   useEffect,
@@ -16,7 +16,7 @@ import { PageView } from './PageView.tsx';
 import { turnTarget } from './turn.ts';
 import './score.css';
 
-export type ViewMode = 'page' | 'spread' | 'width';
+export type { ViewMode };
 
 export interface ScorePosition {
   page: number;

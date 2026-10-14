@@ -1,7 +1,7 @@
 ---
 title: Metronome
 status: shipped
-updated: 2026-10-07
+updated: 2026-10-14
 ---
 
 # Metronome
@@ -13,6 +13,9 @@ updated: 2026-10-07
   drift; an hour at 97 bpm triplets is checked to 9 decimal places). The engine schedules 120 ms ahead
   every 25 ms on the Web Audio clock.
 - It lives app-wide, so it keeps going while you move between pages; the header shows a mini stop
-  button. `Space` toggles it on a score page; `+`/`−` nudge the tempo. Settings are remembered per browser.
+  button. `Space` toggles it on a score page; `+`/`−` nudge the tempo. Settings are saved to GitHub as `settings.json`
+  and follow you to every device; the newest change wins and each commit says what changed
+  ([ADR 0013](../adr/0013-where-preferences-live.md)).
 
-Files: `apps/web/src/metronome/*`. Tests: `test/metronome.test.ts`, `e2e/tools.spec.ts`.
+Files: `apps/web/src/metronome/*`. Tests: `test/metronome.test.ts`, `test/settings-store.test.ts`, the metronome settings tests in
+`apps/server/test/data-repo.test.ts`, `e2e/tools.spec.ts`, `e2e/devices.spec.ts`.

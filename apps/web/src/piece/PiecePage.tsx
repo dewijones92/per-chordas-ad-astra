@@ -24,13 +24,17 @@ import { bestBpmByDay } from '../practice/stats.ts';
 import { formatMinutes } from '../practice/timer.ts';
 import type { PDFPageProxy } from '../score/pdf.ts';
 import { ScoreViewer, type ScoreViewerHandle, type ViewMode } from '../score/ScoreViewer.tsx';
-import { stepZoom, wheelZoom, zoomKeyOf } from '../score/zoom.ts';
+import { clampZoom, stepZoom, wheelZoom, zoomKeyOf } from '../score/zoom.ts';
 import {
   pullResume,
   readResume,
   rememberOpened,
   rememberPieceScore,
   rememberScore,
+  rememberViewMode,
+  rememberZoom,
+  savedViewMode,
+  savedZoom,
   scoreKey,
 } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
@@ -63,25 +67,6 @@ const VIEW_MODES: { mode: ViewMode; label: string; title: string }[] = [
   { mode: 'spread', label: '▯▯ Two', title: 'Two pages side by side' },
   { mode: 'width', label: '↔ Width', title: 'Fit the page width' },
 ];
-const VIEW_KEY = 'pcaa.score.view.v1';
-
-function loadViewMode(): ViewMode {
-  try {
-    const stored = localStorage.getItem(VIEW_KEY);
-    return VIEW_MODES.some((m) => m.mode === stored) ? (stored as ViewMode) : 'page';
-  } catch {
-    return 'page';
-  }
-}
-
-function saveViewMode(mode: ViewMode): void {
-  try {
-    localStorage.setItem(VIEW_KEY, mode);
-  } catch {
-    return;
-  }
-}
-
 function ScoreArea({
   piece,
   file,
@@ -103,9 +88,11 @@ function ScoreArea({
     adopt,
   });
   const [tools, setTools] = useState<ToolState>(defaultToolState);
-  const [zoom, setZoom] = useState(1);
-  const [mode, setMode] = useState<ViewMode>(loadViewMode);
-  const [initialPosition] = useState(() => readResume().scores[scoreKey(piece.id, file)] ?? null);
+  const spot = scoreKey(piece.id, file);
+  const [zoom, setZoom] = useState(() => clampZoom(savedZoom(spot) ?? 1));
+  const recordedZoom = useRef(zoom);
+  const [mode, setMode] = useState<ViewMode>(savedViewMode);
+  const [initialPosition] = useState(() => readResume().scores[spot] ?? null);
   const [selected, setSelected] = useState<string | null>(null);
   const viewer = useRef<ScoreViewerHandle>(null);
   const metronome = useMetronome();
@@ -207,6 +194,12 @@ function ScoreArea({
     };
   }, []);
 
+  useEffect(() => {
+    if (zoom === recordedZoom.current) return;
+    recordedZoom.current = zoom;
+    rememberZoom(spot, zoom);
+  }, [zoom, spot]);
+
   return (
     <div className="score-area">
       <Toolbar
@@ -238,7 +231,7 @@ function ScoreArea({
                 data-view={m.mode}
                 onClick={() => {
                   setMode(m.mode);
-                  saveViewMode(m.mode);
+                  rememberViewMode(m.mode);
                 }}
               >
                 {m.label}

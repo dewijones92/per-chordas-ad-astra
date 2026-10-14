@@ -522,3 +522,62 @@ describe('DataRepo edited time and pins', () => {
     expect((await repo.getPiece(piece.id)).updatedAt).toBe(at);
   });
 });
+
+describe('DataRepo metronome settings', () => {
+  let cleanup: () => Promise<void>;
+  let changes: RecordingChanges;
+  let repo: DataRepo;
+  let dir: string;
+
+  const settings = {
+    bpm: 80,
+    beatsPerBar: 4,
+    subdivision: 1 as const,
+    accentFirstBeat: true,
+    trainer: { enabled: false, stepBpm: 5, everyBars: 4, maxBpm: 160 },
+  };
+
+  beforeEach(async () => {
+    ({ path: dir, cleanup } = await tempDir());
+    changes = new RecordingChanges();
+    repo = new DataRepo({ dir, changes, log: silentLog });
+  });
+  afterEach(async () => cleanup());
+
+  it('starts with no settings, then saves them as plain JSON stamped with the change time', async () => {
+    expect(await repo.getSettings()).toBeNull();
+    const at = Date.parse('2026-10-14T10:00:00.000Z');
+    const saved = await repo.putMetronome({ settings, at });
+    expect(saved).toEqual({ metronome: settings, updatedAt: '2026-10-14T10:00:00.000Z' });
+    expect(changes.descriptions.at(-1)).toBe('Save metronome settings');
+    expect(JSON.parse(await readFile(join(dir, 'settings.json'), 'utf8'))).toEqual(saved);
+  });
+
+  it('describes what changed in the commit message', async () => {
+    await repo.putMetronome({ settings, at: 1000 });
+    await repo.putMetronome({
+      settings: { ...settings, bpm: 92, trainer: { ...settings.trainer, enabled: true } },
+      at: 2000,
+    });
+    expect(changes.descriptions.at(-1)).toBe(
+      'Metronome: bpm 80 → 92, trainer.enabled false → true',
+    );
+  });
+
+  it('keeps newer stored settings over an older save, and skips a save that changes nothing', async () => {
+    await repo.putMetronome({ settings: { ...settings, bpm: 120 }, at: 5000 });
+    const stale = await repo.putMetronome({ settings: { ...settings, bpm: 60 }, at: 4000 });
+    expect(stale?.metronome.bpm).toBe(120);
+    const before = changes.descriptions.length;
+    await repo.putMetronome({ settings: { ...settings, bpm: 120 }, at: 6000 });
+    expect(changes.descriptions).toHaveLength(before);
+    expect((await repo.getSettings())?.updatedAt).toBe(new Date(5000).toISOString());
+  });
+
+  it('rejects settings out of range', async () => {
+    await expect(repo.putMetronome({ settings: { ...settings, bpm: 5 }, at: 1 })).rejects.toThrow();
+    await expect(
+      repo.putMetronome({ settings: { ...settings, subdivision: 7 }, at: 1 }),
+    ).rejects.toThrow();
+  });
+});

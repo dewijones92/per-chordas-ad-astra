@@ -2,8 +2,11 @@ import { expect, test } from '@playwright/test';
 
 test('the metronome ticks and can be stopped', async ({ page }) => {
   await page.goto('/tools');
+  const bpm = page.getByTestId('metronome-bpm').locator('.bpm-number');
+  await page.waitForLoadState('networkidle');
+  const before = Number(await bpm.textContent());
   await page.getByRole('button', { name: 'Faster' }).click();
-  await expect(page.getByTestId('metronome-bpm')).toContainText('81');
+  await expect(bpm).toHaveText(String(before + 1));
   await page.getByTestId('metronome-toggle').click();
   await expect
     .poll(

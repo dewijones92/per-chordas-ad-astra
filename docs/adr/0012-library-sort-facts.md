@@ -27,7 +27,7 @@ file changes, so drawing on a score did not count as an edit, and nothing stored
   pieces opened before this change still sort sensibly. Like the rest of resume state it is kept on the
   Pi, outside git: opening a piece is not a change to the practice data.
 - **Practised**, **Needs practice** and **Most practised** read the practice log.
-- The chosen sort is a per-browser convenience in `localStorage`. A setlist always opens in its own
+- The chosen sort follows you between devices in the resume state ([0013](0013-where-preferences-live.md)). A setlist always opens in its own
   order. While searching, results stay in best-match order.
 
 ## Consequences

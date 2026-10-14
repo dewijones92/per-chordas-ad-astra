@@ -165,6 +165,9 @@ export function createApp(deps: AppDeps): Hono {
   api.get('/setlists', async (c) => c.json(await repo.getSetlists()));
   api.put('/setlists', async (c) => c.json(await repo.putSetlists(await c.req.json())));
 
+  api.get('/settings', async (c) => c.json(await repo.getSettings()));
+  api.put('/settings/metronome', async (c) => c.json(await repo.putMetronome(await c.req.json())));
+
   api.get('/sessions', async (c) => {
     const pieceId = c.req.query('pieceId');
     return c.json(await repo.listSessions(pieceId ? { pieceId: Slug.parse(pieceId) } : {}));

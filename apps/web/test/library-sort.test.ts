@@ -1,20 +1,24 @@
 import type { Piece, PracticeSession } from '@pcaa/shared';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ago,
   buildStats,
-  DEFAULT_SORT,
-  loadSortChoice,
   NEGLECT_CAP_DAYS,
   neglectWeight,
   NO_STATS,
   pickForMe,
   recentlyOpened,
-  saveSortChoice,
   sortPieces,
   type PieceStats,
 } from '../src/library/sort.ts';
-import { emptyResume, lastOpenedAt } from '../src/resume/resume.ts';
+import { DEFAULT_SORT } from '@pcaa/shared';
+import {
+  emptyResume,
+  lastOpenedAt,
+  readResume,
+  rememberLibrarySort,
+  savedLibrarySort,
+} from '../src/resume/resume.ts';
 
 const DAY = 24 * 3600 * 1000;
 const NOW = Date.parse('2026-10-14T12:00:00.000Z');
@@ -207,16 +211,22 @@ describe('ago', () => {
 describe('remembered sort', () => {
   afterEach(() => {
     localStorage.clear();
+    vi.unstubAllGlobals();
   });
 
-  it('round-trips and falls back to the default on junk', () => {
-    expect(loadSortChoice()).toEqual(DEFAULT_SORT);
-    saveSortChoice({ sort: 'neglected', reversed: true });
-    expect(loadSortChoice()).toEqual({ sort: 'neglected', reversed: true });
-    localStorage.setItem('pcaa.library.sort.v1', '{"sort":"setlist","reversed":false}');
-    expect(loadSortChoice()).toEqual(DEFAULT_SORT);
+  it('lives in the resume state and falls back to the old per-browser key, then the default', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response('{}'))),
+    );
+    expect(savedLibrarySort()).toEqual(DEFAULT_SORT);
+    localStorage.setItem('pcaa.library.sort.v1', '{"sort":"added","reversed":true}');
+    expect(savedLibrarySort()).toEqual({ sort: 'added', reversed: true });
     localStorage.setItem('pcaa.library.sort.v1', 'not json');
-    expect(loadSortChoice()).toEqual(DEFAULT_SORT);
+    expect(savedLibrarySort()).toEqual(DEFAULT_SORT);
+    rememberLibrarySort({ sort: 'neglected', reversed: false });
+    expect(savedLibrarySort()).toEqual({ sort: 'neglected', reversed: false });
+    expect(readResume().librarySort).toMatchObject({ sort: 'neglected', reversed: false });
   });
 });
 

@@ -1,8 +1,11 @@
 import {
+  LIBRARY_SORTS,
+  LibrarySort,
   newId,
   parseTags,
   SCORE_ACCEPT,
   type Piece,
+  type SortChoice,
   type Setlist,
   type Setlists,
 } from '@pcaa/shared';
@@ -10,23 +13,23 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { api } from '../api/client.ts';
 import { formatMinutes } from '../practice/timer.ts';
-import { lastOpenedAt, readResume } from '../resume/resume.ts';
+import {
+  lastOpenedAt,
+  readResume,
+  rememberLibrarySort,
+  savedLibrarySort,
+} from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
 import { allTags, buildPieceIndex, filterPieces } from './search.ts';
 import {
   ago,
   buildStats,
-  LIBRARY_SORTS,
-  LibrarySort,
-  loadSortChoice,
   NO_STATS,
   pickForMe,
   recentlyOpened,
-  saveSortChoice,
   SORT_LABELS,
   sortPieces,
   type PieceStats,
-  type SortChoice,
   type SortKey,
 } from './sort.ts';
 import './library.css';
@@ -303,7 +306,7 @@ export function LibraryPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [setlistId, setSetlistId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [libraryChoice, setLibraryChoice] = useState<SortChoice>(loadSortChoice);
+  const [libraryChoice, setLibraryChoice] = useState<SortChoice>(savedLibrarySort);
   const [setlistChoice, setSetlistChoice] = useState<{ sort: SortKey; reversed: boolean }>({
     sort: 'setlist',
     reversed: false,
@@ -374,7 +377,7 @@ export function LibraryPage() {
     if (!parsed.success) return;
     const stored = { sort: parsed.data, reversed: next.reversed };
     setLibraryChoice(stored);
-    saveSortChoice(stored);
+    rememberLibrarySort(stored);
   };
 
   const togglePin = (piece: Piece) => {

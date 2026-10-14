@@ -1,4 +1,11 @@
-import { emptyResume, mergeResume, ResumeState } from '@pcaa/shared';
+import {
+  DEFAULT_SORT,
+  emptyResume,
+  mergeResume,
+  ResumeState,
+  SortChoice,
+  ViewMode,
+} from '@pcaa/shared';
 
 export type { ResumeState };
 export { emptyResume };
@@ -140,6 +147,53 @@ export function lastOpenedAt(state: ResumeState, pieceId: string): number | null
       .map(([, v]) => v.at),
   ].filter((at): at is number => at !== undefined);
   return stamps.length > 0 ? Math.max(...stamps) : null;
+}
+
+export function rememberZoom(key: string, value: number): void {
+  updateResume((s) => ({ ...s, zoom: { ...s.zoom, [key]: { value, at: now() } } }));
+}
+
+export function savedZoom(key: string): number | null {
+  return readResume().zoom[key]?.value ?? null;
+}
+
+export function rememberViewMode(mode: ViewMode): void {
+  updateResume((s) => ({ ...s, viewMode: { mode, at: now() } }));
+}
+
+const LEGACY_VIEW_KEY = 'pcaa.score.view.v1';
+const LEGACY_SORT_KEY = 'pcaa.library.sort.v1';
+
+function legacy<T>(key: string, parse: (raw: string) => T | null): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? null : parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function savedViewMode(): ViewMode {
+  const fromResume = readResume().viewMode?.mode;
+  if (fromResume) return fromResume;
+  return legacy(LEGACY_VIEW_KEY, (raw) => ViewMode.safeParse(raw).data ?? null) ?? 'page';
+}
+
+export function rememberLibrarySort(choice: SortChoice): void {
+  updateResume((s) => ({ ...s, librarySort: { ...choice, at: now() } }));
+}
+
+export function savedLibrarySort(): SortChoice {
+  const fromResume = readResume().librarySort;
+  if (fromResume) return { sort: fromResume.sort, reversed: fromResume.reversed };
+  const old = legacy(LEGACY_SORT_KEY, (raw) => {
+    try {
+      return SortChoice.safeParse(JSON.parse(raw)).data ?? null;
+    } catch {
+      return null;
+    }
+  });
+  return old ?? DEFAULT_SORT;
 }
 
 export function savedTimer(pieceId: string): TimerSpot | null {

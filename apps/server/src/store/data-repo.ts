@@ -10,6 +10,8 @@ import {
   Loops,
   MAX_SCORE_BYTES,
   MAX_TRACK_BYTES,
+  MetronomeSave,
+  type MetronomeSettings,
   newId,
   PieceDraft,
   PiecePatch,
@@ -18,6 +20,7 @@ import {
   type PdfImport,
   PracticeSession,
   safeFileName,
+  SettingsFile,
   Setlists,
   Slug,
   uniqueSlug,
@@ -78,6 +81,30 @@ export function changedPages(before: Annotations, after: Annotations): number[] 
 
 function withMarker(doc: Annotations, marker: PdfImport | undefined): Annotations {
   return marker ? { ...doc, pdfImport: marker } : { version: doc.version, pages: doc.pages };
+}
+
+function flatten(value: unknown, prefix = ''): Map<string, string> {
+  const out = new Map<string, string>();
+  if (value !== null && typeof value === 'object') {
+    for (const [k, v] of Object.entries(value)) {
+      for (const [path, text] of flatten(v, prefix ? `${prefix}.${k}` : k)) out.set(path, text);
+    }
+  } else {
+    out.set(prefix, String(value));
+  }
+  return out;
+}
+
+export function describeMetronomeChange(
+  before: MetronomeSettings | null,
+  after: MetronomeSettings,
+): string | null {
+  if (before === null) return null;
+  const old = flatten(before);
+  const changes = [...flatten(after)]
+    .filter(([path, text]) => old.get(path) !== text)
+    .map(([path, text]) => `${path} ${old.get(path) ?? '?'} → ${text}`);
+  return changes.length > 0 ? changes.join(', ') : null;
 }
 
 export class DataRepo {
@@ -386,6 +413,41 @@ export class DataRepo {
       if (missing.length > 0) throw new RejectedError(`Unknown piece(s): ${missing.join(', ')}`);
       await this.writeJson(this.path('setlists.json'), next);
       this.changes.markDirty('Update setlists');
+      return next;
+    });
+  }
+
+  async getSettings(): Promise<SettingsFile | null> {
+    return readJson(this.path('settings.json'), SettingsFile.nullable(), () => null);
+  }
+
+  async putMetronome(input: unknown): Promise<SettingsFile | null> {
+    const save = MetronomeSave.parse(input);
+    return this.locked('settings', async () => {
+      const current = await this.getSettings();
+      const currentAt = current ? Date.parse(current.updatedAt) : -1;
+      if (current && currentAt > save.at) {
+        this.log.info(
+          { incomingAt: save.at, storedAt: current.updatedAt },
+          'dewidebug repo metronome save is older than the stored one; keeping the stored settings',
+        );
+        return current;
+      }
+      const change = describeMetronomeChange(current?.metronome ?? null, save.settings);
+      if (current && change === null) {
+        this.log.debug(
+          { at: save.at },
+          'dewidebug repo metronome save changed nothing; not written',
+        );
+        return current;
+      }
+      const next: SettingsFile = {
+        metronome: save.settings,
+        updatedAt: new Date(save.at).toISOString(),
+      };
+      await this.writeJson(this.path('settings.json'), next);
+      this.log.info({ change, at: next.updatedAt }, 'dewidebug repo metronome settings saved');
+      this.changes.markDirty(change === null ? 'Save metronome settings' : `Metronome: ${change}`);
       return next;
     });
   }

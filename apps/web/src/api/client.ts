@@ -7,9 +7,11 @@ import {
   Piece,
   PracticeSession,
   ScoreRef,
+  SettingsFile,
   Setlists,
   SyncStatus,
   TrackRef,
+  type MetronomeSave,
   type NewPracticeSession,
   type PieceDraft,
   type PiecePatch,
@@ -113,6 +115,12 @@ export const api = {
     tracked(
       'loops',
       request(`/api/pieces/${enc(id)}/loops/${enc(track)}`, Loops, jsonInit('PUT', loops)),
+    ),
+  getSettings: () => request('/api/settings', SettingsFile.nullable()),
+  putMetronome: (save: MetronomeSave, keepalive = false) =>
+    tracked(
+      'metronome',
+      request('/api/settings/metronome', SettingsFile.nullable(), jsonInit('PUT', save, keepalive)),
     ),
   getSetlists: () => request('/api/setlists', Setlists),
   putSetlists: (setlists: Setlists) =>

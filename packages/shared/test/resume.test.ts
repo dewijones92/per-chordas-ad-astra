@@ -40,3 +40,32 @@ describe('opened stamps', () => {
     expect(ResumeState.parse({ lastPath: null }).opened).toEqual({});
   });
 });
+
+describe('view preferences', () => {
+  it('merge zoom per score and view mode and library sort newest-wins', () => {
+    const a = ResumeState.parse({
+      zoom: { 'a/a.pdf': { value: 1.4, at: 10 } },
+      viewMode: { mode: 'width', at: 10 },
+      librarySort: { sort: 'added', reversed: false, at: 30 },
+    });
+    const b = ResumeState.parse({
+      zoom: { 'a/a.pdf': { value: 0.8, at: 20 }, 'b/b.pdf': { value: 2, at: 5 } },
+      viewMode: { mode: 'spread', at: 20 },
+    });
+    const merged = mergeResume(a, b);
+    expect(merged.zoom).toEqual({
+      'a/a.pdf': { value: 0.8, at: 20 },
+      'b/b.pdf': { value: 2, at: 5 },
+    });
+    expect(merged.viewMode).toEqual({ mode: 'spread', at: 20 });
+    expect(merged.librarySort).toEqual({ sort: 'added', reversed: false, at: 30 });
+    expect(mergeResume(b, a)).toEqual(merged);
+  });
+
+  it('rejects an unknown view mode or sort', () => {
+    expect(() => ResumeState.parse({ viewMode: { mode: 'huge', at: 1 } })).toThrow();
+    expect(() =>
+      ResumeState.parse({ librarySort: { sort: 'colour', reversed: false, at: 1 } }),
+    ).toThrow();
+  });
+});

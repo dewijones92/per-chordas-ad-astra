@@ -1,7 +1,7 @@
 ---
 title: Score viewer and annotation
 status: shipped
-updated: 2026-10-09
+updated: 2026-10-14
 ---
 
 # Score viewer and annotation
@@ -10,8 +10,8 @@ updated: 2026-10-09
 ratio, and frees the canvas and pdf.js caches once it is further away; the document is destroyed on leaving the
 score. Tested on real scans (2026-10-07): a 128-page JBIG2+JPX method book opens in ~0.3 s and paints its first
 page in ~1.1–1.4 s, mid-book pages in ~0.1 s, with ~9 MB of retained JS heap; CCITT fax and vector scores too.
-Layouts are **Page** (fit one whole page, the default), **Two** (a spread) and **Width**; the choice is
-remembered per browser. Zoom −/+, or on the piece page `Ctrl` `+`/`−`/`0` and `Ctrl`+scroll or a trackpad pinch, which zoom the score instead of the whole browser (40–250%). `→`/`PageDown` and `←`/`PageUp` turn pages; inside a page taller
+Layouts are **Page** (fit one whole page, the default), **Two** (a spread) and **Width**; the choice
+follows you between devices. Zoom −/+, or on the piece page `Ctrl` `+`/`−`/`0` and `Ctrl`+scroll or a trackpad pinch, which zoom the score instead of the whole browser (40–250%); each score keeps its own zoom, on every device (ADR 0013). `→`/`PageDown` and `←`/`PageUp` turn pages; inside a page taller
 than the screen they scroll by 85% of the screen first.
 
 **Drawing.** Tools, with keys: select `V`, pen `P`, highlighter `H`, eraser `E`, text `T`, line `L`,

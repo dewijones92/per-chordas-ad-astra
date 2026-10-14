@@ -28,6 +28,7 @@ Writing positions into the data repo would mean a commit for every scroll.
   another device.
 - One entry is written on opening: `opened` per piece, used by the library's Recently opened sort and
   Continue row ([0012](0012-library-sort-facts.md)). It has its own key, so it never overwrites a spot.
+- Zoom per score, the page layout and the library sort live here too ([0013](0013-where-preferences-live.md)).
 
 ## Consequences
 

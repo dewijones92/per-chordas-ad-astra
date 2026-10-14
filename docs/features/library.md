@@ -14,7 +14,7 @@ updated: 2026-10-14
 - **Sort**: Title A–Z, Artist A–Z, Recently added, Recently edited (drawings and loops count),
   Recently opened, Recently practised, Needs practice (never practised first, then the longest ago),
   Most practised and Target tempo. **Reverse** flips it; pieces missing the value (never opened, no
-  artist, no target) stay last either way. The choice is remembered in this browser. A setlist opens in
+  artist, no target) stay last either way. The choice follows you to your other devices (resume state, ADR 0013). A setlist opens in
   its own order (the only order where ↑/↓ show). While searching, results are best match first and the
   sort is paused. ADR [0012](../adr/0012-library-sort-facts.md) says where each date comes from.
 - **Pin** (☆ on a card, or ☆ Pin beside the title on a piece): pinned pieces sit at the top of every

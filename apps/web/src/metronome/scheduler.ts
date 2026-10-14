@@ -1,19 +1,7 @@
-export type Subdivision = 1 | 2 | 3 | 4;
+import { MAX_BPM, MIN_BPM, type MetronomeSettings } from '@pcaa/shared';
 
-export interface SpeedTrainer {
-  enabled: boolean;
-  stepBpm: number;
-  everyBars: number;
-  maxBpm: number;
-}
-
-export interface MetronomeSettings {
-  bpm: number;
-  beatsPerBar: number;
-  subdivision: Subdivision;
-  accentFirstBeat: boolean;
-  trainer: SpeedTrainer;
-}
+export type { MetronomeSettings, SpeedTrainer, Subdivision } from '@pcaa/shared';
+export { MAX_BPM, MIN_BPM };
 
 export type TickKind = 'bar' | 'beat' | 'sub';
 
@@ -31,9 +19,6 @@ export interface Tick {
   kind: TickKind;
   bpm: number;
 }
-
-export const MIN_BPM = 20;
-export const MAX_BPM = 400;
 
 export const clampBpm = (bpm: number): number =>
   Math.min(MAX_BPM, Math.max(MIN_BPM, Math.round(bpm)));

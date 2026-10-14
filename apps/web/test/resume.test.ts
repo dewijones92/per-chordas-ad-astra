@@ -9,6 +9,10 @@ import {
   rememberPieceScore,
   rememberScore,
   rememberTimer,
+  rememberViewMode,
+  rememberZoom,
+  savedViewMode,
+  savedZoom,
   savedTimer,
   scoreKey,
   shouldResumeTo,
@@ -119,5 +123,24 @@ describe('resume store', () => {
     expect(shouldResumeTo('/', at(null))).toBeNull();
     expect(shouldResumeTo('/', at('https://evil.example/'))).toBeNull();
     expect(shouldResumeTo('/', at('/piece/../../x'))).toBeNull();
+  });
+
+  it('remembers zoom per score and the page layout, reading the old per-browser layout first', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response('{}'))),
+    );
+    expect(savedZoom(scoreKey('a', 'a.pdf'))).toBeNull();
+    rememberZoom(scoreKey('a', 'a.pdf'), 1.3);
+    expect(savedZoom(scoreKey('a', 'a.pdf'))).toBe(1.3);
+    expect(savedZoom(scoreKey('b', 'b.pdf'))).toBeNull();
+
+    expect(savedViewMode()).toBe('page');
+    localStorage.setItem('pcaa.score.view.v1', 'spread');
+    expect(savedViewMode()).toBe('spread');
+    localStorage.setItem('pcaa.score.view.v1', 'bogus');
+    expect(savedViewMode()).toBe('page');
+    rememberViewMode('width');
+    expect(savedViewMode()).toBe('width');
   });
 });
