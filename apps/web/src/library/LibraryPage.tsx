@@ -9,8 +9,26 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { api } from '../api/client.ts';
+import { formatMinutes } from '../practice/timer.ts';
+import { lastOpenedAt, readResume } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
 import { allTags, buildPieceIndex, filterPieces } from './search.ts';
+import {
+  ago,
+  buildStats,
+  LIBRARY_SORTS,
+  LibrarySort,
+  loadSortChoice,
+  NO_STATS,
+  pickForMe,
+  recentlyOpened,
+  saveSortChoice,
+  SORT_LABELS,
+  sortPieces,
+  type PieceStats,
+  type SortChoice,
+  type SortKey,
+} from './sort.ts';
 import './library.css';
 
 function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -133,19 +151,61 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
   );
 }
 
+function sortContext(sort: SortKey, piece: Piece, stats: PieceStats, now: number): string | null {
+  switch (sort) {
+    case 'added':
+      return `Added ${ago(Date.parse(piece.createdAt), now)}`;
+    case 'edited':
+      return `Edited ${ago(Date.parse(piece.updatedAt), now)}`;
+    case 'opened':
+      return stats.lastOpenedAt === null
+        ? 'Not opened yet'
+        : `Opened ${ago(stats.lastOpenedAt, now)}`;
+    case 'setlist':
+    case 'title':
+    case 'artist':
+    case 'practised':
+    case 'neglected':
+    case 'most-practised':
+    case 'tempo':
+      return null;
+  }
+}
+
 function PieceCard({
   piece,
+  stats,
+  sort,
+  now,
+  practiceKnown,
   setlist,
+  onPin,
   onMove,
   onRemove,
 }: {
   piece: Piece;
+  stats: PieceStats;
+  sort: SortKey;
+  now: number;
+  practiceKnown: boolean;
   setlist: Setlist | null;
-  onMove: (delta: -1 | 1) => void;
+  onPin: () => void;
+  onMove: ((delta: -1 | 1) => void) | null;
   onRemove: () => void;
 }) {
+  const context = sortContext(sort, piece, stats, now);
   return (
-    <li className="piece-card card" data-testid="piece-card">
+    <li className={`piece-card card${piece.pinned ? ' pinned' : ''}`} data-testid="piece-card">
+      <button
+        type="button"
+        className="card-pin"
+        aria-pressed={piece.pinned}
+        aria-label={`${piece.pinned ? 'Unpin' : 'Pin'} ${piece.title}`}
+        title={piece.pinned ? 'Unpin' : 'Pin to the top'}
+        onClick={onPin}
+      >
+        {piece.pinned ? '★' : '☆'}
+      </button>
       <Link href={`/piece/${piece.id}`} className="piece-link">
         <h3>{piece.title}</h3>
         {piece.artist && <p className="muted">{piece.artist}</p>}
@@ -154,6 +214,18 @@ function PieceCard({
           {piece.tracks.length > 0 && <span title="Backing tracks">🎧 {piece.tracks.length}</span>}
           {piece.targetBpm !== null && <span title="Target tempo">🎯 {piece.targetBpm}</span>}
         </div>
+        {practiceKnown && (
+          <p className="piece-practice" data-testid="piece-practice">
+            {stats.lastPractisedAt === null
+              ? '🌱 Not practised yet'
+              : `🕘 Practised ${ago(stats.lastPractisedAt, now)} · ⏱ ${formatMinutes(stats.practisedSec)}`}
+          </p>
+        )}
+        {context && (
+          <p className="piece-when muted" data-testid="piece-when">
+            {context}
+          </p>
+        )}
         {piece.tags.length > 0 && (
           <div className="row">
             {piece.tags.map((t) => (
@@ -166,26 +238,30 @@ function PieceCard({
       </Link>
       {setlist && (
         <div className="row card-actions">
-          <button
-            type="button"
-            className="btn small icon"
-            aria-label="Move up"
-            onClick={() => {
-              onMove(-1);
-            }}
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            className="btn small icon"
-            aria-label="Move down"
-            onClick={() => {
-              onMove(1);
-            }}
-          >
-            ↓
-          </button>
+          {onMove && (
+            <>
+              <button
+                type="button"
+                className="btn small icon"
+                aria-label="Move up"
+                onClick={() => {
+                  onMove(-1);
+                }}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className="btn small icon"
+                aria-label="Move down"
+                onClick={() => {
+                  onMove(1);
+                }}
+              >
+                ↓
+              </button>
+            </>
+          )}
           <span className="spacer" />
           <button type="button" className="btn small ghost" onClick={onRemove}>
             Remove from setlist
@@ -196,14 +272,51 @@ function PieceCard({
   );
 }
 
+function ContinueRow({ items, now }: { items: { piece: Piece; at: number }[]; now: number }) {
+  if (items.length === 0) return null;
+  return (
+    <section className="library-continue" aria-label="Continue where you left off">
+      <h2>Continue</h2>
+      <ul className="library-continue-list">
+        {items.map(({ piece, at }) => (
+          <li key={piece.id}>
+            <Link
+              href={`/piece/${piece.id}`}
+              className="library-continue-item"
+              data-testid="continue-item"
+            >
+              <strong>{piece.title}</strong>
+              <span className="muted">{ago(at, now)}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function LibraryPage() {
   const pieces = useAsync(() => api.listPieces(), 'pieces');
   const setlists = useAsync(() => api.getSetlists(), 'setlists');
+  const sessions = useAsync(() => api.listSessions(), 'sessions');
   const [query, setQuery] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [setlistId, setSetlistId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [libraryChoice, setLibraryChoice] = useState<SortChoice>(loadSortChoice);
+  const [setlistChoice, setSetlistChoice] = useState<{ sort: SortKey; reversed: boolean }>({
+    sort: 'setlist',
+    reversed: false,
+  });
+  const [resume] = useState(readResume);
+  const [now] = useState(() => Date.now());
   const searchRef = useRef<HTMLInputElement>(null);
+  const [, navigate] = useLocation();
+
+  const selectSetlist = (id: string | null) => {
+    setSetlistId(id);
+    setSetlistChoice({ sort: 'setlist', reversed: false });
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -233,10 +346,60 @@ export function LibraryPage() {
 
   const index = useMemo(() => (pieces.data ? buildPieceIndex(pieces.data) : null), [pieces.data]);
   const tagList = useMemo(() => (pieces.data ? allTags(pieces.data) : []), [pieces.data]);
-  const shown =
+  const stats = useMemo(
+    () =>
+      buildStats(pieces.data ?? [], sessions.data ?? [], (pieceId) =>
+        lastOpenedAt(resume, pieceId),
+      ),
+    [pieces.data, sessions.data, resume],
+  );
+  const choice = active ? setlistChoice : libraryChoice;
+  const searching = query.trim() !== '';
+  const filtered =
     pieces.data && index
       ? filterPieces(pieces.data, { query, tags, pieceIds: active ? active.pieceIds : null }, index)
       : [];
+  const shown = searching ? filtered : sortPieces(filtered, choice, stats);
+  const continueItems =
+    !active && !searching && tags.length === 0 ? recentlyOpened(pieces.data ?? [], stats, 4) : [];
+  const sortOptions: readonly SortKey[] = active ? ['setlist', ...LIBRARY_SORTS] : LIBRARY_SORTS;
+
+  const chooseSort = (next: { sort: SortKey; reversed: boolean }) => {
+    console.info('dewidebug library sort chosen', { ...next, setlist: active?.id ?? null });
+    if (active) {
+      setSetlistChoice(next);
+      return;
+    }
+    const parsed = LibrarySort.safeParse(next.sort);
+    if (!parsed.success) return;
+    const stored = { sort: parsed.data, reversed: next.reversed };
+    setLibraryChoice(stored);
+    saveSortChoice(stored);
+  };
+
+  const togglePin = (piece: Piece) => {
+    const pinned = !piece.pinned;
+    console.info('dewidebug library pin toggled', { id: piece.id, pinned });
+    pieces.setData((list) => list?.map((p) => (p.id === piece.id ? { ...p, pinned } : p)));
+    api.patchPiece(piece.id, { pinned }).then(
+      (next) => {
+        pieces.setData((list) => list?.map((p) => (p.id === next.id ? next : p)));
+      },
+      (e: unknown) => {
+        console.warn('dewidebug library pin failed; reloading', { id: piece.id, error: String(e) });
+        pieces.reload();
+      },
+    );
+  };
+
+  const pick = () => {
+    const chosen = pickForMe(shown, stats, now);
+    console.info('dewidebug library pick for me', {
+      from: shown.length,
+      chosen: chosen?.id ?? null,
+    });
+    if (chosen) navigate(`/piece/${chosen.id}`);
+  };
 
   return (
     <div className="library">
@@ -246,7 +409,7 @@ export function LibraryPage() {
           type="button"
           className={`setlist-btn${setlistId === null ? ' on' : ''}`}
           onClick={() => {
-            setSetlistId(null);
+            selectSetlist(null);
           }}
         >
           ✦ All pieces
@@ -257,7 +420,7 @@ export function LibraryPage() {
             type="button"
             className={`setlist-btn${setlistId === s.id ? ' on' : ''}`}
             onClick={() => {
-              setSetlistId(s.id);
+              selectSetlist(s.id);
             }}
           >
             {s.name} <span className="muted">({s.pieceIds.length})</span>
@@ -272,7 +435,7 @@ export function LibraryPage() {
             if (!name?.trim()) return;
             const id = newId();
             saveSetlists({ setlists: [...lists, { id, name: name.trim(), pieceIds: [] }] });
-            setSetlistId(id);
+            selectSetlist(id);
           }}
         >
           + New setlist
@@ -296,7 +459,7 @@ export function LibraryPage() {
                 if (!window.confirm(`Delete the setlist “${active.name}”? Pieces are kept.`))
                   return;
                 saveSetlists({ setlists: lists.filter((s) => s.id !== active.id) });
-                setSetlistId(null);
+                selectSetlist(null);
               }}
             >
               Delete
@@ -329,6 +492,52 @@ export function LibraryPage() {
             data-testid="new-piece"
           >
             + New piece
+          </button>
+        </div>
+        <ContinueRow items={continueItems} now={now} />
+        <div className="row library-sort">
+          <label className="row sort-field">
+            <span>Sort</span>
+            <select
+              className="input"
+              aria-label="Sort pieces"
+              value={choice.sort}
+              disabled={searching}
+              onChange={(e) => {
+                const sort = sortOptions.find((o) => o === e.target.value);
+                if (sort) chooseSort({ sort, reversed: false });
+              }}
+            >
+              {sortOptions.map((o) => (
+                <option key={o} value={o}>
+                  {SORT_LABELS[o]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="btn small ghost"
+            aria-label="Reverse order"
+            aria-pressed={choice.reversed}
+            disabled={searching}
+            onClick={() => {
+              chooseSort({ sort: choice.sort, reversed: !choice.reversed });
+            }}
+          >
+            {choice.reversed ? '↑ Reversed' : '↓ Reverse'}
+          </button>
+          {searching && <span className="muted">Best match first while searching</span>}
+          <span className="spacer" />
+          <button
+            type="button"
+            className="btn small sun"
+            data-testid="pick-for-me"
+            disabled={shown.length === 0}
+            title="Open a piece at random, favouring ones you have not practised lately"
+            onClick={pick}
+          >
+            🎲 Pick for me
           </button>
         </div>
         {tagList.length > 0 && (
@@ -377,17 +586,28 @@ export function LibraryPage() {
             <PieceCard
               key={piece.id}
               piece={piece}
+              stats={stats.get(piece.id) ?? NO_STATS}
+              sort={choice.sort}
+              now={now}
+              practiceKnown={sessions.data !== undefined}
               setlist={active}
-              onMove={(delta) => {
-                updateActive((s) => {
-                  const ids = [...s.pieceIds];
-                  const i = ids.indexOf(piece.id);
-                  const j = i + delta;
-                  if (i < 0 || j < 0 || j >= ids.length) return s;
-                  [ids[i], ids[j]] = [ids[j] ?? piece.id, ids[i] ?? piece.id];
-                  return { ...s, pieceIds: ids };
-                });
+              onPin={() => {
+                togglePin(piece);
               }}
+              onMove={
+                active && choice.sort === 'setlist' && !choice.reversed && !searching
+                  ? (delta) => {
+                      updateActive((s) => {
+                        const ids = [...s.pieceIds];
+                        const i = ids.indexOf(piece.id);
+                        const j = i + delta;
+                        if (i < 0 || j < 0 || j >= ids.length) return s;
+                        [ids[i], ids[j]] = [ids[j] ?? piece.id, ids[i] ?? piece.id];
+                        return { ...s, pieceIds: ids };
+                      });
+                    }
+                  : null
+              }
               onRemove={() => {
                 updateActive((s) => ({
                   ...s,

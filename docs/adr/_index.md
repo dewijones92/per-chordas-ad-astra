@@ -1,6 +1,6 @@
 ---
 title: Architecture decision records
-updated: 2026-10-09
+updated: 2026-10-14
 ---
 
 # ADRs
@@ -18,6 +18,7 @@ updated: 2026-10-09
 | [0009](0009-resume-state-per-browser.md)           | Resume state per browser (localStorage)                    | superseded by 0010 |
 | [0010](0010-resume-state-on-the-server.md)         | Resume state on the server, git-ignored, newest-wins merge | accepted           |
 | [0011](0011-import-pdf-annotations-as-drawings.md) | A PDF's own marks become movable app drawings, once        | accepted           |
+| [0012](0012-library-sort-facts.md)                 | Library sorts read recorded facts (edited, opened, pinned) | accepted           |
 
 Format: `NNNN-title.md` with frontmatter (`status`, `date`, `updated`). Change a decision by updating
 its ADR; reverse one by marking it `superseded by NNNN` and writing the new one, in the same commit as

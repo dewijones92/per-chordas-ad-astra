@@ -134,3 +134,102 @@
 .dialog::backdrop {
   background: rgb(29 21 51 / 0.45);
 }
+
+.piece-card {
+  position: relative;
+}
+
+.piece-card.pinned {
+  background: var(--sun-wash);
+}
+
+.card-pin {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.card-pin:hover {
+  border-color: var(--ink);
+  background: var(--bg);
+}
+
+.card-pin[aria-pressed='true'] {
+  color: var(--ink);
+}
+
+.piece-card .piece-link h3 {
+  padding-right: 32px;
+}
+
+.piece-link .piece-practice {
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.piece-link .piece-when {
+  font-size: 13px;
+}
+
+.library-sort {
+  gap: 10px;
+}
+
+.sort-field {
+  gap: 8px;
+  font-weight: 800;
+}
+
+.sort-field select {
+  width: auto;
+}
+
+.library-continue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.library-continue h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.library-continue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.library-continue-item {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 14px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--violet-wash);
+  box-shadow: var(--pop);
+  color: inherit;
+  text-decoration: none;
+}
+
+.library-continue-item:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.library-continue-item .muted {
+  font-size: 13px;
+}

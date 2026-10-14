@@ -416,3 +416,109 @@ describe('changedPages', () => {
     expect(changedPages(after, after)).toEqual([]);
   });
 });
+
+describe('DataRepo edited time and pins', () => {
+  let cleanup: () => Promise<void>;
+  let changes: RecordingChanges;
+  let repo: DataRepo;
+  let clock: Date;
+
+  beforeEach(async () => {
+    let dir: string;
+    ({ path: dir, cleanup } = await tempDir());
+    changes = new RecordingChanges();
+    clock = new Date('2026-10-07T12:00:00.000Z');
+    repo = new DataRepo({ dir, changes, log: silentLog, now: () => clock });
+  });
+  afterEach(async () => cleanup());
+
+  const later = (iso: string) => {
+    clock = new Date(iso);
+    return iso;
+  };
+
+  it('pinning is not an edit: it keeps updatedAt and says Pin or Unpin', async () => {
+    const piece = await repo.createPiece({ title: 'Romanza' });
+    later('2026-10-08T09:00:00.000Z');
+    const pinned = await repo.updatePiece(piece.id, { pinned: true });
+    expect(pinned.pinned).toBe(true);
+    expect(pinned.updatedAt).toBe(piece.updatedAt);
+    expect(changes.descriptions.at(-1)).toBe("Pin 'Romanza'");
+    const unpinned = await repo.updatePiece(piece.id, { pinned: false });
+    expect(unpinned.updatedAt).toBe(piece.updatedAt);
+    expect(changes.descriptions.at(-1)).toBe("Unpin 'Romanza'");
+  });
+
+  it('a patch that pins and edits together is an edit', async () => {
+    const piece = await repo.createPiece({ title: 'Romanza' });
+    const at = later('2026-10-08T09:00:00.000Z');
+    const next = await repo.updatePiece(piece.id, { pinned: true, notes: 'slow bars 9-12' });
+    expect(next.updatedAt).toBe(at);
+    expect(changes.descriptions.at(-1)).toBe("Edit 'Romanza'");
+  });
+
+  it('pieces written before pins existed read as unpinned', async () => {
+    const piece = await repo.createPiece({ title: 'Old' });
+    const path = repo.path('pieces', piece.id, 'piece.json');
+    const { pinned: _pinned, ...legacy } = JSON.parse(await readFile(path, 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    await writeFile(path, JSON.stringify(legacy));
+    expect((await repo.getPiece(piece.id)).pinned).toBe(false);
+  });
+
+  it('drawing on a score marks the piece edited; a no-op save does not', async () => {
+    const piece = await repo.createPiece({ title: 'Air' });
+    const ref = await repo.addScore(piece.id, 'air.pdf', new Blob([pdf]));
+    const doc: Annotations = {
+      version: 1,
+      pages: {
+        '1': [{ kind: 'stamp', id: 's1', colour: '#ff0000', glyph: '1', x: 10, y: 20, size: 18 }],
+      },
+    };
+    const drawn = later('2026-10-09T10:00:00.000Z');
+    await repo.putAnnotations(piece.id, ref.file, doc);
+    expect((await repo.getPiece(piece.id)).updatedAt).toBe(drawn);
+    later('2026-10-10T10:00:00.000Z');
+    await repo.putAnnotations(piece.id, ref.file, doc);
+    expect((await repo.getPiece(piece.id)).updatedAt).toBe(drawn);
+  });
+
+  it('saving loops marks the piece edited', async () => {
+    const piece = await repo.createPiece({ title: 'Jam' });
+    const track = await repo.addTrack(piece.id, 'Backing.mp3', new Blob([new Uint8Array(16)]));
+    const at = later('2026-10-09T11:00:00.000Z');
+    await repo.putTrackLoops(piece.id, track.file, [
+      { id: 'l1', name: 'Solo', startSec: 10, endSec: 20, rate: 0.75 },
+    ]);
+    expect((await repo.getPiece(piece.id)).updatedAt).toBe(at);
+  });
+
+  it('importing PDF marks marks the piece edited only when something was converted', async () => {
+    const piece = await repo.createPiece({ title: 'Etude' });
+    const ref = await repo.addScore(piece.id, 'etude.pdf', new Blob([pdf]));
+    later('2026-10-09T12:00:00.000Z');
+    await repo.importPdfMarks(piece.id, ref.file, {
+      version: 1,
+      pages: {},
+      converted: 0,
+      hidePdfAnnotations: false,
+      skipped: [],
+    });
+    expect((await repo.getPiece(piece.id)).updatedAt).toBe(piece.updatedAt);
+
+    const other = await repo.addScore(piece.id, 'other.pdf', new Blob([pdf]));
+    const at = later('2026-10-09T13:00:00.000Z');
+    await repo.importPdfMarks(piece.id, other.file, {
+      version: 1,
+      pages: {
+        '1': [{ kind: 'stamp', id: 'p1', colour: '#ff0000', glyph: '1', x: 1, y: 1, size: 18 }],
+      },
+      converted: 1,
+      hidePdfAnnotations: false,
+      skipped: [],
+    });
+    expect((await repo.getPiece(piece.id)).updatedAt).toBe(at);
+  });
+});

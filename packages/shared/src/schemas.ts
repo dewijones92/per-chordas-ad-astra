@@ -60,6 +60,7 @@ export const Piece = z.object({
   scores: z.array(ScoreRef).default([]),
   tracks: z.array(TrackRef).default([]),
   bookmarks: z.array(Bookmark).default([]),
+  pinned: z.boolean().default(false),
   createdAt: isoTimestamp,
   updatedAt: isoTimestamp,
 });
@@ -84,6 +85,7 @@ export const PiecePatch = z
     scores: z.array(ScoreRef),
     tracks: z.array(TrackRef),
     bookmarks: z.array(Bookmark),
+    pinned: z.boolean(),
   })
   .partial()
   .strict();

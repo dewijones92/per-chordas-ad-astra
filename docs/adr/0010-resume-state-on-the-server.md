@@ -2,7 +2,7 @@
 title: Keep "where you left off" on the Pi, git-ignored, merged newest-wins across devices
 status: accepted
 date: 2026-10-07
-updated: 2026-10-07
+updated: 2026-10-14
 ---
 
 # 0010 · Resume state lives on the server, outside git
@@ -26,6 +26,8 @@ Writing positions into the data repo would mean a commit for every scroll.
 - A cleared timer is a stamped tombstone, so clearing on one device clears it everywhere. Nothing is
   written until something actually changes, so merely opening a piece never overwrites a newer spot from
   another device.
+- One entry is written on opening: `opened` per piece, used by the library's Recently opened sort and
+  Continue row ([0012](0012-library-sort-facts.md)). It has its own key, so it never overwrites a spot.
 
 ## Consequences
 

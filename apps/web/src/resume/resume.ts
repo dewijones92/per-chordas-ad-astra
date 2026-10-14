@@ -124,6 +124,24 @@ export function rememberTimer(pieceId: string, spot: TimerSpot | null): void {
   updateResume((s) => ({ ...s, timers: { ...s.timers, [pieceId]: { ...value, at: now() } } }));
 }
 
+export function rememberOpened(pieceId: string): void {
+  updateResume((s) => ({ ...s, opened: { ...s.opened, [pieceId]: { at: now() } } }));
+}
+
+export function lastOpenedAt(state: ResumeState, pieceId: string): number | null {
+  const prefix = `${pieceId}/`;
+  const stamps = [
+    state.opened[pieceId]?.at,
+    state.pieceScore[pieceId]?.at,
+    state.loopers[pieceId]?.at,
+    state.timers[pieceId]?.at,
+    ...Object.entries(state.scores)
+      .filter(([k]) => k.startsWith(prefix))
+      .map(([, v]) => v.at),
+  ].filter((at): at is number => at !== undefined);
+  return stamps.length > 0 ? Math.max(...stamps) : null;
+}
+
 export function savedTimer(pieceId: string): TimerSpot | null {
   const spot = readResume().timers[pieceId];
   return spot && spot.accumulatedMs > 0

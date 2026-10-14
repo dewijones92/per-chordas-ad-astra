@@ -25,6 +25,7 @@ export const ResumeState = z.object({
   timers: z
     .record(key, z.object({ accumulatedMs: z.number().min(0), startedAt: z.number().min(0), at }))
     .default({}),
+  opened: z.record(key, z.object({ at })).default({}),
 });
 export type ResumeState = z.output<typeof ResumeState>;
 
@@ -34,6 +35,7 @@ export const emptyResume = (): ResumeState => ({
   pieceScore: {},
   loopers: {},
   timers: {},
+  opened: {},
 });
 
 function newest<T extends { at: number }>(
@@ -63,5 +65,6 @@ export function mergeResume(a: ResumeState, b: ResumeState): ResumeState {
     pieceScore: newest(a.pieceScore, b.pieceScore),
     loopers: newest(a.loopers, b.loopers),
     timers: newest(a.timers, b.timers),
+    opened: newest(a.opened, b.opened),
   };
 }

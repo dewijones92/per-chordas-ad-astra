@@ -28,6 +28,7 @@ import { stepZoom, wheelZoom, zoomKeyOf } from '../score/zoom.ts';
 import {
   pullResume,
   readResume,
+  rememberOpened,
   rememberPieceScore,
   rememberScore,
   scoreKey,
@@ -521,6 +522,13 @@ export function PiecePage({ id }: { id: string }) {
     [id, setData, reload],
   );
 
+  const loaded = current !== undefined;
+  useEffect(() => {
+    if (!loaded) return;
+    rememberOpened(id);
+    console.info('dewidebug piece opened; stamped for the library', { id });
+  }, [id, loaded]);
+
   if (piece.error) {
     return (
       <div className="piece-missing">
@@ -557,6 +565,20 @@ export function PiecePage({ id }: { id: string }) {
             {current.title}
           </h1>
           {current.artist && <span className="muted">{current.artist}</span>}
+          <button
+            type="button"
+            className="btn small ghost pin-toggle"
+            aria-pressed={current.pinned}
+            data-testid="piece-pin"
+            title={
+              current.pinned ? 'Unpin from the top of the library' : 'Pin to the top of the library'
+            }
+            onClick={() => {
+              stablePatch({ pinned: !current.pinned });
+            }}
+          >
+            {current.pinned ? '★ Pinned' : '☆ Pin'}
+          </button>
         </div>
         {current.scores.length > 1 && (
           <div className="row score-tabs" role="tablist">

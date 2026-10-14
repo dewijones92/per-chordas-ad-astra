@@ -31,3 +31,12 @@ describe('mergeResume', () => {
     expect(() => ResumeState.parse({ lastPath: { path: 5, at: 1 } })).toThrow();
   });
 });
+
+describe('opened stamps', () => {
+  it('merge newest-wins per piece and default to empty for older state', () => {
+    const a = ResumeState.parse({ opened: { x: { at: 10 }, y: { at: 50 } } });
+    const b = ResumeState.parse({ opened: { x: { at: 30 } } });
+    expect(mergeResume(a, b).opened).toEqual({ x: { at: 30 }, y: { at: 50 } });
+    expect(ResumeState.parse({ lastPath: null }).opened).toEqual({});
+  });
+});

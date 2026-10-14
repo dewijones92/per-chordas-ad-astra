@@ -116,7 +116,7 @@ test('a stale tab opening a piece takes the newer position instead of overwritin
     ).scores[key]?.page;
   await expect.poll(serverPage, { timeout: 8000 }).toBe(3);
 
-  await stale.locator(`a[href="/piece/${id}"]`).click();
+  await stale.locator(`a.piece-link[href="/piece/${id}"]`).click();
   await expect(stale.locator('.page')).toHaveCount(3);
   await expect
     .poll(() => stale.getByTestId('score-scroller').evaluate((el) => el.scrollTop), {

@@ -165,11 +165,30 @@ export class DataRepo {
           throw new RejectedError(`${key} may only be renamed or reordered here`);
         }
       }
-      const next = Piece.parse({ ...current, ...patch, updatedAt: this.now().toISOString() });
+      const pinOnly = patch.pinned !== undefined && Object.keys(patch).length === 1;
+      const next = Piece.parse({
+        ...current,
+        ...patch,
+        updatedAt: pinOnly ? current.updatedAt : this.now().toISOString(),
+      });
       await this.writeJson(this.path('pieces', id, 'piece.json'), next);
-      this.changes.markDirty(`Edit ${quote(next.title)}`);
+      this.log.info(
+        { id, fields: Object.keys(patch), pinOnly, pinned: next.pinned },
+        'dewidebug repo piece patched',
+      );
+      this.changes.markDirty(
+        pinOnly
+          ? `${next.pinned ? 'Pin' : 'Unpin'} ${quote(next.title)}`
+          : `Edit ${quote(next.title)}`,
+      );
       return next;
     });
+  }
+
+  private async touch(piece: Piece, reason: string): Promise<void> {
+    const updatedAt = this.now().toISOString();
+    await this.writeJson(this.path('pieces', piece.id, 'piece.json'), { ...piece, updatedAt });
+    this.log.debug({ id: piece.id, reason, updatedAt }, 'dewidebug repo piece marked edited');
   }
 
   async deletePiece(id: Slug): Promise<void> {
@@ -271,6 +290,7 @@ export class DataRepo {
       const pages = changedPages(before, next);
       if (pages.length === 0) return next;
       await this.writeJson(this.path('pieces', id, 'annotations', `${file}.json`), next);
+      await this.touch(piece, 'drawing');
       const where = pages.map((p) => `p.${String(p)}`).join(', ');
       this.changes.markDirty(`Annotate ${quote(piece.title)} (${file} ${where})`);
       return next;
@@ -302,6 +322,7 @@ export class DataRepo {
         pdfImport: { ...result, at: this.now().toISOString() },
       });
       await this.writeJson(this.path('pieces', id, 'annotations', `${file}.json`), next);
+      if (result.converted > 0) await this.touch(piece, 'pdf marks');
       const items = Object.values(imported).reduce((n, list) => n + list.length, 0);
       this.log.info(
         {
@@ -346,6 +367,7 @@ export class DataRepo {
       const { [track]: _previous, ...others } = current.tracks;
       const next: Loops = { tracks: loops.length > 0 ? { ...others, [track]: loops } : others };
       await this.writeJson(this.path('pieces', id, 'loops.json'), next);
+      await this.touch(piece, 'loops');
       this.changes.markDirty(`Save loops for ${quote(piece.title)} (${track})`);
       return next;
     });
