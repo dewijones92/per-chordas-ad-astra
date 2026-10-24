@@ -1,7 +1,7 @@
 ---
 title: Resume where you left off
 status: shipped
-updated: 2026-10-14
+updated: 2026-10-24
 ---
 
 # Resume where you left off
@@ -13,7 +13,7 @@ Dewi, 7 Oct 2026: _"I always wanna resume from where I left off."_
 - On a piece: the score tab you last had open, scrolled back to the same page and spot (saved 300 ms after
   scrolling stops). Changing layout or zoom also keeps your place. Each score's **zoom**, the **page layout**
   (Page / Two / Width) and the **library sort** are kept too, and follow you between devices.
-- The looper: same track, playback position, speed and A-B loop (saved on pause, every 2 s while
+- The looper: same track, playback position, speed, A-B loop and its 🔁 Loop switch (saved on pause, every 2 s while
   playing, and when the page closes).
 - The practice timer: an unfinished session comes back **paused** at its time so far, so a closed laptop
   never logs hours you did not practise.

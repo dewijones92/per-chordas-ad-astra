@@ -18,6 +18,7 @@ import { useAnnotations } from '../annotate/use-annotations.ts';
 import { claimDrawing, useDrawing } from '../annotate/use-drawing.ts';
 import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
 import { strings } from '../strings.ts';
+import { LoopSwitch } from '../ui/LoopSwitch.tsx';
 import { rememberPlayAlong, savedPlayAlong, scoreKey } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
 import { staffColours } from './colours.ts';
@@ -39,6 +40,10 @@ const SPEED_STEP = 0.05;
 function clock(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   return `${String(Math.floor(s / 60))}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function activeLoop(prefs: PlayAlongPrefs): PlayAlongPrefs['loop'] {
+  return prefs.loopOn ? prefs.loop : null;
 }
 
 function loopRangeText(
@@ -99,12 +104,13 @@ function FallingCanvas({
     () => fitRange(perf.lowest + transpose, perf.highest + transpose, prefs.full),
     [perf, transpose, prefs.full],
   );
+  const shownLoop = activeLoop(prefs);
   const loop = useMemo(() => {
-    if (!prefs.loop) return null;
-    const from = perf.bars[prefs.loop.from];
-    const to = perf.bars[prefs.loop.to];
+    if (!shownLoop) return null;
+    const from = perf.bars[shownLoop.from];
+    const to = perf.bars[shownLoop.to];
     return from && to ? { start: from.start, end: to.end } : null;
-  }, [perf, prefs.loop]);
+  }, [perf, shownLoop]);
   const hidden = useMemo(() => new Set(prefs.hidden), [prefs.hidden]);
   const names = useMemo(
     () => (prefs.names ? { flats: transposeFifths(perf.keyFifths, transpose) < 0 } : null),
@@ -322,12 +328,16 @@ export function PlayAlong({
     player.setInclude((n) => !muted.has(n.staff));
   }, [player, perf, prefs.muted]);
 
+  const applied = activeLoop(prefs);
+  const loopFrom = applied?.from ?? null;
+  const loopTo = applied?.to ?? null;
   useEffect(() => {
     if (!player || !perf) return;
-    const from = prefs.loop ? perf.bars[prefs.loop.from] : undefined;
-    const to = prefs.loop ? perf.bars[prefs.loop.to] : undefined;
+    const from = loopFrom === null ? undefined : perf.bars[loopFrom];
+    const to = loopTo === null ? undefined : perf.bars[loopTo];
+    console.info('dewidebug play-along loop applied', { from: loopFrom, to: loopTo });
     player.setLoop(from && to ? { start: from.start, end: to.end } : null);
-  }, [player, perf, prefs.loop]);
+  }, [player, perf, loopFrom, loopTo]);
 
   useEffect(() => {
     player?.setTranspose(transpose);
@@ -367,7 +377,7 @@ export function PlayAlong({
     else practice.pause(Date.now());
   }, [practice, playing, prefs.speed]);
 
-  const loopText = loopRangeText(perf, prefs.loop);
+  const loopText = loopRangeText(perf, activeLoop(prefs));
   useEffect(() => {
     if (playing && loopText) practice.noteLoop(loopText);
   }, [practice, playing, loopText]);
@@ -389,7 +399,7 @@ export function PlayAlong({
     };
   }, [practice, submitPractice]);
 
-  const loopNow = prefs.loop;
+  const loopNow = activeLoop(prefs);
   useEffect(() => {
     if (!player) return;
     player.setPassListener((speed) => {
@@ -545,7 +555,8 @@ export function PlayAlong({
           className="btn small icon"
           aria-label="Back to the start"
           onClick={() => {
-            const from = prefs.loop ? perf.bars[prefs.loop.from] : undefined;
+            const on = activeLoop(prefs);
+            const from = on ? perf.bars[on.from] : undefined;
             seekTo(from?.start ?? 0);
           }}
         >
@@ -684,8 +695,15 @@ export function PlayAlong({
           </button>
         </span>
         <span className="playalong-field" data-testid="playalong-loop">
-          <span>Loop</span>
-          <strong>{loopLabel}</strong>
+          <LoopSwitch
+            on={prefs.loopOn}
+            disabled={!prefs.loop}
+            onChange={(loopOn) => {
+              updatePrefs((p) => ({ ...p, loopOn }));
+            }}
+            testId="playalong-loop-on"
+          />
+          <strong className={prefs.loopOn ? '' : 'muted'}>{loopLabel}</strong>
           <button
             type="button"
             className="btn small ghost"
@@ -695,6 +713,7 @@ export function PlayAlong({
               updatePrefs((p) => ({
                 ...p,
                 loop: { from: at, to: p.loop && p.loop.to >= at ? p.loop.to : at },
+                loopOn: true,
               }));
             }}
           >
@@ -709,6 +728,7 @@ export function PlayAlong({
               updatePrefs((p) => ({
                 ...p,
                 loop: { from: p.loop && p.loop.from <= at ? p.loop.from : at, to: at },
+                loopOn: true,
               }));
             }}
           >
@@ -848,7 +868,8 @@ export function PlayAlong({
           </span>
         )}
         {bits.map((b) => {
-          const active = prefs.loop?.from === b.from && prefs.loop.to === b.to;
+          const on = activeLoop(prefs);
+          const active = on?.from === b.from && on.to === b.to;
           return (
             <span key={b.id} className="playalong-part" data-testid="hard-bit">
               <button
@@ -862,7 +883,7 @@ export function PlayAlong({
                     from: b.from,
                     to: b.to,
                   });
-                  updatePrefs((p) => ({ ...p, loop: { from: b.from, to: b.to } }));
+                  updatePrefs((p) => ({ ...p, loop: { from: b.from, to: b.to }, loopOn: true }));
                   const bar = perf.bars[b.from];
                   if (bar && player && !player.playing) seekTo(bar.start);
                 }}
@@ -1021,13 +1042,14 @@ export function PlayAlong({
         bars={perf.bars}
         current={barIndex}
         loop={prefs.loop}
+        loopOff={!prefs.loopOn}
         onSeek={(index) => {
           const bar = perf.bars[index];
           if (bar) seekTo(bar.start);
         }}
         onLoop={(range) => {
           console.info('dewidebug play-along loop chosen on the bar strip', range);
-          updatePrefs((p) => ({ ...p, loop: range }));
+          updatePrefs((p) => ({ ...p, loop: range, loopOn: true }));
           const bar = perf.bars[range.from];
           if (bar && player && !player.playing) seekTo(bar.start);
         }}

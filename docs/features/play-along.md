@@ -54,7 +54,10 @@ keyboard from above, like the bird's-eye piano videos.
   clock, timings from the performance). Nothing is uploaded; it is built in the browser.
 - **Loop**: drag across bars on the **bar strip** above the notes, or use From here / To here. Click a bar
   to jump to it, Shift+click to stretch the loop. **Speed up each loop** adds 5% every time round until
-  full speed; the change happens exactly at the loop point, so no note is cut. Speed (25–200%) and the loop are remembered per file, on every device.
+  full speed; the change happens exactly at the loop point, so no note is cut. **🔁 Loop** switches the loop off
+  and on without losing it: off, the music plays straight through and the bars stay marked (paler) on the strip;
+  setting a loop (From/To here, a drag, a hard bit) switches it back on. Speed (25–200%), the loop and the switch
+  are remembered per file, on every device.
 - **Count-in and click**: 🥁 Count-in (on by default) plays one bar of clicks at the playing speed
   before the music starts (after a pickup, the next full bar's beats); Click puts a metronome click on
   every beat while it plays, accented on the first. Compound time counts dotted beats (6/8 in two). The

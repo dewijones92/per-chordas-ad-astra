@@ -19,6 +19,7 @@ export const ResumeState = z.object({
         positionSec: z.number().min(0),
         rate: z.number().min(0.25).max(2),
         loop: z.object({ startSec: z.number().min(0), endSec: z.number().min(0) }).nullable(),
+        looping: z.boolean().default(true),
         at,
       }),
     )

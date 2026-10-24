@@ -26,6 +26,7 @@ export interface LooperSpot {
   positionSec: number;
   rate: number;
   loop: { startSec: number; endSec: number } | null;
+  looping: boolean;
 }
 
 export interface TimerSpot {

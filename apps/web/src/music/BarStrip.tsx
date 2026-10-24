@@ -23,12 +23,14 @@ export function BarStrip({
   bars,
   current,
   loop,
+  loopOff = false,
   onSeek,
   onLoop,
 }: {
   bars: readonly PerfBar[];
   current: number;
   loop: BarRange | null;
+  loopOff?: boolean;
   onSeek: (index: number) => void;
   onLoop: (range: BarRange) => void;
 }) {
@@ -54,7 +56,15 @@ export function BarStrip({
       const x = i * CELL_WIDTH;
       const inLoop = shown !== null && i >= shown.from && i <= shown.to;
       ctx.fillStyle =
-        i === current ? '#6d3df2' : inLoop ? '#ffc53d' : i % 2 === 0 ? '#ffffff' : '#f6f3ff';
+        i === current
+          ? '#6d3df2'
+          : inLoop
+            ? loopOff && !drag?.moved
+              ? '#fff1c7'
+              : '#ffc53d'
+            : i % 2 === 0
+              ? '#ffffff'
+              : '#f6f3ff';
       ctx.fillRect(x, 0, CELL_WIDTH, HEIGHT);
       if (isJumpBack(bars, i)) {
         ctx.fillStyle = '#ff5d73';
@@ -73,7 +83,7 @@ export function BarStrip({
         HEIGHT - 2,
       );
     }
-  }, [bars, current, loop, drag, width]);
+  }, [bars, current, loop, loopOff, drag, width]);
 
   useEffect(() => {
     const box = scroller.current;

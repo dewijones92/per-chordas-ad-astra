@@ -86,3 +86,28 @@ test('a loop that ends at the end of the track keeps looping', async ({ page }) 
   expect(state.t).toBeGreaterThanOrEqual(1.9);
   await page.getByTestId('looper-play').click();
 });
+
+test('the looper can switch its loop off and on, keeps the loop, and remembers the switch', async ({
+  page,
+}) => {
+  await createPiece(page, 'Looper Switch', { pdf: false });
+  await page.getByTestId('upload-track').setInputFiles(toneFile('backing.wav'));
+  await expect(page.getByTestId('looper-audio')).toHaveCount(1);
+  const wave = page.getByTestId('waveform');
+  await expect(wave).toBeVisible();
+  const box = await wave.boundingBox();
+  if (!box) throw new Error('no waveform');
+  await page.mouse.move(box.x + box.width * 0.25, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2, { steps: 5 });
+  await page.mouse.up();
+  const looping = page.getByTestId('looper-looping');
+  await expect(looping).toBeChecked();
+  await looping.uncheck();
+  await page.reload();
+  await expect(page.getByTestId('looper-loop')).toContainText('→');
+  await expect(page.getByTestId('looper-looping')).not.toBeChecked();
+  await page.getByTestId('looper-looping').check();
+  await page.reload();
+  await expect(page.getByTestId('looper-looping')).toBeChecked();
+});

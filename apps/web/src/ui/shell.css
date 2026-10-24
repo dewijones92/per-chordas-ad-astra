@@ -89,3 +89,16 @@
   padding: 32px;
   font-weight: 700;
 }
+
+.loop-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 800;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.loop-switch:has(input:disabled) {
+  opacity: 0.5;
+}

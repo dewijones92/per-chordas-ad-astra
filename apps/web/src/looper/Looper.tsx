@@ -2,6 +2,7 @@ import { newId, type Loop, type TrackRef } from '@pcaa/shared';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { api } from '../api/client.ts';
 import { readResume, rememberLooper } from '../resume/resume.ts';
+import { LoopSwitch } from '../ui/LoopSwitch.tsx';
 import { useAsync } from '../ui/use-async.ts';
 import {
   computePeaks,
@@ -135,7 +136,7 @@ export function Looper({ pieceId, tracks }: Props) {
   const [duration, setDuration] = useState(0);
   const [rate, setRate] = useState(saved?.rate ?? 1);
   const [loop, setLoop] = useState<LoopWindow | null>(saved?.loop ?? null);
-  const [looping, setLooping] = useState(true);
+  const [looping, setLooping] = useState(saved?.looping ?? true);
   const loopsKey = `loops:${pieceId}:${tracks.map((t) => t.file).join(',')}`;
   const loopsState = useAsync(() => api.getLoops(pieceId), loopsKey);
   const loops = loopsState.data;
@@ -151,13 +152,13 @@ export function Looper({ pieceId, tracks }: Props) {
     if (!trackFile || !restored.current) return;
     const positionSec = Math.round((audioRef.current?.currentTime ?? position) * 10) / 10;
     lastSaved.current = performance.now();
-    rememberLooper(pieceId, { track: trackFile, positionSec, rate, loop });
+    rememberLooper(pieceId, { track: trackFile, positionSec, rate, loop, looping });
   };
   const rememberLater = useEffectEvent(remember);
 
   useEffect(() => {
     rememberLater();
-  }, [trackFile, rate, loop]);
+  }, [trackFile, rate, loop, looping]);
 
   useEffect(() => {
     const onHide = () => {
@@ -305,6 +306,7 @@ export function Looper({ pieceId, tracks }: Props) {
         onSeek={seek}
         onSelect={(a, b) => {
           setLoop(normaliseLoop(a, b, duration));
+          setLooping(true);
         }}
       />
       <div className="row">
@@ -347,6 +349,7 @@ export function Looper({ pieceId, tracks }: Props) {
             if (mark === null) setMark(position);
             else {
               setLoop(normaliseLoop(mark, position, duration));
+              setLooping(true);
               setMark(null);
             }
           }}
@@ -354,16 +357,7 @@ export function Looper({ pieceId, tracks }: Props) {
         >
           {mark === null ? 'A ◆ set start' : 'B ◆ set end'}
         </button>
-        <label className="row small-field">
-          <input
-            type="checkbox"
-            checked={looping}
-            onChange={(e) => {
-              setLooping(e.target.checked);
-            }}
-          />
-          <span>Loop</span>
-        </label>
+        <LoopSwitch on={looping} disabled={!loop} onChange={setLooping} testId="looper-looping" />
         {loop && (
           <>
             <span className="muted" data-testid="looper-loop">
@@ -417,6 +411,7 @@ export function Looper({ pieceId, tracks }: Props) {
                 className="btn small"
                 onClick={() => {
                   setLoop({ startSec: l.startSec, endSec: l.endSec });
+                  setLooping(true);
                   setRate(l.rate);
                   seek(l.startSec);
                 }}

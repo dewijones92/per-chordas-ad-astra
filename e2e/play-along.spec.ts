@@ -75,6 +75,36 @@ test('a MuseScore file plays as falling notes, transposes, loops, and remembers 
   await expect(page.getByTestId('playalong-names')).toBeChecked();
 });
 
+test('a loop switched off plays straight through, keeps its bars, and comes back on when set', async ({
+  page,
+}) => {
+  await createPiece(page, 'Loop Switch', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  const loopOn = page.getByTestId('playalong-loop-on');
+  await expect(loopOn).toBeDisabled();
+  await page.getByRole('button', { name: 'From here' }).click();
+  await page.getByRole('button', { name: 'To here' }).click();
+  await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
+  await expect(loopOn).toBeChecked();
+  await page.getByTestId('playalong-countin').uncheck();
+  await page.getByTestId('playalong-play').click();
+  await expect.poll(() => position(page), { timeout: 8000 }).toBeGreaterThan(1);
+  await page.waitForTimeout(1500);
+  expect(await position(page)).toBeLessThan(1.55);
+
+  await loopOn.uncheck();
+  await expect.poll(() => position(page), { timeout: 8000 }).toBeGreaterThan(1.7);
+  await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
+  await page.getByTestId('playalong-play').click();
+
+  await page.reload();
+  await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
+  await expect(page.getByTestId('playalong-loop-on')).not.toBeChecked();
+  await page.getByRole('button', { name: 'To here' }).click();
+  await expect(page.getByTestId('playalong-loop-on')).toBeChecked();
+});
+
 test('speed up each loop plays the looped bar faster every time round, and a hard bit keeps its best', async ({
   page,
 }) => {

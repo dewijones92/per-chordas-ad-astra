@@ -1,7 +1,7 @@
 ---
 title: Slow-down looper
 status: shipped
-updated: 2026-10-07
+updated: 2026-10-24
 ---
 
 # Slow-down looper
@@ -9,7 +9,9 @@ updated: 2026-10-07
 - Upload backing tracks (MP3, M4A, OGG, WAV, FLAC; up to 50 MB) per piece.
 - Speeds 50–125% with pitch preserved by the browser ([ADR 0007](../adr/0007-native-pitch-preserving-playback.md)).
 - A waveform (decoded once, 480 peaks): click to seek, drag to select a loop. Or press **A** then **B**
-  while playing. Loops wrap on the next animation frame.
+  while playing. Loops wrap on the next animation frame. **🔁 Loop** (the same switch as Play-along's) turns
+  looping off and on without losing the loop; it is remembered with the looper's place, and setting or
+  choosing a loop switches it back on.
 - Save loops by name with their speed into `loops.json`, **one track at a time** (`PUT /api/pieces/:id/loops/:track`),
   so a save can never wipe another track's loops; Save is disabled until the saved loops have loaded. Removing a
   track removes its loops.

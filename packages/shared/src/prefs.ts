@@ -45,6 +45,7 @@ export const PLAY_ALONG_MAX_SPEED = 2;
 export const PlayAlongPrefs = z.object({
   speed: z.number().min(PLAY_ALONG_MIN_SPEED).max(PLAY_ALONG_MAX_SPEED),
   loop: z.object({ from: z.int().min(0), to: z.int().min(0) }).nullable(),
+  loopOn: z.boolean().default(true),
   hidden: z.array(z.int().min(0)).max(64),
   muted: z.array(z.int().min(0)).max(64),
   full: z.boolean(),
@@ -61,6 +62,7 @@ export const RAMP_TARGET = 1;
 export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
   speed: 1,
   loop: null,
+  loopOn: true,
   hidden: [],
   muted: [],
   full: false,
