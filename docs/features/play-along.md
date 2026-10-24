@@ -9,8 +9,11 @@ updated: 2026-10-24
 Dewi, 24 Oct 2026: open MuseScore files in the app, transpose them, and watch the notes fall onto a
 keyboard from above, like the bird's-eye piano videos.
 
-- **Files**: `.mscz`/`.mscx` from MuseScore 2, 3 and 4, and MusicXML `.mxl`/`.musicxml`. Upload from the
-  piece's **🎹 Play-along** section; stored untouched under `pieces/<slug>/music/`.
+- **Files**: `.mscz`/`.mscx` from MuseScore 2, 3 and 4, and MusicXML `.mxl`/`.musicxml`. Start a new piece
+  straight from one (**+ New piece**, then the MuseScore / MusicXML field: the title and composer fill in
+  from the file if still empty, and the piece opens in Play-along), or add one to an existing piece from its
+  **🎹 Play-along** section. Stored untouched under `pieces/<slug>/music/`. The title and composer come from
+  the file's metadata, or from MuseScore's title frame (first line only, so "Arranged by…" is left out).
 - **Views** (top of the piece page, only when the piece has a music file): **📄 Score** (the PDF),
   **📄🎹 Both** (PDF on the left, falling notes on the right) and **🎹 Notes** (falling notes only). A piece
   with music but no PDF opens in Notes. The view is remembered per piece, on every device.

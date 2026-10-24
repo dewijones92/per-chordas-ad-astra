@@ -72,6 +72,7 @@ export type ScoreFormat = 'musescore' | 'musicxml';
 
 export interface ScoreModel {
   title: string;
+  composer: string;
   format: ScoreFormat;
   version: string;
   parts: ScorePart[];

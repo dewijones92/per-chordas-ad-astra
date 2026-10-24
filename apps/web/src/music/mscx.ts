@@ -164,17 +164,21 @@ function markerLabel(el: Element): string {
   return childText(el, 'subtype').toLowerCase();
 }
 
-function titleOf(score: Element): string {
+function creditOf(score: Element, metaNames: readonly string[], styles: readonly string[]): string {
   for (const tag of childrenNamed(score, 'metaTag')) {
     const name = tag.getAttribute('name');
-    if ((name === 'workTitle' || name === 'movementTitle') && text(tag)) return text(tag);
+    if (name !== null && metaNames.includes(name) && text(tag)) return text(tag);
   }
   for (const staff of childrenNamed(score, 'Staff')) {
     for (const box of childrenNamed(staff, 'VBox')) {
       for (const t of childrenNamed(box, 'Text')) {
         const style = childText(t, 'style').toLowerCase();
-        if (style === 'title' || style === 'title text') {
-          const value = (child(t, 'text')?.textContent ?? '').replace(/\s+/g, ' ').trim();
+        if (styles.includes(style)) {
+          const value =
+            (child(t, 'text')?.textContent ?? '')
+              .split('\n')
+              .map((line) => line.replace(/\s+/g, ' ').trim())
+              .find((line) => line !== '') ?? '';
           if (value) return value;
         }
       }
@@ -697,7 +701,8 @@ export function parseMscx(doc: Document): ScoreModel {
   if (!times.some((t) => t.tick === 0)) times.unshift({ tick: 0, n: 4, d: 4 });
 
   return {
-    title: titleOf(score),
+    title: creditOf(score, ['workTitle', 'movementTitle'], ['title', 'title text']),
+    composer: creditOf(score, ['composer'], ['composer', 'composer text']),
     format: 'musescore',
     version,
     parts,

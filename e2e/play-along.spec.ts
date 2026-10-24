@@ -110,6 +110,32 @@ test('speed up each loop plays the looped bar faster every time round, and a har
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
 });
 
+test('a new piece can start from a MuseScore file, named from it, and opens in Play-along', async ({
+  page,
+}) => {
+  await openLibrary(page);
+  await page.getByTestId('new-piece').click();
+  const dialog = page.getByTestId('new-piece-dialog');
+  await dialog.locator('input[name="music"]').setInputFiles(waltzMscz());
+  await expect(dialog.locator('input[name="title"]')).toHaveValue('Fixture Waltz');
+  await expect(dialog.locator('input[name="artist"]')).toHaveValue('Fixture Composer');
+  await dialog.getByRole('button', { name: 'Create' }).click();
+  await expect(page).toHaveURL(/\/piece\/fixture-waltz$/);
+  await expect(page.getByTestId('piece-title')).toHaveText('Fixture Waltz');
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await expect(page.getByTestId('playalong-key')).toContainText('G major');
+  await eventuallyInRemote('pieces/fixture-waltz/piece.json', (t) =>
+    t.includes('"file": "fixture-waltz.mscz"'),
+  );
+
+  await openLibrary(page);
+  await page.getByTestId('new-piece').click();
+  await dialog.locator('input[name="title"]').fill('My Own Name');
+  await dialog.locator('input[name="music"]').setInputFiles(waltzXml());
+  await expect(dialog.locator('input[name="artist"]')).toHaveValue('Fixture Composer');
+  await expect(dialog.locator('input[name="title"]')).toHaveValue('My Own Name');
+});
+
 test('hard bits that failed to load cannot be overwritten by saving a new one', async ({
   page,
 }) => {

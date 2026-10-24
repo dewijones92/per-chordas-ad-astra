@@ -24,6 +24,7 @@ export interface FixtureMeasure {
 
 export interface FixtureScore {
   title: string;
+  composer?: string;
   tempo: number;
   time: [number, number];
   fifths: number;
@@ -172,7 +173,7 @@ export function makeMscx(score: FixtureScore, version: MuseScoreVersion): string
     staves.push(`<Staff id="${String(s + 1)}">${measures.join('')}</Staff>`);
   }
   return `<?xml version="1.0" encoding="UTF-8"?>
-<museScore version="${version}"><Score><Division>480</Division><metaTag name="workTitle">${esc(score.title)}</metaTag>${parts}${staves.join('')}</Score></museScore>`;
+<museScore version="${version}"><Score><Division>480</Division><metaTag name="workTitle">${esc(score.title)}</metaTag>${score.composer ? `<metaTag name="composer">${esc(score.composer)}</metaTag>` : ''}${parts}${staves.join('')}</Score></museScore>`;
 }
 
 const DIVISIONS = 24;
@@ -275,7 +276,7 @@ export function makeMusicXml(score: FixtureScore): string {
     return `<part id="P${String(pi + 1)}">${measures.join('')}</part>`;
   });
   return `<?xml version="1.0" encoding="UTF-8"?>
-<score-partwise version="4.0"><work><work-title>${esc(score.title)}</work-title></work><part-list>${partList}</part-list>${parts.join('')}</score-partwise>`;
+<score-partwise version="4.0"><work><work-title>${esc(score.title)}</work-title></work>${score.composer ? `<identification><creator type="composer">${esc(score.composer)}</creator></identification>` : ''}<part-list>${partList}</part-list>${parts.join('')}</score-partwise>`;
 }
 
 export function zipScore(
@@ -293,6 +294,7 @@ export function zipScore(
 
 export const PIANO_WALTZ: FixtureScore = {
   title: 'Fixture Waltz',
+  composer: 'Fixture Composer',
   tempo: 120,
   time: [3, 4],
   fifths: 1,

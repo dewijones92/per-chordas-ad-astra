@@ -97,6 +97,11 @@ export function parseMusicXml(doc: Document): ScoreModel {
   const work = child(root, 'work');
   const title =
     (work ? childText(work, 'work-title') : '') || childText(root, 'movement-title') || '';
+  const identification = child(root, 'identification');
+  const composer =
+    (identification ? childrenNamed(identification, 'creator') : [])
+      .find((c) => c.getAttribute('type') === 'composer')
+      ?.textContent.trim() ?? '';
 
   const names = new Map<string, string>();
   const partList = child(root, 'part-list');
@@ -412,6 +417,7 @@ export function parseMusicXml(doc: Document): ScoreModel {
 
   return {
     title,
+    composer,
     format: 'musicxml',
     version,
     parts,

@@ -1,6 +1,7 @@
 import {
   LIBRARY_SORTS,
   LibrarySort,
+  MUSIC_ACCEPT,
   newId,
   parseTags,
   SCORE_ACCEPT,
@@ -41,9 +42,38 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
   const [artist, setArtist] = useState('');
   const [tags, setTags] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [music, setMusic] = useState<File | null>(null);
+  const [musicNote, setMusicNote] = useState<string | null>(null);
+  const [uploaded, setUploaded] = useState<{ score: File | null; music: File | null }>({
+    score: null,
+    music: null,
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
+
+  const chooseMusic = async (chosen: File | null) => {
+    setMusic(chosen);
+    setMusicNote(null);
+    if (!chosen) return;
+    const fallback = chosen.name.replace(/\.[^.]+$/, '');
+    try {
+      const { loadScore } = await import('../music/load.ts');
+      const score = loadScore(new Uint8Array(await chosen.arrayBuffer()));
+      console.info('dewidebug new piece music read', {
+        file: chosen.name,
+        title: score.title,
+        composer: score.composer,
+      });
+      setTitle((t) => (t.trim() ? t : score.title || fallback));
+      setArtist((a) => (a.trim() ? a : score.composer));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.warn('dewidebug new piece music unreadable', { file: chosen.name, error: message });
+      setTitle((t) => (t.trim() ? t : fallback));
+      setMusicNote(`This file could not be read for its title: ${message}`);
+    }
+  };
 
   useEffect(() => {
     const dialog = ref.current;
@@ -58,7 +88,19 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
     try {
       const id = createdId ?? (await api.createPiece({ title, artist, tags: parseTags(tags) })).id;
       setCreatedId(id);
-      if (file) await api.uploadScore(id, file);
+      if (file && uploaded.score !== file) {
+        await api.uploadScore(id, file);
+        setUploaded((u) => ({ ...u, score: file }));
+      }
+      if (music && uploaded.music !== music) {
+        await api.uploadMusic(id, music);
+        setUploaded((u) => ({ ...u, music }));
+      }
+      console.info('dewidebug new piece created', {
+        id,
+        score: file?.name ?? null,
+        music: music?.name ?? null,
+      });
       navigate(`/piece/${id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -126,6 +168,19 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
             }}
           />
         </label>
+        <label className="field">
+          MuseScore / MusicXML for Play-along (optional)
+          <input
+            className="input"
+            type="file"
+            accept={MUSIC_ACCEPT}
+            name="music"
+            onChange={(e) => {
+              void chooseMusic(e.target.files?.[0] ?? null);
+            }}
+          />
+        </label>
+        {musicNote && <p className="muted small-print">{musicNote}</p>}
         {error && <p className="error">{error}</p>}
         {error && createdId && (
           <p className="muted">
@@ -137,7 +192,7 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
                 navigate(`/piece/${createdId}`);
               }}
             >
-              open it without a score
+              open it as it is
             </button>
           </p>
         )}
@@ -567,7 +622,9 @@ export function LibraryPage() {
         {pieces.data?.length === 0 && (
           <div className="empty-state card">
             <h2>Nothing here yet 🎸</h2>
-            <p>Add your first piece: give it a title and drop in a PDF score.</p>
+            <p>
+              Add your first piece: give it a title and drop in a PDF score or a MuseScore file.
+            </p>
             <button
               type="button"
               className="btn primary"

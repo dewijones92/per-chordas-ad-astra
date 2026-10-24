@@ -261,6 +261,32 @@ describe('MusicXML details', () => {
   });
 });
 
+describe('title and composer', () => {
+  it('reads them from every encoding, and from a MuseScore title frame when the tags are empty', () => {
+    const sources = [
+      makeMscx(PIANO_WALTZ, '2.06'),
+      makeMscx(PIANO_WALTZ, '3.02'),
+      makeMscx(PIANO_WALTZ, '4.50'),
+      makeMusicXml(PIANO_WALTZ),
+    ];
+    for (const source of sources) {
+      const score = parseScoreText(source);
+      expect([score.title, score.composer]).toEqual(['Fixture Waltz', 'Fixture Composer']);
+    }
+    const framed = makeMscx(PIANO_WALTZ, '3.02')
+      .replace(
+        /<metaTag name="(workTitle|composer)">[^<]*<\/metaTag>/g,
+        '<metaTag name="$1"></metaTag>',
+      )
+      .replace(
+        /<Staff id="1">(?=<Measure)/,
+        '<Staff id="1"><VBox><Text><style>Title</style><text>Gran Vals</text></Text><Text><style>Composer</style><text><font size="10"/>Francisco Tárrega\nArranged by A. Friend</text></Text></VBox>',
+      );
+    const score = parseScoreText(framed);
+    expect([score.title, score.composer]).toEqual(['Gran Vals', 'Francisco Tárrega']);
+  });
+});
+
 describe('MuseScore to MusicXML for the notation view', () => {
   const versions = ['2.06', '3.02', '4.50'] as const;
   it.each(versions)('MuseScore %s round-trips to the same performance', (version) => {
