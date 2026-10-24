@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { TextEditRequest } from './AnnotationLayer.tsx';
 import type { HistoryAction } from './history.ts';
 import { SIZES, type ToolState } from './tools.ts';
+import { tips } from '../strings.ts';
 
 interface Editing extends TextEditRequest {
   text: string;
@@ -54,7 +55,7 @@ export function useTextEditing(
         autoFocus
         data-testid="text-editor"
         value={editing.text}
-        placeholder="Type a note… (Ctrl+Enter to finish)"
+        placeholder={tips.drawings.textPlaceholder}
         style={{
           left: at.left,
           top: at.top,

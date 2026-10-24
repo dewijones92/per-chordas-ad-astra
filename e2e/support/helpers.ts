@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { makePdf, makeToneWav, type FixtureMark } from '../../packages/fixtures/src/index.ts';
 import { expect, type Page } from '@playwright/test';
+import { strings } from '../../apps/web/src/strings.ts';
 
 export const remote = join(import.meta.dirname, '..', '.tmp', 'run', 'remote.git');
 
@@ -68,7 +69,7 @@ export const toneFile = (name: string, seconds = 8) => ({
 export async function openLibrary(page: Page): Promise<void> {
   await page.goto('/');
   await expect(page.locator('.boot')).toHaveCount(0);
-  await page.locator('.nav').getByRole('link', { name: 'Library', exact: true }).click();
+  await page.locator('.nav').getByRole('link', { name: strings.nav.library, exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Your library' })).toBeVisible();
 }
 

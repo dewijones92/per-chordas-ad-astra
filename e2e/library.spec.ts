@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createPiece, eventuallyInRemote, openLibrary, remoteLog } from './support/helpers.ts';
+import { strings } from '../apps/web/src/strings.ts';
 
 test('creating a piece with a PDF opens its score and commits both to GitHub', async ({ page }) => {
   const id = await createPiece(page, 'Lagrima', { tags: 'classical, learning' });
@@ -126,7 +127,7 @@ test('the Continue row and Recently opened follow the pieces you open', async ({
     .getByRole('link')
     .click();
   await expect(page.getByTestId('piece-title')).toHaveText('Opened First');
-  await page.locator('.nav').getByRole('link', { name: 'Library', exact: true }).click();
+  await page.locator('.nav').getByRole('link', { name: strings.nav.library, exact: true }).click();
   await expect(continueRow.getByTestId('continue-item').first()).toContainText('Opened First');
   await expect(continueRow.getByTestId('continue-item').first()).toContainText('just now');
 

@@ -1,4 +1,5 @@
 import type { LoadState } from './use-annotations.ts';
+import { strings } from '../strings.ts';
 
 export function DrawingStatus({
   load,
@@ -12,18 +13,18 @@ export function DrawingStatus({
   if (load === 'error')
     return (
       <p className="error loading-strip" data-testid="drawings-error">
-        Could not load the drawings, so drawing is paused to protect them: {error}{' '}
+        {strings.drawings.loadFailed} {error}{' '}
         <button type="button" className="btn small" onClick={reload}>
-          Retry
+          {strings.drawings.retry}
         </button>
       </p>
     );
   if (load === 'ready' && error)
     return (
       <p className="error loading-strip" data-testid="drawings-save-error">
-        Drawings not saved yet: {error}
+        {strings.drawings.notSaved} {error}
       </p>
     );
-  if (load === 'loading') return <p className="muted loading-strip">Loading drawings…</p>;
+  if (load === 'loading') return <p className="muted loading-strip">{strings.drawings.loading}</p>;
   return null;
 }

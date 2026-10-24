@@ -14,6 +14,7 @@ import {
 import { SyncPill } from './sync/SyncPill.tsx';
 import { ToolsPage } from './ui/ToolsPage.tsx';
 import './ui/shell.css';
+import { names, strings, tips } from './strings.ts';
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   const [active] = useRoute(href === '/' ? '/' : `${href}/*?`);
@@ -32,10 +33,10 @@ function MiniMetronome() {
       type="button"
       className="btn small coral mini-metro"
       onClick={m.toggle}
-      title="Stop metronome"
+      title={tips.nav.stopMetronome}
     >
       <span className={`mini-beat${m.tick?.beat === 0 ? ' accent' : ''}`} key={m.played} />
-      {m.tick?.bpm ?? m.settings.bpm} bpm ■
+      {strings.nav.metronomeRunning(m.tick?.bpm ?? m.settings.bpm)}
     </button>
   );
 }
@@ -81,7 +82,7 @@ export function App() {
     <MetronomeProvider>
       <div className="shell">
         <header className="topbar">
-          <Link href="/" className="brand" aria-label="Per chordas ad astra: library">
+          <Link href="/" className="brand" aria-label={tips.nav.brand}>
             <svg viewBox="0 0 64 64" width="34" height="34" aria-hidden="true">
               <rect width="64" height="64" rx="14" fill="#6d3df2" />
               <path
@@ -93,20 +94,20 @@ export function App() {
               />
             </svg>
             <span>
-              per chordas <em>ad astra</em>
+              {names.app.first} <em>{names.app.second}</em>
             </span>
           </Link>
           <nav className="nav">
-            <NavLink href="/">Library</NavLink>
-            <NavLink href="/log">Practice log</NavLink>
-            <NavLink href="/tools">Metronome &amp; tuner</NavLink>
+            <NavLink href="/">{strings.nav.library}</NavLink>
+            <NavLink href="/log">{strings.nav.log}</NavLink>
+            <NavLink href="/tools">{strings.nav.tools}</NavLink>
           </nav>
           <span className="spacer" />
           <MiniMetronome />
           <SyncPill />
         </header>
         <main className="content">
-          {!ready && <p className="muted boot">Finding your place…</p>}
+          {!ready && <p className="muted boot">{strings.nav.finding}</p>}
           {ready && <ResumeTracker />}
           {ready && (
             <Switch>
@@ -124,8 +125,8 @@ export function App() {
               </Route>
               <Route>
                 <div className="piece-missing">
-                  <h1>Lost in space 🌌</h1>
-                  <Link href="/">Back to the library</Link>
+                  <h1>{strings.nav.lost}</h1>
+                  <Link href="/">{strings.nav.backToLibrary}</Link>
                 </div>
               </Route>
             </Switch>

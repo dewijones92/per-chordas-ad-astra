@@ -17,7 +17,7 @@ import { isTypingTarget } from '../annotate/tools.ts';
 import { useAnnotations } from '../annotate/use-annotations.ts';
 import { claimDrawing, useDrawing } from '../annotate/use-drawing.ts';
 import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
-import { strings } from '../strings.ts';
+import { strings, tips } from '../strings.ts';
 import { LoopSwitch } from '../ui/LoopSwitch.tsx';
 import { rememberPlayAlong, savedPlayAlong, scoreKey } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
@@ -815,7 +815,7 @@ export function PlayAlong({
           className="btn small ghost"
           data-testid="notation-draw"
           aria-pressed={drawMode}
-          title={strings.notation.drawTitle}
+          title={tips.notation.draw}
           onClick={() => {
             if (drawMode) {
               console.info('dewidebug notation draw mode off');

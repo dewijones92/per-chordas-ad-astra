@@ -1,4 +1,5 @@
 import { stepZoom } from './zoom.ts';
+import { tips } from '../strings.ts';
 
 export function ZoomControl({
   zoom,
@@ -14,7 +15,7 @@ export function ZoomControl({
       <button
         type="button"
         className="btn small icon"
-        aria-label="Zoom out"
+        aria-label={tips.zoom.out}
         onClick={() => {
           onZoom(stepZoom(zoom, -1));
         }}
@@ -27,7 +28,7 @@ export function ZoomControl({
       <button
         type="button"
         className="btn small icon"
-        aria-label="Zoom in"
+        aria-label={tips.zoom.in}
         onClick={() => {
           onZoom(stepZoom(zoom, 1));
         }}

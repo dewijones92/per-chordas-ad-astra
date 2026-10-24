@@ -1,4 +1,5 @@
 import type { STAMP_GLYPHS } from '@pcaa/shared';
+import { tips } from '../strings.ts';
 
 export type Tool =
   | 'select'
@@ -51,16 +52,16 @@ export const TOOL_KEYS: Record<string, Tool> = {
 };
 
 export const TOOL_LABELS: Record<Tool, { icon: string; label: string; key: string }> = {
-  select: { icon: '↖', label: 'Select & move', key: 'V' },
-  pen: { icon: '✎', label: 'Pen', key: 'P' },
-  highlighter: { icon: '▍', label: 'Highlighter', key: 'H' },
-  eraser: { icon: '⌫', label: 'Eraser', key: 'E' },
-  text: { icon: 'T', label: 'Text', key: 'T' },
-  line: { icon: '╱', label: 'Line', key: 'L' },
-  arrow: { icon: '➚', label: 'Arrow', key: 'A' },
-  rect: { icon: '▭', label: 'Box', key: 'R' },
-  ellipse: { icon: '◯', label: 'Circle', key: 'O' },
-  stamp: { icon: '★', label: 'Stamp', key: 'S' },
+  select: { icon: '↖', label: tips.tools.select, key: 'V' },
+  pen: { icon: '✎', label: tips.tools.pen, key: 'P' },
+  highlighter: { icon: '▍', label: tips.tools.highlighter, key: 'H' },
+  eraser: { icon: '⌫', label: tips.tools.eraser, key: 'E' },
+  text: { icon: 'T', label: tips.tools.text, key: 'T' },
+  line: { icon: '╱', label: tips.tools.line, key: 'L' },
+  arrow: { icon: '➚', label: tips.tools.arrow, key: 'A' },
+  rect: { icon: '▭', label: tips.tools.rect, key: 'R' },
+  ellipse: { icon: '◯', label: tips.tools.ellipse, key: 'O' },
+  stamp: { icon: '★', label: tips.tools.stamp, key: 'S' },
 };
 
 export const STAMP_LABELS: Record<Glyph, string> = {

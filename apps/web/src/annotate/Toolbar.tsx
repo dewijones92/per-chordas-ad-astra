@@ -9,6 +9,7 @@ import {
   type Tool,
   type ToolState,
 } from './tools.ts';
+import { strings, tips } from '../strings.ts';
 
 interface Props {
   tools: ToolState;
@@ -44,7 +45,7 @@ export function Toolbar(props: Props) {
 
   return (
     <div className="toolbar-wrap">
-      <div className="toolbar" role="toolbar" aria-label="Annotation tools">
+      <div className="toolbar" role="toolbar" aria-label={tips.drawings.toolbar}>
         <div className="tool-group">
           {TOOLS.map((tool) => (
             <button
@@ -53,7 +54,7 @@ export function Toolbar(props: Props) {
               className="btn small icon tool-btn"
               aria-pressed={tools.tool === tool}
               aria-label={TOOL_LABELS[tool].label}
-              title={`${TOOL_LABELS[tool].label} (${TOOL_LABELS[tool].key})`}
+              title={tips.drawings.tool(TOOL_LABELS[tool].label, TOOL_LABELS[tool].key)}
               data-tool={tool}
               onClick={() => {
                 onChange({ tool });
@@ -69,7 +70,7 @@ export function Toolbar(props: Props) {
               type="button"
               className="swatch"
               style={{ background: colour }}
-              aria-label={`Colour ${colour}`}
+              aria-label={tips.drawings.colour(colour)}
               aria-pressed={activeColour === colour}
               onClick={() => {
                 onChange(tools.tool === 'highlighter' ? { highlightColour: colour } : { colour });
@@ -83,7 +84,7 @@ export function Toolbar(props: Props) {
               type="button"
               className="btn small icon"
               aria-pressed={tools.size === size}
-              aria-label={`Size ${size}`}
+              aria-label={tips.drawings.size(size)}
               onClick={() => {
                 onChange({ size });
               }}
@@ -98,27 +99,27 @@ export function Toolbar(props: Props) {
             className="btn small"
             disabled={!props.canUndo}
             onClick={props.onUndo}
-            title="Undo (Ctrl+Z)"
+            title={tips.drawings.undo}
           >
-            ↶ Undo
+            {strings.drawings.undo}
           </button>
           <button
             type="button"
             className="btn small"
             disabled={!props.canRedo}
             onClick={props.onRedo}
-            title="Redo (Ctrl+Shift+Z)"
+            title={tips.drawings.redo}
           >
-            ↷ Redo
+            {strings.drawings.redo}
           </button>
           {props.onDeleteSelected && (
             <button
               type="button"
               className="btn small coral"
               onClick={props.onDeleteSelected}
-              title="Delete (Del)"
+              title={tips.drawings.delete}
             >
-              Delete
+              {strings.drawings.delete}
             </button>
           )}
           <span className="divider" />
@@ -127,7 +128,7 @@ export function Toolbar(props: Props) {
         </div>
       </div>
       {tools.tool === 'stamp' && (
-        <div className="toolbar stamp-picker" aria-label="Stamps">
+        <div className="toolbar stamp-picker" aria-label={tips.drawings.stamps}>
           {STAMP_GLYPHS.map((glyph) => (
             <button
               key={glyph}

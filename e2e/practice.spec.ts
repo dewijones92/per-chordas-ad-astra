@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createPiece, eventuallyInRemote, toneFile } from './support/helpers.ts';
+import { strings } from '../apps/web/src/strings.ts';
 
 test('a timed practice session is logged with its tempo', async ({ page }) => {
   await createPiece(page, 'Scales', { pdf: false });
@@ -60,7 +61,7 @@ test('a note typed just before leaving the piece is still saved', async ({ page 
   await createPiece(page, 'Quick Note', { pdf: false });
   await page.getByText('📝 Notes').click();
   await page.getByTestId('piece-notes').fill('use the thumb on bar 12');
-  await page.locator('.nav').getByRole('link', { name: 'Library', exact: true }).click();
+  await page.locator('.nav').getByRole('link', { name: strings.nav.library, exact: true }).click();
   await eventuallyInRemote('pieces/quick-note/piece.json', (t) =>
     t.includes('use the thumb on bar 12'),
   );

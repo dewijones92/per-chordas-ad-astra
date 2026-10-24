@@ -1,4 +1,5 @@
 import type { BpmPoint } from './stats.ts';
+import { strings, tips } from '../strings.ts';
 
 const W = 320;
 const H = 140;
@@ -12,7 +13,7 @@ export function BpmChart({
   target: number | null;
 }) {
   if (points.length === 0) {
-    return <p className="muted">Log a session with a tempo to see your progress here.</p>;
+    return <p className="muted">{strings.practiceChart.empty}</p>;
   }
   const values = points.map((p) => p.bpm).concat(target ?? []);
   const min = Math.max(0, Math.min(...values) - 10);
@@ -33,7 +34,7 @@ export function BpmChart({
       viewBox={`0 0 ${String(W)} ${String(H)}`}
       className="bpm-chart"
       role="img"
-      aria-label={`Best tempo rose from ${String(first?.bpm)} to ${String(last?.bpm)} bpm`}
+      aria-label={tips.practiceChart.summary(first?.bpm ?? 0, last?.bpm ?? 0)}
     >
       {[min, Math.round((min + max) / 2), max].map((v) => (
         <g key={v}>
@@ -69,7 +70,7 @@ export function BpmChart({
             fontWeight="800"
             fill="var(--coral)"
           >
-            target {target}
+            {strings.practiceChart.target(target)}
           </text>
         </g>
       )}
@@ -84,7 +85,7 @@ export function BpmChart({
           stroke="var(--ink)"
           strokeWidth="2"
         >
-          <title>{`${p.day}: ${String(p.bpm)} bpm`}</title>
+          <title>{tips.practiceChart.point(p.day, p.bpm)}</title>
         </circle>
       ))}
       {first && (

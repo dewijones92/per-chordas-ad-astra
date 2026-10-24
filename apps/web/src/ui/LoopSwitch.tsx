@@ -1,4 +1,4 @@
-import { strings } from '../strings.ts';
+import { strings, tips } from '../strings.ts';
 
 export function LoopSwitch({
   on,
@@ -12,7 +12,7 @@ export function LoopSwitch({
   testId: string;
 }) {
   return (
-    <label className="loop-switch" title={strings.loop.switchTitle}>
+    <label className="loop-switch" title={tips.loop.switch}>
       <input
         type="checkbox"
         checked={on}

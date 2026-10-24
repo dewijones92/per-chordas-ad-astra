@@ -15,6 +15,7 @@ import { openPdf, type PDFPageProxy } from './pdf.ts';
 import { PageView } from './PageView.tsx';
 import { turnTarget } from './turn.ts';
 import './score.css';
+import { strings } from '../strings.ts';
 
 export type { ViewMode };
 
@@ -226,7 +227,12 @@ export function ScoreViewer(props: Props) {
     };
   }, [ready]);
 
-  if (error) return <div className="score-message error">Could not open this PDF: {error}</div>;
+  if (error)
+    return (
+      <div className="score-message error">
+        {strings.score.openFailed} {error}
+      </div>
+    );
 
   return (
     <div
@@ -235,7 +241,7 @@ export function ScoreViewer(props: Props) {
       data-testid="score-scroller"
       data-mode={mode}
     >
-      {!pages && <div className="score-message">Opening score…</div>}
+      {!pages && <div className="score-message">{strings.score.opening}</div>}
       {pages?.map((page, index) => {
         const number = index + 1;
         const base = page.getViewport({ scale: 1 });

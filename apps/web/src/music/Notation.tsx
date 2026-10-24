@@ -5,7 +5,7 @@ import { useTextEditing } from '../annotate/TextEditor.tsx';
 import type { ToolState } from '../annotate/tools.ts';
 import { useWheelZoom } from '../score/use-wheel-zoom.ts';
 import { ZoomControl } from '../score/ZoomControl.tsx';
-import { strings } from '../strings.ts';
+import { strings, tips } from '../strings.ts';
 import { intervalFor } from './keys.ts';
 import { TPQ, type ScoreMeasure } from './model.ts';
 import { soundingIds, type NotationRequest, type NotationResult } from './notation-protocol.ts';
@@ -250,7 +250,7 @@ export function Notation({
   if (current?.error) {
     return (
       <div className="notation notation-message" data-testid="notation-error">
-        Could not draw the notation: {current.error}
+        {strings.notation.drawFailed} {current.error}
       </div>
     );
   }
@@ -258,7 +258,7 @@ export function Notation({
   return (
     <div className={`notation-frame${drawing ? ' is-drawing' : ''}`}>
       {!drawing && (
-        <span className="notation-zoom" title={strings.notation.zoom}>
+        <span className="notation-zoom" title={tips.notation.zoom}>
           <ZoomControl zoom={zoom} onZoom={onZoom} testId="notation-zoom-level" />
         </span>
       )}
@@ -274,7 +274,7 @@ export function Notation({
         data-testid="notation"
         data-scale={shownScale}
       >
-        {!current && <p className="muted notation-message">Drawing the notation…</p>}
+        {!current && <p className="muted notation-message">{strings.notation.drawing}</p>}
         {current && (
           <div className="notation-canvas">
             <div

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { makeMscx, makeMusicXml, PIANO_WALTZ, zipScore } from '../packages/fixtures/src/index.ts';
 import { expect, test, type Page } from '@playwright/test';
 import { createPiece, eventuallyInRemote, openLibrary, remoteLog } from './support/helpers.ts';
+import { strings } from '../apps/web/src/strings.ts';
 
 const waltzMscz = () => ({
   name: 'Fixture Waltz.mscz',
@@ -380,7 +381,7 @@ test('a minute of play-along is logged to the practice log when you leave the pi
   await page.clock.fastForward('01:05');
   await page.getByTestId('playalong-play').click();
   await expect(page.getByTestId('playalong-play')).toHaveAttribute('aria-pressed', 'false');
-  await page.locator('.nav').getByRole('link', { name: 'Practice log', exact: true }).click();
+  await page.locator('.nav').getByRole('link', { name: strings.nav.log, exact: true }).click();
   const month = past.toISOString().slice(0, 7).replace('-', '/');
   const log = await eventuallyInRemote(`log/${month}.jsonl`, (t) =>
     t.includes(`"pieceId":"${id}"`),

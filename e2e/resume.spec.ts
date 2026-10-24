@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createPiece, toneFile } from './support/helpers.ts';
+import { strings } from '../apps/web/src/strings.ts';
 
 test('reopening the app returns to the piece, page, timer and looper speed you left', async ({
   page,
@@ -103,7 +104,7 @@ test('a stale tab opening a piece takes the newer position instead of overwritin
   const stale = await laptop.newPage();
   await stale.goto(`/piece/${id}`);
   await expect(stale.locator('.page')).toHaveCount(3);
-  await stale.locator('.nav').getByRole('link', { name: 'Library', exact: true }).click();
+  await stale.locator('.nav').getByRole('link', { name: strings.nav.library, exact: true }).click();
 
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');

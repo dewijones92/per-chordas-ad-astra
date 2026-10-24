@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PerfBar } from './performance.ts';
+import { tips } from '../strings.ts';
 
 export const CELL_WIDTH = 22;
 const HEIGHT = 30;
@@ -110,7 +111,7 @@ export function BarStrip({
         className="barstrip-canvas"
         data-testid="playalong-bars"
         data-cell-width={CELL_WIDTH}
-        aria-label="Bars: click to jump, drag across bars to loop them"
+        aria-label={tips.playAlong.barStrip}
         style={{ width: `${String(width)}px`, height: `${String(HEIGHT)}px` }}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);

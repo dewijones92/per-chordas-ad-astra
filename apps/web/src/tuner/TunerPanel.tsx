@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { hzToNote, nearestString, noteLabel, TUNINGS } from './notes.ts';
 import { useTuner } from './use-tuner.ts';
 import './tuner.css';
+import { strings, tips } from '../strings.ts';
 
 const IN_TUNE_CENTS = 5;
 
@@ -62,7 +63,7 @@ export function TunerPanel() {
   const inTune = reading !== null && Math.abs(reading.cents) <= IN_TUNE_CENTS;
 
   return (
-    <section className="tuner" aria-label="Tuner">
+    <section className="tuner" aria-label={tips.tuner.panel}>
       <div className="row">
         <button
           type="button"
@@ -70,7 +71,7 @@ export function TunerPanel() {
           onClick={tuner.listening ? tuner.stop : tuner.start}
           data-testid="tuner-toggle"
         >
-          {tuner.listening ? '■ Stop listening' : '🎤 Start tuner'}
+          {tuner.listening ? strings.tuner.stop : strings.tuner.start}
         </button>
         <div className="spacer" />
         <label className="row small-field">
@@ -108,14 +109,14 @@ export function TunerPanel() {
         </div>
         <div className="cents">
           {reading
-            ? `${reading.cents > 0 ? '+' : ''}${reading.cents.toFixed(1)} cents · ${tuner.hz?.toFixed(1) ?? ''} Hz`
+            ? strings.tuner.reading(reading.cents, tuner.hz?.toFixed(1) ?? '')
             : tuner.listening
-              ? 'Play a string'
-              : 'Not listening'}
+              ? strings.tuner.playString
+              : strings.tuner.notListening}
         </div>
       </div>
       <label className="field">
-        Tuning
+        {strings.tuner.tuning}
         <select
           className="input"
           value={tuningId}
@@ -130,7 +131,7 @@ export function TunerPanel() {
           ))}
         </select>
       </label>
-      <div className="strings" aria-label="Strings">
+      <div className="strings" aria-label={tips.tuner.strings}>
         {tuning?.strings.map((midi, i) => (
           <span
             key={midi * 10 + i}
