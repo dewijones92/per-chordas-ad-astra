@@ -41,6 +41,13 @@ reversal).
   maths, annotation history and geometry, page turning, sync engine against a real bare repo), a
   Playwright e2e for **every flow that matters**, run in CI. A bug fix lands with a test seen to fail
   first. Where several parts answer one question, test the answer end to end too.
+- **Every UI string lives in `apps/web/src/strings.ts` and starts with an emoji** (Dewi, 24 Oct 2026, like Totum's
+  `strings.xml` and its ADR 43, but wider). All visible text, meaning buttons, labels, headings, menu items, messages,
+  empty states and errors, comes from that one typed file, never typed inline in a component. Each starts with an emoji
+  from one vocabulary (✅ done, ❌ failed, ⚠️ caution, ⏳ waiting, 📭 empty, plus a fitting one per feature). Tooltips,
+  placeholders and screen-reader labels stay plain, and so does the user's own data (titles, notes). A lint rule
+  rejects inline JSX text, a unit test rejects a string without a leading emoji, and e2e tests read labels from
+  the same file. Until the move lands (backlog), new strings go into `strings.ts` already.
 - **Maximum compile-time safety.** `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
   typescript-eslint `strictTypeChecked`, branded `Slug`/`FileName`, discriminated unions with
   exhaustive switches.
