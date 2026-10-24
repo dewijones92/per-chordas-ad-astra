@@ -118,6 +118,7 @@ const note = (pitch: number, start: number, end: number, staff = 0): PerfNote =>
   staff,
   velocity: 80,
   bar: 0,
+  grace: false,
 });
 
 describe('Transport', () => {

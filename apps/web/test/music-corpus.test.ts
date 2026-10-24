@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadScore, parseScoreText, unpackScore } from '../src/music/load.ts';
 import { unroll } from '../src/music/unroll.ts';
+import { buildPerformance } from '../src/music/performance.ts';
+import { toMusicXml } from '../src/music/to-musicxml.ts';
 
 const corpus = process.env['MUSIC_CORPUS'];
 const KNOWN_DIFFERENCES = new Set(['repeat52.mscx', 'repeat53.mscx']);
@@ -47,6 +49,30 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
       return [];
     }
   })();
+  it.each(files.filter((f) => /\.msc[zx]$/.test(f)))(
+    '%s converts to MusicXML that plays the same',
+    (name) => {
+      const score = loadScore(readFileSync(join(dir, 'dl', name)));
+      if (!score.notation) throw new Error('no notation');
+      const back = buildPerformance(parseScoreText(toMusicXml(score, score.notation)));
+      const direct = buildPerformance(score);
+      const shape = (p: typeof direct) => ({
+        bars: p.bars.map((b) => b.number).join(','),
+        notes: p.notes
+          .filter((n) => !n.grace)
+          .map(
+            (n) =>
+              `${String(n.staff)}:${String(n.pitch)}@${n.start.toFixed(3)}-${n.end.toFixed(3)}`,
+          ),
+        graces: p.notes
+          .filter((n) => n.grace)
+          .map((n) => `${String(n.staff)}:${String(n.pitch)}`)
+          .sort(),
+      });
+      expect(shape(back)).toEqual(shape(direct));
+    },
+  );
+
   it.each(files)('%s parses into notes', (name) => {
     const bytes = readFileSync(join(dir, 'dl', name));
     const text = unpackScore(bytes);

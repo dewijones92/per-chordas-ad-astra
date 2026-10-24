@@ -81,6 +81,7 @@ export interface ScoreModel {
   tempos: TempoMark[];
   dynamics: DynamicMark[];
   keys: KeyMark[];
+  notation: Notation | null;
   warnings: string[];
 }
 
@@ -139,5 +140,81 @@ export function uniqueStaffNames(staves: ScoreStaff[]): void {
     const n = (seen.get(s.name) ?? 0) + 1;
     seen.set(s.name, n);
     s.name = `${s.name} ${String(n)}`;
+  }
+}
+
+export interface ClefMark {
+  staff: number;
+  tick: number;
+  clef: string;
+}
+
+export interface TimeMark {
+  tick: number;
+  n: number;
+  d: number;
+}
+
+export interface EventNote {
+  pitch: number;
+  tpc: number | null;
+  tieForward: boolean;
+  silent: boolean;
+}
+
+export type BeamMode = 'auto' | 'begin' | 'mid' | 'no' | 'begin32' | 'begin64';
+
+export interface EventTuplet {
+  normal: number;
+  actual: number;
+  start: boolean;
+  stop: boolean;
+}
+
+export interface NotationEvent {
+  staff: number;
+  voice: number;
+  measure: number;
+  tick: number;
+  ticks: number;
+  type: string;
+  dots: number;
+  rest: boolean;
+  measureRest: boolean;
+  grace: 'before' | 'after' | null;
+  tuplet: EventTuplet | null;
+  tupletKey: string | null;
+  beam: BeamMode;
+  slurStart: boolean;
+  slurStop: boolean;
+  notes: EventNote[];
+}
+
+export interface Notation {
+  events: NotationEvent[];
+  clefs: ClefMark[];
+  times: TimeMark[];
+}
+
+const BEAM_MODES: readonly BeamMode[] = ['begin', 'mid', 'no', 'begin32', 'begin64'];
+
+export function beamMode(raw: string): BeamMode {
+  return BEAM_MODES.find((m) => m === raw) ?? 'auto';
+}
+
+export function markTupletEnds(events: NotationEvent[]): void {
+  const groups = new Map<string, NotationEvent[]>();
+  for (const e of events) {
+    if (!e.tupletKey || !e.tuplet) continue;
+    const list = groups.get(e.tupletKey) ?? [];
+    list.push(e);
+    groups.set(e.tupletKey, list);
+  }
+  for (const list of groups.values()) {
+    const sorted = list.filter((e) => !e.grace).sort((a, b) => a.tick - b.tick);
+    const first = sorted[0];
+    const last = sorted.at(-1);
+    if (first?.tuplet) first.tuplet.start = true;
+    if (last?.tuplet) last.tuplet.stop = true;
   }
 }

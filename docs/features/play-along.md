@@ -24,6 +24,8 @@ keyboard from above, like the bird's-eye piano videos.
   hand while the other plays.
 - **Sound**: a sampled grand piano (Salamander, CC BY 3.0, credited in the section), 30 notes in minor
   thirds at three loudnesses, about 3 MB, loaded on the first Play. Dynamics in the file set the loudness.
+- **Local time signatures** (one staff showing, say, 18/16 stretched over another's 3/4, as in Goldberg
+  variation 26) play at the real bar length, with the stretched staff's notes scaled.
 - **Play order**: repeats, first and second endings, D.C., D.S., al Fine, al Coda and section breaks are
   played as MuseScore plays them (checked against MuseScore's own repeat tests, ADR 0014).
 - **Transpose**: − / + by semitone (±24). Shows the written key and the key it now sounds in, minor where

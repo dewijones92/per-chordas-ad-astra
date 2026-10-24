@@ -2,6 +2,7 @@ import { makeMscx, makeMusicXml, PIANO_WALTZ, zipScore, type FixtureScore } from
 import { describe, expect, it } from 'vitest';
 import { loadScore, parseScoreText, unpackScore } from '../src/music/load.ts';
 import { buildPerformance } from '../src/music/performance.ts';
+import { spell, toMusicXml } from '../src/music/to-musicxml.ts';
 
 const enc = (s: string) => new TextEncoder().encode(s);
 
@@ -256,5 +257,87 @@ describe('MusicXML details', () => {
 
   it('rejects a partwise file with no parts', () => {
     expect(() => parseScoreText('<score-partwise/>')).toThrow(/no parts/);
+  });
+});
+
+describe('MuseScore to MusicXML for the notation view', () => {
+  const versions = ['2.06', '3.02', '4.50'] as const;
+  it.each(versions)('MuseScore %s round-trips to the same performance', (version) => {
+    const score = parseScoreText(makeMscx(PIANO_WALTZ, version));
+    if (!score.notation) throw new Error('no notation');
+    const xml = toMusicXml(score, score.notation);
+    const back = buildPerformance(parseScoreText(xml));
+    const direct = buildPerformance(score);
+    const shape = (p: typeof direct) => ({
+      bars: p.bars.map((b) => b.number),
+      key: p.keyFifths,
+      notes: p.notes.map((n) => [n.staff, n.pitch, round(n.start), round(n.end)]),
+    });
+    expect(shape(back)).toEqual(shape(direct));
+    expect(xml).toContain('<beam number="1">begin</beam>');
+    expect(xml).toContain('<tuplet type="start"/>');
+    expect(xml).toContain('<grace slash="yes"/>');
+    expect(xml).toContain('<tied type="start"/>');
+    expect(xml).toContain('<ending number="1" type="start"/>');
+    expect(xml).toContain('<repeat direction="backward" times="2"/>');
+  });
+
+  it('spells notes from MuseScore pitch classes, and sharps when there are none', () => {
+    expect(spell(70, 12)).toEqual({ step: 'B', alter: -1, octave: 4 });
+    expect(spell(70, 24)).toEqual({ step: 'A', alter: 1, octave: 4 });
+    expect(spell(59, 7)).toEqual({ step: 'C', alter: -1, octave: 4 });
+    expect(spell(60, 26)).toEqual({ step: 'B', alter: 1, octave: 3 });
+    expect(spell(61, null)).toEqual({ step: 'C', alter: 1, octave: 4 });
+  });
+});
+
+describe('local time signatures', () => {
+  it('keeps the bar as long as the other staff and scales the stretched staff’s notes', () => {
+    const xml = makeMscx(
+      {
+        title: 'Local',
+        tempo: 60,
+        time: [3, 4],
+        fifths: 0,
+        parts: [{ name: 'Harpsichord', staves: 2 }],
+        measures: [
+          {
+            staves: [
+              [
+                { pitches: [72], dur: 'half', dots: 1 },
+                { pitches: [74], dur: 'quarter', dots: 1 },
+              ],
+              [{ pitches: [48], dur: 'half', dots: 1 }],
+            ],
+          },
+          {
+            staves: [
+              [
+                { pitches: [76], dur: 'half', dots: 1 },
+                { pitches: [77], dur: 'quarter', dots: 1 },
+              ],
+              [{ pitches: [50], dur: 'half', dots: 1 }],
+            ],
+          },
+        ],
+      },
+      '3.02',
+    ).replace(
+      '<TimeSig><sigN>3</sigN><sigD>4</sigD></TimeSig>',
+      '<TimeSig><sigN>9</sigN><sigD>8</sigD><stretchN>3</stretchN><stretchD>2</stretchD></TimeSig>',
+    );
+    const perf = buildPerformance(parseScoreText(xml));
+    expect(perf.bars.map((b) => [b.start, b.end])).toEqual([
+      [0, 3],
+      [3, 6],
+    ]);
+    expect(
+      perf.notes.filter((n) => n.staff === 0).map((n) => [n.pitch, round(n.start), round(n.end)]),
+    ).toEqual([
+      [72, 0, 2],
+      [74, 2, 3],
+      [76, 3, 5],
+      [77, 5, 6],
+    ]);
   });
 });

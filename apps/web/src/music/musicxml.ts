@@ -150,10 +150,10 @@ export function parseMusicXml(doc: Document): ScoreModel {
       let lastStart = 0;
       const toTicks = (d: number) => (d / divisions) * TPQ;
 
-      const readSound = (sound: Element) => {
+      const readSound = (sound: Element, offset = 0) => {
         const tempo = Number(sound.getAttribute('tempo'));
         if (Number.isFinite(tempo) && tempo > 0) {
-          pendingTempos.push({ measure: mIndex, rel: cursor, value: tempo });
+          pendingTempos.push({ measure: mIndex, rel: cursor + offset, value: tempo });
         }
         const dyn = Number(sound.getAttribute('dynamics'));
         if (sound.hasAttribute('dynamics') && Number.isFinite(dyn)) {
@@ -217,7 +217,8 @@ export function parseMusicXml(doc: Document): ScoreModel {
             const tieForward = childrenNamed(el, 'tie').some(
               (t) => t.getAttribute('type') === 'start',
             );
-            if (pitchEl && child(el, 'cue') === null) {
+            const silent = el.getAttribute('dynamics') === '0';
+            if (pitchEl && child(el, 'cue') === null && !silent) {
               seen.pitched = true;
               const step = STEP[childText(pitchEl, 'step').toUpperCase()] ?? 0;
               const octave = childNumber(pitchEl, 'octave') ?? 4;
@@ -265,7 +266,8 @@ export function parseMusicXml(doc: Document): ScoreModel {
             break;
           case 'direction': {
             const sounds = childrenNamed(el, 'sound');
-            sounds.forEach(readSound);
+            const offset = toTicks(childNumber(el, 'offset') ?? 0);
+            for (const sound of sounds) readSound(sound, offset);
             if (partIndex === 0 && sounds.length === 0) {
               for (const w of Array.from(el.getElementsByTagName('words'))) {
                 const meaning = wordsJump(text(w));
@@ -315,6 +317,8 @@ export function parseMusicXml(doc: Document): ScoreModel {
   facts.forEach((f, index) => {
     const ticks = f.implicit && f.extent > 0 ? f.extent : Math.max(f.nominal, f.extent);
     if (!f.implicit) number += 1;
+    const written = /^\d+$/.test(f.numberAttr) ? Number(f.numberAttr) : 0;
+    if (written >= 1) number = written;
     measures.push({
       index,
       number: Math.max(1, number),
@@ -401,6 +405,7 @@ export function parseMusicXml(doc: Document): ScoreModel {
     tempos: firstPerTick(tempos),
     dynamics: dynamics.sort((a, b) => a.tick - b.tick),
     keys: firstPerTick(keys),
+    notation: null,
     warnings,
   };
 }

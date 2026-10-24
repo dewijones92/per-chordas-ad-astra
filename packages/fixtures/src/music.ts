@@ -40,6 +40,7 @@ const QUARTERS: Record<FixtureDuration, number> = {
   '16th': 0.25,
 };
 
+const SHARP_TPC = [14, 21, 16, 23, 18, 13, 20, 15, 22, 17, 24, 19] as const;
 const STEPS = ['C', 'C', 'D', 'D', 'E', 'F', 'F', 'G', 'G', 'A', 'A', 'B'] as const;
 const ALTERS = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0] as const;
 
@@ -148,7 +149,7 @@ export function makeMscx(score: FixtureScore, version: MuseScoreVersion): string
                 ? `<Tie id="${String((spannerId += 1))}"/>`
                 : `<Spanner type="Tie"><Tie/><next><location><fractions>1/4</fractions></location></next></Spanner>`
               : '';
-            return `<Note>${tie}<pitch>${String(p)}</pitch><tpc>14</tpc></Note>`;
+            return `<Note>${tie}<pitch>${String(p)}</pitch><tpc>${String(SHARP_TPC[((p % 12) + 12) % 12] ?? 14)}</tpc></Note>`;
           })
           .join('');
         body.push(

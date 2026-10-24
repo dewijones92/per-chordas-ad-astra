@@ -6,7 +6,12 @@ import {
   TPQ,
   uniqueStaffNames,
   velocityForDynamic,
+  beamMode,
+  markTupletEnds,
+  type ClefMark,
   type DynamicMark,
+  type NotationEvent,
+  type TimeMark,
   type Jump,
   type KeyMark,
   type ScoreMeasure,
@@ -50,6 +55,7 @@ interface StaffDef {
   id: number;
   part: number;
   skip: boolean;
+  clef: string;
 }
 
 interface PendingRepeat {
@@ -74,7 +80,7 @@ function chordTicks(el: Element, measureTicks: number, scale: number): number {
   const type = childText(el, 'durationType');
   if (type === 'measure') {
     const given = parseFraction(childText(el, 'duration'));
-    return given === null ? measureTicks : wholeToTicks(given);
+    return given === null ? measureTicks : wholeToTicks(given) * scale;
   }
   const quarters = QUARTERS[type];
   if (quarters === undefined) {
@@ -176,6 +182,12 @@ function titleOf(score: Element): string {
   return '';
 }
 
+function stretchOf(timeSig: Element): number {
+  const n = childNumber(timeSig, 'stretchN');
+  const d = childNumber(timeSig, 'stretchD');
+  return n && d ? d / n : 1;
+}
+
 function sectionBreakIn(el: Element): boolean {
   return childrenNamed(el, 'LayoutBreak').some((b) => {
     const subtype = childText(b, 'subtype');
@@ -199,12 +211,17 @@ function readStaffDefs(score: Element): { parts: ScorePart[]; defs: StaffDef[]; 
       `Part ${String(partIndex + 1)}`;
     names.push(name);
     parts.push({ name, staves: [] });
-    for (const staff of childrenNamed(part, 'Staff')) {
+    const instrumentClefs = instrument ? childrenNamed(instrument, 'clef') : [];
+    childrenNamed(part, 'Staff').forEach((staff, position) => {
       const id = Number(staff.getAttribute('id'));
       const group = child(staff, 'StaffType')?.getAttribute('group') ?? 'pitched';
       const linked = child(staff, 'linkedTo') !== null;
-      defs.push({ id, part: partIndex, skip: group === 'percussion' || linked });
-    }
+      const fromInstrument = instrumentClefs.find(
+        (c) => Number(c.getAttribute('staff') ?? '1') === position + 1,
+      );
+      const clef = childText(staff, 'defaultClef') || text(fromInstrument ?? null) || 'G';
+      defs.push({ id, part: partIndex, skip: group === 'percussion' || linked, clef });
+    });
   });
   return { parts, defs, names };
 }
@@ -228,7 +245,7 @@ export function parseMscx(doc: Document): ScoreModel {
   const staffIndexById = new Map<number, number>();
   for (const el of contentStaves) {
     const id = Number(el.getAttribute('id'));
-    const def = defById.get(id) ?? { id, part: 0, skip: false };
+    const def = defById.get(id) ?? { id, part: 0, skip: false, clef: 'G' };
     if (def.skip) continue;
     staffIndexById.set(id, staves.length);
     staves.push({ index: staves.length, part: def.part, name: '', role: 'single' });
@@ -253,6 +270,7 @@ export function parseMscx(doc: Document): ScoreModel {
   let tick = 0;
   let number = 0;
   let restartNumbers = false;
+  const times: TimeMark[] = [];
   for (const el of childElements(first)) {
     if (el.tagName !== 'Measure') {
       if (sectionBreakIn(el)) {
@@ -266,7 +284,11 @@ export function parseMscx(doc: Document): ScoreModel {
     if (timeSig) {
       const n = childNumber(timeSig, 'sigN');
       const d = childNumber(timeSig, 'sigD');
-      if (n && d) sig = n / d;
+      if (n && d) {
+        const stretch = stretchOf(timeSig);
+        sig = (n / d) * stretch;
+        if (stretch === 1) times.push({ tick, n, d });
+      }
     }
     const len = parseFraction(el.getAttribute('len') ?? '');
     const ticks = wholeToTicks(len ?? sig);
@@ -298,6 +320,9 @@ export function parseMscx(doc: Document): ScoreModel {
   const voltas: Volta[] = [];
   const repeats: PendingRepeat[] = [];
   const openVoltas = new Map<string, { start: number; endings: number[] }>();
+  const events: NotationEvent[] = [];
+  const clefs: ClefMark[] = [];
+  let tupletSerial = 0;
 
   contentStaves.forEach((staffEl, staffOrder) => {
     const id = Number(staffEl.getAttribute('id'));
@@ -305,6 +330,7 @@ export function parseMscx(doc: Document): ScoreModel {
     const def = defById.get(id);
     const part = def?.part ?? 0;
     const staffMeasures = childrenNamed(staffEl, 'Measure');
+    let staffStretch = 1;
     if (staffMeasures.length !== measures.length) {
       warnings.push(
         `Staff ${String(id)} has ${String(staffMeasures.length)} bars, the first has ${String(measures.length)}`,
@@ -319,11 +345,77 @@ export function parseMscx(doc: Document): ScoreModel {
 
       const walk = (container: Element, voice: number) => {
         const w: Walk = { staff: staff ?? -1, part, measure, scale: 1, voice };
-        const tuplets: number[] = [];
-        const tupletDefs = new Map<string, { scale: number; parent: string }>();
+        const tuplets: { ratio: number; normal: number; actual: number; key: string }[] = [];
+        const tupletDefs = new Map<
+          string,
+          { scale: number; parent: string; normal: number; actual: number }
+        >();
         let cursor = 0;
         let pendingGrace: Element[] = [];
         let lastChord: { tick: number; ticks: number } | null = null;
+        let slurStart = false;
+        let slurStop = false;
+
+        const event = (
+          el: Element,
+          at: number,
+          ticks: number,
+          grace: 'before' | 'after' | null,
+          rest: boolean,
+        ) => {
+          if (w.staff < 0) return;
+          const ref = childText(el, 'Tuplet');
+          const def = ref ? tupletDefs.get(ref) : undefined;
+          const top = tuplets.at(-1);
+          const tuplet = def
+            ? { normal: def.normal, actual: def.actual, start: false, stop: false }
+            : top
+              ? { normal: top.normal, actual: top.actual, start: false, stop: false }
+              : null;
+          const tupletKey = def
+            ? `${String(w.staff)}:${String(measure.index)}:${String(w.voice)}:${ref}`
+            : (top?.key ?? null);
+          const slurs = childrenNamed(el, 'Slur');
+          const type = childText(el, 'durationType');
+          const track = childNumber(el, 'track');
+          events.push({
+            staff: w.staff,
+            voice: track === null ? w.voice : track % 4,
+            measure: measure.index,
+            tick: measure.tick + at,
+            ticks,
+            type: type === 'measure' ? '' : type,
+            dots: childNumber(el, 'dots') ?? 0,
+            rest,
+            measureRest: rest && type === 'measure',
+            grace,
+            tuplet: grace ? null : tuplet,
+            tupletKey: grace ? null : tupletKey,
+            beam: beamMode(childText(el, 'BeamMode')),
+            slurStart:
+              !rest && (slurStart || slurs.some((x) => x.getAttribute('type') === 'start')),
+            slurStop: !rest && (slurStop || slurs.some((x) => x.getAttribute('type') === 'stop')),
+            notes: rest
+              ? []
+              : childrenNamed(el, 'Note').flatMap((note) => {
+                  const pitch = childNumber(note, 'pitch');
+                  return pitch === null
+                    ? []
+                    : [
+                        {
+                          pitch,
+                          tpc: childNumber(note, 'tpc'),
+                          tieForward: noteTiesForward(note),
+                          silent: !notePlays(note),
+                        },
+                      ];
+                }),
+          });
+          if (!rest && !grace) {
+            slurStart = false;
+            slurStop = false;
+          }
+        };
 
         const tupletScale = (id: string): number => {
           let scale = 1;
@@ -355,11 +447,12 @@ export function parseMscx(doc: Document): ScoreModel {
         };
 
         for (const el of childElements(container)) {
-          const scale = tuplets.reduce((a, b) => a * b, 1);
+          if (el.tagName === 'TimeSig') staffStretch = stretchOf(el);
+          const scale = tuplets.reduce((a, b) => a * b.ratio, staffStretch);
           switch (el.tagName) {
             case 'Chord': {
               const ref = childText(el, 'Tuplet');
-              const s = ref ? tupletScale(ref) : scale;
+              const s = ref ? tupletScale(ref) * staffStretch : scale;
               const grace = graceKind(el);
               if (grace === 'before') {
                 pendingGrace.push(el);
@@ -368,7 +461,9 @@ export function parseMscx(doc: Document): ScoreModel {
               if (grace === 'after') {
                 if (lastChord) {
                   const endAt = lastChord.tick + lastChord.ticks;
-                  emit(el, Math.max(lastChord.tick, endAt - GRACE_TICKS), GRACE_TICKS, true);
+                  const at = Math.max(lastChord.tick, endAt - GRACE_TICKS);
+                  emit(el, at, GRACE_TICKS, true);
+                  event(el, at, GRACE_TICKS, 'after', false);
                 }
                 break;
               }
@@ -378,15 +473,23 @@ export function parseMscx(doc: Document): ScoreModel {
               graces.forEach((g, i) => {
                 const start = cursor - (graces.length - i) * GRACE_TICKS;
                 emit(g, start, GRACE_TICKS, true);
+                event(g, start, GRACE_TICKS, 'before', false);
               });
               emit(el, cursor, ticks, false);
+              event(el, cursor, ticks, null, false);
               lastChord = { tick: cursor, ticks };
               cursor += ticks;
               break;
             }
             case 'Rest': {
               const ref = childText(el, 'Tuplet');
-              cursor += chordTicks(el, measure.ticks, ref ? tupletScale(ref) : scale);
+              const ticks = chordTicks(
+                el,
+                measure.ticks,
+                ref ? tupletScale(ref) * staffStretch : scale,
+              );
+              event(el, cursor, ticks, null, true);
+              cursor += ticks;
               break;
             }
             case 'Tuplet': {
@@ -394,9 +497,22 @@ export function parseMscx(doc: Document): ScoreModel {
               const actual = childNumber(el, 'actualNotes');
               const ratio = normal && actual ? normal / actual : 1;
               const tid = el.getAttribute('id');
-              if (tid !== null)
-                tupletDefs.set(tid, { scale: ratio, parent: childText(el, 'Tuplet') });
-              else tuplets.push(ratio);
+              if (tid !== null) {
+                tupletDefs.set(tid, {
+                  scale: ratio,
+                  parent: childText(el, 'Tuplet'),
+                  normal: normal ?? 1,
+                  actual: actual ?? 1,
+                });
+              } else {
+                tupletSerial += 1;
+                tuplets.push({
+                  ratio,
+                  normal: normal ?? 1,
+                  actual: actual ?? 1,
+                  key: `t${String(tupletSerial)}`,
+                });
+              }
               break;
             }
             case 'endTuplet':
@@ -465,7 +581,18 @@ export function parseMscx(doc: Document): ScoreModel {
               }
               break;
             }
+            case 'Clef': {
+              const clef = childText(el, 'concertClefType') || childText(el, 'subtype');
+              if (clef && w.staff >= 0)
+                clefs.push({ staff: w.staff, tick: measure.tick + cursor, clef });
+              break;
+            }
             case 'Spanner': {
+              if (el.getAttribute('type') === 'Slur') {
+                if (child(el, 'next')) slurStart = true;
+                else if (child(el, 'prev')) slurStop = true;
+                break;
+              }
               if (el.getAttribute('type') !== 'Volta' || !child(el, 'next')) break;
               const volta = child(el, 'Volta');
               const endings = parseEndings(volta ? childText(volta, 'endings') : '');
@@ -527,6 +654,17 @@ export function parseMscx(doc: Document): ScoreModel {
       .filter((n) => n.staff === r.staff && n.measure === source.index)
       .map((n) => ({ ...n, measure: target.index, tick: n.tick + shift }));
     notes.push(...copies);
+    events.push(
+      ...events
+        .filter((e) => e.staff === r.staff && e.measure === source.index)
+        .map((e) => ({
+          ...e,
+          measure: target.index,
+          tick: e.tick + shift,
+          tuplet: e.tuplet ? { ...e.tuplet } : null,
+          tupletKey: e.tupletKey ? `${e.tupletKey}@${String(target.index)}` : null,
+        })),
+    );
   }
 
   const uniqueVoltas = voltas.filter(
@@ -534,6 +672,15 @@ export function parseMscx(doc: Document): ScoreModel {
   );
 
   if (tempos.length === 0) warnings.push('No tempo marking; playing at 120 bpm');
+  markTupletEnds(events);
+  for (const staff of staves) {
+    const id = [...staffIndexById].find(([, index]) => index === staff.index)?.[0];
+    const def = id === undefined ? undefined : defById.get(id);
+    if (!clefs.some((c) => c.staff === staff.index && c.tick === 0)) {
+      clefs.push({ staff: staff.index, tick: 0, clef: def?.clef ?? 'G' });
+    }
+  }
+  if (!times.some((t) => t.tick === 0)) times.unshift({ tick: 0, n: 4, d: 4 });
 
   return {
     title: titleOf(score),
@@ -547,6 +694,11 @@ export function parseMscx(doc: Document): ScoreModel {
     tempos: firstPerTick(tempos),
     dynamics: dynamics.sort((a, b) => a.tick - b.tick),
     keys: firstPerTick(keys),
+    notation: {
+      events: events.sort((a, b) => a.staff - b.staff || a.tick - b.tick),
+      clefs: clefs.sort((a, b) => a.tick - b.tick),
+      times,
+    },
     warnings,
   };
 }

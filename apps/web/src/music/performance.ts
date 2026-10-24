@@ -8,6 +8,7 @@ export interface PerfNote {
   staff: number;
   velocity: number;
   bar: number;
+  grace: boolean;
 }
 
 export interface PerfBar {
@@ -93,6 +94,7 @@ export function buildPerformance(score: ScoreModel): Performance {
         staff: n.staff,
         velocity: latestAt(dynamics, n.tick)?.velocity ?? DEFAULT_VELOCITY,
         bar: occurrence,
+        grace: n.grace,
         startTick: n.tick + shift,
         endTick: n.tick + shift + n.ticks,
         tie: n.tieForward,
@@ -151,6 +153,7 @@ export function buildPerformance(score: ScoreModel): Performance {
     staff: n.staff,
     velocity: n.velocity,
     bar: n.bar,
+    grace: n.grace,
     start: Math.max(0, toSeconds(n.startTick)),
     end: Math.max(toSeconds(n.startTick) + 0.03, toSeconds(n.endTick)),
   }));
