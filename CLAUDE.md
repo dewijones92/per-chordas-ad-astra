@@ -30,9 +30,13 @@ reversal).
 
 ## Quality bar (copied in spirit from Totum, non-negotiable)
 
-- **DRY, strictly.** A fact lives in one place: data shapes only in `packages/shared` (zod, used by
-  both server and web), the Node version only in `.nvmrc` (preflight checks the Dockerfile agrees),
-  test fixtures only in `packages/fixtures`. Before writing similar code twice, factor it.
+- **DRY and unified, as far as is reasonable** (Dewi, 24 Oct 2026: everything in this repo). A fact lives in
+  one place: data shapes only in `packages/shared` (zod, used by both server and web), the Node version only in
+  `.nvmrc` (preflight checks the Dockerfile agrees), test fixtures only in `packages/fixtures`. A job is done
+  one way: before writing something new, look for the module that already does it (saving with retry, file
+  uploads, drawing, key spelling, click sounds) and extend that rather than adding a second version, and keep
+  the UI's controls, wording and shortcuts the same wherever the same thing appears. Before writing similar
+  code twice, factor it; when you find two versions of one thing, merge them.
 - **Testing pyramid, every time.** Many fast unit tests on pure modules (metronome scheduler, pitch
   maths, annotation history and geometry, page turning, sync engine against a real bare repo), a
   Playwright e2e for **every flow that matters**, run in CI. A bug fix lands with a test seen to fail
