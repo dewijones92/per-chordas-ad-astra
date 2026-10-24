@@ -1,6 +1,6 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { makePdf } from '@pcaa/fixtures';
+import { makeMusicXml, makePdf, PIANO_WALTZ } from '@pcaa/fixtures';
 import { emptyAnnotations, FileName, Slug, type Annotations } from '@pcaa/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { changedPages, DataRepo, RejectedError } from '../src/store/data-repo.ts';
@@ -95,6 +95,24 @@ describe('DataRepo', () => {
     expect(changes.descriptions.at(-1)).toBe("Annotate 'Air' (air.pdf p.2)");
     expect(changes.descriptions.filter((d) => d.startsWith('Annotate'))).toHaveLength(1);
     expect(await repo.getAnnotations(piece.id, ref.file)).toEqual(doc);
+  });
+
+  it('saves drawings on a music file by bar, and drops them with the file', async () => {
+    const piece = await repo.createPiece({ title: 'Vals' });
+    const xml = makeMusicXml(PIANO_WALTZ);
+    const ref = await repo.addMusic(piece.id, 'vals.musicxml', new Blob([xml]));
+    const doc: Annotations = {
+      version: 1,
+      pages: {
+        '3': [{ kind: 'stamp', id: 's1', colour: '#ff0000', glyph: '2', x: 4, y: -10, size: 50 }],
+      },
+    };
+    await repo.putAnnotations(piece.id, ref.file, doc);
+    expect(changes.descriptions.at(-1)).toBe("Annotate 'Vals' (vals.musicxml bar 3)");
+    expect(await repo.getAnnotations(piece.id, ref.file)).toEqual(doc);
+    await repo.removeFile(piece.id, ref.file);
+    await repo.addMusic(piece.id, 'vals.musicxml', new Blob([xml]));
+    expect((await repo.getAnnotations(piece.id, ref.file)).pages).toEqual({});
   });
 
   it('imports PDF marks once, beneath drawings already made, and keeps the marker on later saves', async () => {

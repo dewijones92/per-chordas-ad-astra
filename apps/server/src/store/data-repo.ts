@@ -350,15 +350,16 @@ export class DataRepo {
       const kind = kindOf(file);
       if (!piece[kind].some((r) => r.file === file)) throw new NotFoundError(file);
       await rm(this.path('pieces', id, kind, file), { force: true });
-      if (kind === 'scores') {
+      if (kind === 'scores' || kind === 'music') {
         await rm(this.path('pieces', id, 'annotations', `${file}.json`), { force: true });
-      } else if (kind === 'music') {
+      }
+      if (kind === 'music') {
         const bits = await this.getHardBits(id);
         if (bits.files[file]) {
           const { [file]: _removed, ...rest } = bits.files;
           await this.writeJson(this.path('pieces', id, 'hard-bits.json'), { files: rest });
         }
-      } else {
+      } else if (kind === 'tracks') {
         const loops = await this.getLoops(id);
         const { [file]: _removed, ...rest } = loops.tracks;
         await this.writeJson(this.path('pieces', id, 'loops.json'), { tracks: rest });
@@ -403,7 +404,10 @@ export class DataRepo {
       if (pages.length === 0) return next;
       await this.writeJson(this.path('pieces', id, 'annotations', `${file}.json`), next);
       await this.touch(piece, 'drawing');
-      const where = pages.map((p) => `p.${String(p)}`).join(', ');
+      const where =
+        kindOf(file) === 'music'
+          ? `bar${pages.length > 1 ? 's' : ''} ${pages.join(', ')}`
+          : pages.map((p) => `p.${String(p)}`).join(', ');
       this.changes.markDirty(`Annotate ${quote(piece.title)} (${file} ${where})`);
       return next;
     });

@@ -11,11 +11,15 @@ import {
   type PiecePatch,
   type PracticeSession,
 } from '@pcaa/shared';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { api } from '../api/client.ts';
 import { Toolbar } from '../annotate/Toolbar.tsx';
-import { defaultToolState, isTypingTarget, TOOL_KEYS, type ToolState } from '../annotate/tools.ts';
+import { DrawingStatus } from '../annotate/DrawingStatus.tsx';
+import { isTypingTarget } from '../annotate/tools.ts';
+import { useDrawing } from '../annotate/use-drawing.ts';
+import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
+import { useWheelZoom } from '../score/use-wheel-zoom.ts';
 import { useAnnotations } from '../annotate/use-annotations.ts';
 import { usePdfMarks } from '../annotate/use-pdf-marks.ts';
 import { Looper } from '../looper/Looper.tsx';
@@ -28,7 +32,7 @@ import { bestBpmByDay } from '../practice/stats.ts';
 import { formatMinutes } from '../practice/timer.ts';
 import type { PDFPageProxy } from '../score/pdf.ts';
 import { ScoreViewer, type ScoreViewerHandle, type ViewMode } from '../score/ScoreViewer.tsx';
-import { clampZoom, stepZoom, wheelZoom, zoomKeyOf } from '../score/zoom.ts';
+import { stepZoom, zoomKeyOf } from '../score/zoom.ts';
 import {
   pullResume,
   readResume,
@@ -38,9 +42,7 @@ import {
   savedPieceView,
   rememberScore,
   rememberViewMode,
-  rememberZoom,
   savedViewMode,
-  savedZoom,
   scoreKey,
 } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
@@ -101,31 +103,13 @@ function ScoreArea({
     doc: history.present,
     adopt,
   });
-  const [tools, setTools] = useState<ToolState>(defaultToolState);
+  const { tools, selected, setSelected, toolbar } = useDrawing('score', history, dispatch);
   const spot = scoreKey(piece.id, file);
-  const [zoom, setZoom] = useState(() => clampZoom(savedZoom(spot) ?? 1));
-  const recordedZoom = useRef(zoom);
+  const [zoom, setZoom] = useRememberedZoom(spot);
   const [mode, setMode] = useState<ViewMode>(savedViewMode);
   const [initialPosition] = useState(() => readResume().scores[spot] ?? null);
-  const [selected, setSelected] = useState<string | null>(null);
   const viewer = useRef<ScoreViewerHandle>(null);
   const metronome = useMetronome();
-
-  const selectedPage = selected
-    ? Object.entries(history.present.pages).find(([, items]) =>
-        items.some((i) => i.id === selected),
-      )?.[0]
-    : undefined;
-  const deleteSelected = useMemo(
-    () =>
-      selected && selectedPage
-        ? () => {
-            dispatch({ type: 'remove', page: Number(selectedPage), ids: [selected] });
-            setSelected(null);
-          }
-        : null,
-    [selected, selectedPage, dispatch],
-  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -140,17 +124,6 @@ function ScoreArea({
         return;
       }
       if (isTypingTarget(e.target)) return;
-      const key = e.key.toLowerCase();
-      if ((e.ctrlKey || e.metaKey) && key === 'z') {
-        e.preventDefault();
-        dispatch({ type: e.shiftKey ? 'redo' : 'undo' });
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && key === 'y') {
-        e.preventDefault();
-        dispatch({ type: 'redo' });
-        return;
-      }
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === 'ArrowRight' || e.key === 'PageDown') {
         e.preventDefault();
@@ -161,76 +134,24 @@ function ScoreArea({
       } else if (e.key === ' ') {
         e.preventDefault();
         metronome.toggle();
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && deleteSelected) {
-        e.preventDefault();
-        deleteSelected();
-      } else if (e.key === 'Escape') {
-        setSelected(null);
       } else if (e.key === '+' || e.key === '=') {
         metronome.setBpm(metronome.settings.bpm + 1);
       } else if (e.key === '-') {
         metronome.setBpm(metronome.settings.bpm - 1);
-      } else if (TOOL_KEYS[key]) {
-        const tool = TOOL_KEYS[key];
-        setTools((t) => ({ ...t, tool }));
-        if (tool !== 'select') setSelected(null);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
     };
-  }, [dispatch, deleteSelected, metronome]);
+  }, [metronome, setZoom]);
 
-  useEffect(() => {
-    let gesture: { events: number; from: number; to: number } | null = null;
-    let quiet = 0;
-    const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return;
-      e.preventDefault();
-      setZoom((from) => {
-        const to = wheelZoom(from, e.deltaY, e.deltaMode);
-        gesture = gesture
-          ? { ...gesture, events: gesture.events + 1, to }
-          : { events: 1, from, to };
-        return to;
-      });
-      window.clearTimeout(quiet);
-      quiet = window.setTimeout(() => {
-        console.info('dewidebug score zoom by ctrl+wheel or pinch', gesture);
-        gesture = null;
-      }, 400);
-    };
-    window.addEventListener('wheel', onWheel, { passive: false });
-    return () => {
-      window.clearTimeout(quiet);
-      window.removeEventListener('wheel', onWheel);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (zoom === recordedZoom.current) return;
-    recordedZoom.current = zoom;
-    rememberZoom(spot, zoom);
-  }, [zoom, spot]);
+  useWheelZoom(window, setZoom, 'score');
 
   return (
     <div className="score-area">
       <Toolbar
-        tools={tools}
-        onChange={(patch) => {
-          setTools((t) => ({ ...t, ...patch }));
-          if (patch.tool && patch.tool !== 'select') setSelected(null);
-        }}
-        canUndo={history.past.length > 0}
-        canRedo={history.future.length > 0}
-        onUndo={() => {
-          dispatch({ type: 'undo' });
-        }}
-        onRedo={() => {
-          dispatch({ type: 'redo' });
-        }}
-        onDeleteSelected={deleteSelected}
+        {...toolbar}
         zoom={zoom}
         onZoom={setZoom}
         extra={
@@ -254,20 +175,7 @@ function ScoreArea({
           </span>
         }
       />
-      {load === 'error' && (
-        <p className="error loading-strip" data-testid="drawings-error">
-          Could not load the drawings, so drawing is paused to protect them: {error}{' '}
-          <button type="button" className="btn small" onClick={reload}>
-            Retry
-          </button>
-        </p>
-      )}
-      {load === 'ready' && error && (
-        <p className="error loading-strip" data-testid="drawings-save-error">
-          Drawings not saved yet: {error}
-        </p>
-      )}
-      {load === 'loading' && <p className="muted loading-strip">Loading drawings…</p>}
+      <DrawingStatus load={load} error={error} reload={reload} />
       <div className="score-frame" data-pdf-marks={pdfMarks.importing ? 'checking' : 'checked'}>
         <ScoreViewer
           readOnly={load !== 'ready'}

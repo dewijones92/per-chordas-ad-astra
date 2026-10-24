@@ -1,17 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { AnnotationLayer } from '../annotate/AnnotationLayer.tsx';
+import { itemsOn, type History, type HistoryAction } from '../annotate/history.ts';
+import { useTextEditing } from '../annotate/TextEditor.tsx';
+import type { ToolState } from '../annotate/tools.ts';
+import { useWheelZoom } from '../score/use-wheel-zoom.ts';
+import { ZoomControl } from '../score/ZoomControl.tsx';
+import { strings } from '../strings.ts';
 import { intervalFor } from './keys.ts';
 import { TPQ, type ScoreMeasure } from './model.ts';
 import { soundingIds, type NotationRequest, type NotationResult } from './notation-protocol.ts';
 import { barAt, type Performance } from './performance.ts';
 
-const SCALE = 38;
+const BASE_SCALE = 38;
+export const DRAW_MIN_ZOOM = 1.5;
+const MARK_SIZE = 2.5;
 const SCROLL_LEAD = 0.25;
 
 let worker: Worker | null = null;
 let serial = 0;
 const waiting = new Map<number, (result: NotationResult) => void>();
 
-function render(xml: string, interval: string): Promise<NotationResult> {
+function render(xml: string, interval: string, scale: number): Promise<NotationResult> {
   if (!worker) {
     worker = new Worker(new URL('./notation.worker.ts', import.meta.url), { type: 'module' });
     worker.onmessage = (event: MessageEvent<NotationResult>) => {
@@ -38,12 +47,47 @@ function render(xml: string, interval: string): Promise<NotationResult> {
     };
   }
   serial += 1;
-  const request: NotationRequest = { id: serial, xml, interval, scale: SCALE };
+  const request: NotationRequest = { id: serial, xml, interval, scale };
   const target = worker;
   return new Promise((resolve) => {
     waiting.set(request.id, resolve);
     target.postMessage(request);
   });
+}
+
+export interface NotationMarks {
+  history: History;
+  dispatch: (action: HistoryAction) => void;
+  tools: ToolState;
+  selected: string | null;
+  onSelect: (id: string | null) => void;
+  editable: boolean;
+}
+
+interface Boxes {
+  key: string;
+  staffTop: number;
+  height: number;
+  bars: { page: number; left: number; width: number }[];
+}
+
+function measureBars(box: HTMLElement, result: NotationResult, key: string): Boxes {
+  const origin = box.getBoundingClientRect();
+  const bars: Boxes['bars'] = [];
+  result.measures.forEach((m, index) => {
+    const el = box.querySelector(`#${CSS.escape(m.id)}`);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    bars.push({ page: index + 1, left: r.left - origin.left, width: r.width });
+  });
+  const line = box.querySelector('g.staff > path');
+  const staffTop = line ? line.getBoundingClientRect().top - origin.top : 0;
+  console.info('dewidebug notation bars measured', {
+    bars: bars.length,
+    staffTop: Math.round(staffTop),
+    height: Math.round(origin.height),
+  });
+  return { key, staffTop, height: origin.height, bars };
 }
 
 export function scoreQuarter(
@@ -70,6 +114,10 @@ export function Notation({
   playing,
   position,
   onSeek,
+  zoom,
+  onZoom,
+  drawing,
+  marks,
 }: {
   xml: string;
   transpose: number;
@@ -78,27 +126,43 @@ export function Notation({
   playing: boolean;
   position: () => number;
   onSeek: (seconds: number) => void;
+  zoom: number;
+  onZoom: Dispatch<SetStateAction<number>>;
+  drawing: boolean;
+  marks: NotationMarks;
 }) {
-  const [result, setResult] = useState<{ key: string; value: NotationResult } | null>(null);
+  const [result, setResult] = useState<{
+    key: string;
+    scale: number;
+    value: NotationResult;
+  } | null>(null);
   const interval = intervalFor(perf.keyFifths, transpose);
   const key = `${interval}:${String(xml.length)}:${xml.slice(0, 64)}`;
+  const scale = Math.round(BASE_SCALE * zoom);
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const holder = useRef<HTMLDivElement>(null);
   const current = result?.key === key ? result.value : null;
+  const shownScale = result?.key === key ? result.scale : scale;
+  const k = shownScale / 100;
+  const [boxes, setBoxes] = useState<Boxes | null>(null);
+  const textEditing = useTextEditing(marks.dispatch, marks.tools, MARK_SIZE);
+  useWheelZoom(scrollEl, onZoom, 'notation');
 
   useEffect(() => {
     let cancelled = false;
-    render(xml, interval).then(
+    render(xml, interval, scale).then(
       (value) => {
         if (cancelled) return;
         console.info('dewidebug notation rendered', {
           ms: value.ms,
+          scale,
           measures: value.measures.length,
           ours: measures.length,
           notes: value.notes.length,
           error: value.error,
         });
-        setResult({ key, value });
+        setResult({ key, scale, value });
       },
       (error: unknown) => {
         console.warn('dewidebug notation worker failed', { error: String(error) });
@@ -107,7 +171,24 @@ export function Notation({
     return () => {
       cancelled = true;
     };
-  }, [xml, interval, key, measures.length]);
+  }, [xml, interval, key, scale, measures.length]);
+
+  useEffect(() => {
+    const box = holder.current;
+    if (!current || !box) return;
+    const measure = () => {
+      setBoxes(measureBars(box, current, `${key}@${String(shownScale)}`));
+    };
+    const frame = requestAnimationFrame(measure);
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [current, key, shownScale]);
+  const bars = boxes?.key === `${key}@${String(shownScale)}` ? boxes : null;
+  const barsAgree = current?.measures.length === measures.length;
 
   const starts = useMemo(() => {
     if (!current) return [];
@@ -175,26 +256,83 @@ export function Notation({
   }
 
   return (
-    <div className="notation" ref={scroller} data-testid="notation">
-      {!current && <p className="muted notation-message">Drawing the notation…</p>}
-      {current && (
-        <div
-          ref={holder}
-          className="notation-svg"
-          data-testid="notation-svg"
-          onClick={(e) => {
-            const target = e.target instanceof Element ? e.target.closest('g.measure') : null;
-            const index = target ? current.measures.findIndex((m) => m.id === target.id) : -1;
-            if (index < 0) return;
-            const now = position();
-            const bars = perf.bars.filter((b) => b.measure === index);
-            const bar = bars.find((b) => b.start >= now - 0.01) ?? bars[0];
-            console.info('dewidebug notation bar clicked', { index, to: bar?.start ?? null });
-            if (bar) onSeek(bar.start);
-          }}
-          dangerouslySetInnerHTML={{ __html: current.svg }}
-        />
+    <div className={`notation-frame${drawing ? ' is-drawing' : ''}`}>
+      {!drawing && (
+        <span className="notation-zoom" title={strings.notation.zoom}>
+          <ZoomControl zoom={zoom} onZoom={onZoom} testId="notation-zoom-level" />
+        </span>
       )}
+      {current && !barsAgree && drawing && (
+        <p className="muted small-print notation-note">{strings.notation.barsDiffer}</p>
+      )}
+      <div
+        className="notation"
+        ref={(el) => {
+          scroller.current = el;
+          setScrollEl(el);
+        }}
+        data-testid="notation"
+        data-scale={shownScale}
+      >
+        {!current && <p className="muted notation-message">Drawing the notation…</p>}
+        {current && (
+          <div className="notation-canvas">
+            <div
+              ref={holder}
+              className="notation-svg"
+              data-testid="notation-svg"
+              onClick={(e) => {
+                const target = e.target instanceof Element ? e.target.closest('g.measure') : null;
+                const index = target ? current.measures.findIndex((m) => m.id === target.id) : -1;
+                if (index < 0) return;
+                const now = position();
+                const bars = perf.bars.filter((b) => b.measure === index);
+                const bar = bars.find((b) => b.start >= now - 0.01) ?? bars[0];
+                console.info('dewidebug notation bar clicked', { index, to: bar?.start ?? null });
+                if (bar) onSeek(bar.start);
+              }}
+              dangerouslySetInnerHTML={{ __html: current.svg }}
+            />
+            {bars && barsAgree && (
+              <div
+                className={`notation-marks${drawing && marks.editable ? ' is-editable' : ''}`}
+                data-testid="notation-marks"
+              >
+                {bars.bars.map((b) => (
+                  <div
+                    key={b.page}
+                    className="notation-bar"
+                    style={{ left: b.left, width: b.width, height: bars.height }}
+                  >
+                    <AnnotationLayer
+                      page={b.page}
+                      width={b.width / k}
+                      height={bars.height / k}
+                      originY={-bars.staffTop / k}
+                      scale={k}
+                      items={itemsOn(marks.history.present, b.page)}
+                      tools={marks.tools}
+                      dispatch={marks.dispatch}
+                      selected={marks.selected}
+                      onSelect={marks.onSelect}
+                      onEditText={textEditing.start}
+                      readOnly={!(drawing && marks.editable)}
+                      sizeScale={MARK_SIZE}
+                      testId="notation-layer"
+                      className="notation-layer"
+                    />
+                    {textEditing.editor(
+                      b.page,
+                      (x, y) => ({ left: x * k, top: bars.staffTop + y * k }),
+                      k,
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

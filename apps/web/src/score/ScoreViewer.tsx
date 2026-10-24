@@ -1,4 +1,4 @@
-import { newId, type TextItem, type ViewMode } from '@pcaa/shared';
+import type { ViewMode } from '@pcaa/shared';
 import {
   useCallback,
   useEffect,
@@ -8,9 +8,9 @@ import {
   useState,
   type Ref,
 } from 'react';
-import type { TextEditRequest } from '../annotate/AnnotationLayer.tsx';
 import { itemsOn, type HistoryAction, type History } from '../annotate/history.ts';
-import { SIZES, type ToolState } from '../annotate/tools.ts';
+import { useTextEditing } from '../annotate/TextEditor.tsx';
+import type { ToolState } from '../annotate/tools.ts';
 import { openPdf, type PDFPageProxy } from './pdf.ts';
 import { PageView } from './PageView.tsx';
 import { turnTarget } from './turn.ts';
@@ -46,10 +46,6 @@ interface Props {
   onPages?: (opened: { url: string; pages: PDFPageProxy[] } | null) => void;
 }
 
-interface Editing extends TextEditRequest {
-  text: string;
-}
-
 const PAGE_GAP = 24;
 const TURN_SETTLE_MS = 700;
 
@@ -71,7 +67,7 @@ export function ScoreViewer(props: Props) {
   } | null>(null);
   const [available, setAvailable] = useState({ width: 800, height: 900 });
   const [measured, setMeasured] = useState(false);
-  const [editing, setEditing] = useState<Editing | null>(null);
+  const textEditing = useTextEditing(dispatch, tools);
 
   useEffect(() => {
     let cancelled = false;
@@ -230,28 +226,6 @@ export function ScoreViewer(props: Props) {
     };
   }, [ready]);
 
-  const commitText = () => {
-    if (!editing) return;
-    const text = editing.text.replace(/\s+$/, '');
-    if (editing.item) {
-      if (text === '') dispatch({ type: 'remove', page: editing.page, ids: [editing.item.id] });
-      else if (text !== editing.item.text)
-        dispatch({ type: 'update', page: editing.page, item: { ...editing.item, text } });
-    } else if (text !== '') {
-      const item: TextItem = {
-        kind: 'text',
-        id: newId(),
-        colour: tools.colour,
-        x: editing.x,
-        y: editing.y,
-        text,
-        size: SIZES.text[tools.size],
-      };
-      dispatch({ type: 'add', page: editing.page, item });
-    }
-    setEditing(null);
-  };
-
   if (error) return <div className="score-message error">Could not open this PDF: {error}</div>;
 
   return (
@@ -280,34 +254,9 @@ export function ScoreViewer(props: Props) {
             readOnly={props.readOnly ?? false}
             hidePdfAnnotations={props.hidePdfAnnotations ?? false}
             scrollRoot={scrollRoot}
-            onEditText={(request) => {
-              setEditing({ ...request, text: request.item?.text ?? '' });
-            }}
+            onEditText={textEditing.start}
           >
-            {editing?.page === number && (
-              <textarea
-                className="text-editor"
-                autoFocus
-                data-testid="text-editor"
-                value={editing.text}
-                placeholder="Type a note… (Ctrl+Enter to finish)"
-                style={{
-                  left: editing.x * scale,
-                  top: editing.y * scale,
-                  fontSize: (editing.item?.size ?? SIZES.text[tools.size]) * scale,
-                  color: editing.item?.colour ?? tools.colour,
-                }}
-                onChange={(e) => {
-                  setEditing({ ...editing, text: e.target.value });
-                }}
-                onBlur={commitText}
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                  if (e.key === 'Escape') setEditing(null);
-                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) commitText();
-                }}
-              />
-            )}
+            {textEditing.editor(number, (x, y) => ({ left: x * scale, top: y * scale }), scale)}
           </PageView>
         );
       })}

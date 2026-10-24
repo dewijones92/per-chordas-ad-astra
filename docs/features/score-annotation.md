@@ -1,7 +1,7 @@
 ---
 title: Score viewer and annotation
 status: shipped
-updated: 2026-10-14
+updated: 2026-10-24
 ---
 
 # Score viewer and annotation
@@ -18,6 +18,8 @@ than the screen they scroll by 85% of the screen first.
 arrow `A`, box `R`, circle `O`, stamp `S`. Six ink colours and four highlighter colours, three sizes.
 Stamps: fingers 1–4 and T, strum ↑↓, P/H/S, repeat signs, ✓ and !. Select to move; `Delete` removes;
 double-click text to edit. `Ctrl+Z` / `Ctrl+Shift+Z`. A drag (move or erase) is one undo step.
+The same tools draw on a Play-along notation strip in its ✏️ Draw mode (ADR 0016); there the drawing keys
+belong to the notation, so `Ctrl+Z` never undoes the PDF's marks.
 
 **Marks from other apps.** The first time a score opens, marks made in other apps (Preview's handwriting, highlights, strike-outs, lines and text boxes) are copied into the app's own drawings, with the same shape, colour and place, and the PDF's copies stop being painted, so each mark shows once and can be selected, moved, erased and undone. The PDF file itself is untouched. If a PDF holds a kind of mark the app cannot convert, it is left exactly as it was. See [ADR 0011](../adr/0011-import-pdf-annotations-as-drawings.md).
 

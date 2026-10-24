@@ -21,6 +21,13 @@ keyboard from above, like the bird's-eye piano videos.
   falling notes, with the notes being played coloured and the current bar kept in view. Click a bar to
   jump there. Transposing redraws it in the new key, the same key the key line shows (ADR 0015). MuseScore
   files are converted to MusicXML for this; MusicXML files are drawn as they are.
+- **Notation zoom** (🔍 −/+ in the strip's corner, or `Ctrl`+scroll / pinch over it): 40–250%, about 11 bars
+  across at 100% and about 4 at 250%; the strip grows taller to fit. Remembered per music file on every device.
+- **✏️ Draw** on the notation: pauses, gives the strip most of the pane, shows the same drawing toolbar and
+  keys as on PDFs (pen, highlighter, eraser, text, shapes, stamps, undo/redo) and raises the zoom to at least
+  150%. Scroll sideways to any bar and draw; **✅ Done** shrinks it back, and the marks scroll with the music
+  while you play. Marks are pinned to bars, so they stay on the right notes when you transpose or zoom.
+  Saved per music file in the data repo (ADR 0016).
 - **Falling notes**: notes fall onto a keyboard fitted to the piece in whole octaves (at least three), or
   all 88 keys. Sounding keys light up in their part's colour: right hand violet, left hand teal, other
   parts coral, blue, amber. Bar lines carry their numbers. Drag or scroll the notes to move through the

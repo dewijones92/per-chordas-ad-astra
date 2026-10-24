@@ -164,6 +164,86 @@ test('hard bits that failed to load cannot be overwritten by saving a new one', 
   await expect(page.getByTestId('save-hard-bit')).toBeVisible();
 });
 
+test('the notation zooms with its buttons and Ctrl+wheel, and keeps the zoom after a reload', async ({
+  page,
+}) => {
+  await createPiece(page, 'Zoom Etude', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  const notation = page.getByTestId('notation');
+  await expect(notation).toHaveAttribute('data-scale', '38');
+  const level = page.getByTestId('notation-zoom-level');
+  await level.locator('..').getByRole('button', { name: 'Zoom in' }).click();
+  await level.locator('..').getByRole('button', { name: 'Zoom in' }).click();
+  await expect(level).toHaveText('120%');
+  await expect(notation).toHaveAttribute('data-scale', '46');
+  const box = await notation.boundingBox();
+  if (!box) throw new Error('no notation box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.keyboard.down('Control');
+  await page.mouse.wheel(0, -200);
+  await page.keyboard.up('Control');
+  await expect(level).not.toHaveText('120%');
+  const zoomed = await level.textContent();
+  await page.reload();
+  await expect(page.getByTestId('notation-zoom-level')).toHaveText(zoomed ?? '');
+});
+
+test('drawing on the notation is saved per bar, follows a transposition, and undoes on its own', async ({
+  page,
+}) => {
+  const id = await createPiece(page, 'Notation Marks');
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.locator('[data-piece-view="split"]')).toHaveAttribute('aria-pressed', 'true');
+  const pdfLayer = page.getByTestId('annotation-layer-1');
+  await expect(pdfLayer).toBeVisible();
+  await page.locator('.score-area [data-tool="stamp"]').click();
+  await pdfLayer.click({ position: { x: 60, y: 60 } });
+  await expect(pdfLayer).toHaveAttribute('data-items', '1');
+
+  await page.getByTestId('notation-draw').click();
+  await expect(page.getByTestId('zoom-level').last()).toHaveText('150%');
+  const bar2 = page.getByTestId('notation-layer-2');
+  await expect(bar2).toBeVisible();
+  const b = await bar2.boundingBox();
+  if (!b) throw new Error('no bar box');
+  await page.keyboard.press('p');
+  await page.mouse.move(b.x + 6, b.y + b.height * 0.45);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width - 6, b.y + b.height * 0.5, { steps: 8 });
+  await page.mouse.up();
+  await expect(bar2).toHaveAttribute('data-items', '1');
+  const doc = JSON.parse(
+    await eventuallyInRemote(`pieces/${id}/annotations/fixture-waltz.mscz.json`, (t) =>
+      t.includes('"stroke"'),
+    ),
+  ) as { pages: Record<string, { kind: string }[]> };
+  expect(Object.keys(doc.pages)).toEqual(['2']);
+  expect(remoteLog('%s').join('\n')).toContain('fixture-waltz.mscz bar 2');
+
+  await page.getByTestId('notation-draw-done').click();
+  await page.getByRole('button', { name: 'Transpose up a semitone' }).click();
+  await expect(page.getByTestId('playalong-key')).toContainText('A♭ major');
+  const measure2 = page.getByTestId('notation-svg').locator('g.measure').nth(1);
+  await expect(async () => {
+    const m = await measure2.boundingBox();
+    const l = await bar2.boundingBox();
+    expect(Math.abs((m?.x ?? 0) - (l?.x ?? 99))).toBeLessThan(1.5);
+  }).toPass();
+  await page.reload();
+  await expect(page.getByTestId('notation-layer-2')).toHaveAttribute('data-items', '1');
+  await page.locator('.score-area [data-tool="stamp"]').click();
+  await page.getByTestId('annotation-layer-1').click({ position: { x: 90, y: 90 } });
+  await expect(page.getByTestId('annotation-layer-1')).toHaveAttribute('data-items', '2');
+
+  await page.getByTestId('notation-draw').click();
+  await page.locator('.playalong [data-tool="stamp"]').click();
+  await page.getByTestId('notation-layer-2').click({ position: { x: 20, y: 30 } });
+  await expect(page.getByTestId('notation-layer-2')).toHaveAttribute('data-items', '2');
+  await page.keyboard.press('Control+z');
+  await expect(page.getByTestId('notation-layer-2')).toHaveAttribute('data-items', '1');
+  await expect(page.getByTestId('annotation-layer-1')).toHaveAttribute('data-items', '2');
+});
+
 test('the score and the falling notes show side by side, or one at a time', async ({ page }) => {
   await createPiece(page, 'Split View Etude');
   await expect(page.locator('.page canvas').first()).toBeVisible();

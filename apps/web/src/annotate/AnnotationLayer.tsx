@@ -33,6 +33,10 @@ interface Props {
   onSelect: (id: string | null) => void;
   onEditText: (request: TextEditRequest) => void;
   readOnly?: boolean;
+  originY?: number;
+  sizeScale?: number;
+  testId?: string;
+  className?: string;
 }
 
 type Gesture =
@@ -171,6 +175,8 @@ export function ItemView({ item, selected = false }: { item: AnnotationItem; sel
 export function AnnotationLayer(props: Props) {
   const { page, width, height, scale, items, tools, dispatch, selected, onSelect, onEditText } =
     props;
+  const originY = props.originY ?? 0;
+  const sizeScale = props.sizeScale ?? 1;
   const svgRef = useRef<SVGSVGElement>(null);
   const gesture = useRef<Gesture>(null);
   const [draft, setDraft] = useState<AnnotationItem | null>(null);
@@ -211,7 +217,7 @@ export function AnnotationLayer(props: Props) {
           id: newId(),
           tool: tools.tool,
           colour: tools.tool === 'pen' ? tools.colour : tools.highlightColour,
-          size: SIZES[tools.tool][tools.size],
+          size: SIZES[tools.tool][tools.size] * sizeScale,
           points: [[p.x, p.y, pressure]],
         };
         gesture.current = { kind: 'stroke', item };
@@ -236,7 +242,7 @@ export function AnnotationLayer(props: Props) {
             glyph: tools.glyph,
             x: p.x,
             y: p.y,
-            size: SIZES.stamp[tools.size],
+            size: SIZES.stamp[tools.size] * sizeScale,
           },
         });
         return;
@@ -267,7 +273,7 @@ export function AnnotationLayer(props: Props) {
           id: newId(),
           shape: tools.tool,
           colour: tools.colour,
-          size: SIZES.shape[tools.size],
+          size: SIZES.shape[tools.size] * sizeScale,
           x1: p.x,
           y1: p.y,
           x2: p.x,
@@ -345,8 +351,8 @@ export function AnnotationLayer(props: Props) {
   return (
     <svg
       ref={svgRef}
-      className="annotation-layer"
-      viewBox={`0 0 ${String(width)} ${String(height)}`}
+      className={props.className ?? 'annotation-layer'}
+      viewBox={`0 ${String(originY)} ${String(width)} ${String(height)}`}
       preserveAspectRatio="none"
       style={{ cursor, touchAction: 'none' }}
       onPointerDown={onPointerDown}
@@ -354,7 +360,7 @@ export function AnnotationLayer(props: Props) {
       onPointerUp={finish}
       onPointerCancel={finish}
       onDoubleClick={onDoubleClick}
-      data-testid={`annotation-layer-${String(page)}`}
+      data-testid={`${props.testId ?? 'annotation-layer'}-${String(page)}`}
       data-items={items.length}
     >
       {items.map((item) => (

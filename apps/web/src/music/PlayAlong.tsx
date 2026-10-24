@@ -11,7 +11,13 @@ import {
 } from '@pcaa/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client.ts';
+import { DrawingStatus } from '../annotate/DrawingStatus.tsx';
+import { Toolbar } from '../annotate/Toolbar.tsx';
 import { isTypingTarget } from '../annotate/tools.ts';
+import { useAnnotations } from '../annotate/use-annotations.ts';
+import { claimDrawing, useDrawing } from '../annotate/use-drawing.ts';
+import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
+import { strings } from '../strings.ts';
 import { rememberPlayAlong, savedPlayAlong, scoreKey } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
 import { staffColours } from './colours.ts';
@@ -19,7 +25,7 @@ import { drawFalling, geometry } from './falling.ts';
 import { capoFor, fitRange, keyName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip } from './BarStrip.tsx';
 import { parseScoreText, unpackScore } from './load.ts';
-import { Notation } from './Notation.tsx';
+import { DRAW_MIN_ZOOM, Notation } from './Notation.tsx';
 import { toMusicXml } from './to-musicxml.ts';
 import { download, exportName, performanceToMidi, transposeMusicXml } from './export.ts';
 import { barAt, buildPerformance, type Performance } from './performance.ts';
@@ -217,6 +223,17 @@ export function PlayAlong({
   const [playing, setPlaying] = useState(false);
   const [samples, setSamples] = useState<string | null>(null);
   const [barIndex, setBarIndex] = useState(0);
+  const [drawMode, setDrawMode] = useState(false);
+  const [notationZoom, setNotationZoom] = useRememberedZoom(key);
+  const notationMarks = useAnnotations(pieceId, music.file);
+  const drawing = useDrawing('notation', notationMarks.history, notationMarks.dispatch, drawMode);
+  useEffect(() => {
+    if (!drawMode) return;
+    claimDrawing('notation');
+    return () => {
+      claimDrawing(null);
+    };
+  }, [drawMode]);
   const hardBits = useAsync(() => api.getHardBits(pieceId), `hard-bits:${pieceId}`);
   const bitsLoaded = hardBits.data !== undefined;
   const bits = useMemo(() => hardBits.data?.files[music.file] ?? [], [hardBits.data, music.file]);
@@ -417,6 +434,7 @@ export function PlayAlong({
       player.pause();
       updatePrefs((p) => ({ ...p, position: player.position() }));
     } else {
+      setDrawMode(false);
       player.play(prefs.countIn).catch((error: unknown) => {
         console.warn('dewidebug play-along could not start audio', { error: String(error) });
       });
@@ -506,7 +524,11 @@ export function PlayAlong({
     : 'Off';
 
   return (
-    <section className="playalong" aria-label="Play-along" data-testid="playalong">
+    <section
+      className={`playalong${drawMode ? ' is-drawing' : ''}`}
+      aria-label="Play-along"
+      data-testid="playalong"
+    >
       <div className="playalong-bar">
         <button
           type="button"
@@ -768,6 +790,30 @@ export function PlayAlong({
           />
           🎼 Notation
         </label>
+        <button
+          type="button"
+          className="btn small ghost"
+          data-testid="notation-draw"
+          aria-pressed={drawMode}
+          title={strings.notation.drawTitle}
+          onClick={() => {
+            if (drawMode) {
+              console.info('dewidebug notation draw mode off');
+              setDrawMode(false);
+              return;
+            }
+            if (player?.playing || player?.starting) toggle();
+            if (!prefs.notation) updatePrefs((p) => ({ ...p, notation: true }));
+            console.info('dewidebug notation draw mode on', {
+              file: music.file,
+              zoom: notationZoom,
+            });
+            setNotationZoom((z) => Math.max(z, DRAW_MIN_ZOOM));
+            setDrawMode(true);
+          }}
+        >
+          {strings.notation.draw}
+        </button>
         <label className="playalong-field">
           <input
             type="checkbox"
@@ -922,6 +968,33 @@ export function PlayAlong({
           </span>
         )}
       </div>
+      {drawMode && (
+        <>
+          <Toolbar
+            {...drawing.toolbar}
+            zoom={notationZoom}
+            onZoom={setNotationZoom}
+            extra={
+              <button
+                type="button"
+                className="btn small primary"
+                data-testid="notation-draw-done"
+                onClick={() => {
+                  console.info('dewidebug notation draw mode off');
+                  setDrawMode(false);
+                }}
+              >
+                {strings.notation.done}
+              </button>
+            }
+          />
+          <DrawingStatus
+            load={notationMarks.load}
+            error={notationMarks.error}
+            reload={notationMarks.reload}
+          />
+        </>
+      )}
       {notationXml && loaded.data && (
         <Notation
           xml={notationXml}
@@ -931,6 +1004,17 @@ export function PlayAlong({
           playing={playing}
           position={notationPosition}
           onSeek={seekTo}
+          zoom={notationZoom}
+          onZoom={setNotationZoom}
+          drawing={drawMode}
+          marks={{
+            history: notationMarks.history,
+            dispatch: notationMarks.dispatch,
+            tools: drawing.tools,
+            selected: drawing.selected,
+            onSelect: drawing.setSelected,
+            editable: notationMarks.load === 'ready',
+          }}
         />
       )}
       <BarStrip
