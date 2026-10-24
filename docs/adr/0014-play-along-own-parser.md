@@ -44,3 +44,6 @@ MuseScore writes today.
   read (ottava lines, swing, pedal, articulations) play as written.
 - Notation is not drawn from the file. If that is wanted, an engraver (for example Verovio, LGPL) would
   need MusicXML; MuseScore files would first need converting.
+- Export (24 Oct 2026) stays inside the same rule: the transposed MusicXML is a DOM respelling of the
+  source (or of our converter's output for MuseScore files), and the MIDI file comes from a small writer
+  of our own over the performance, so repeats are played out. No MIDI or MusicXML library was added.

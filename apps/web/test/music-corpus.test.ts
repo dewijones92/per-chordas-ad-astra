@@ -5,6 +5,8 @@ import { loadScore, parseScoreText, unpackScore } from '../src/music/load.ts';
 import { unroll } from '../src/music/unroll.ts';
 import { buildPerformance } from '../src/music/performance.ts';
 import { toMusicXml } from '../src/music/to-musicxml.ts';
+import { transposeMusicXml } from '../src/music/export.ts';
+import { transposeFifths } from '../src/music/keys.ts';
 
 const corpus = process.env['MUSIC_CORPUS'];
 const KNOWN_DIFFERENCES = new Set(['repeat52.mscx', 'repeat53.mscx']);
@@ -73,32 +75,61 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
     },
   );
 
-  it.each(files)('%s parses into notes', (name) => {
-    const bytes = readFileSync(join(dir, 'dl', name));
-    const text = unpackScore(bytes);
-    const score = parseScoreText(text);
-    const written =
-      score.format === 'musescore'
-        ? [
-            ...text
-              .slice(text.indexOf('<Score>') + '<Score>'.length)
-              .replace(/<Score>[\s\S]*?<\/Score>/g, '')
-              .matchAll(/<Note>([\s\S]*?)<\/Note>/g),
-          ].filter((m) => !(m[1] ?? '').includes('<play>0</play>')).length
-        : [...text.matchAll(/<note\b[^>]*>([\s\S]*?)<\/note>/g)].filter(
-            (m) => (m[1] ?? '').includes('<pitch>') && !(m[1] ?? '').includes('<cue/>'),
-          ).length;
-    expect(score.notes.length).toBe(written);
-    const order = unroll(score.measures, score.voltas);
-    expect(score.measures.length).toBeGreaterThan(0);
-    expect(order.order.length).toBeGreaterThanOrEqual(score.measures.length * 0.5);
-    console.info(
-      `dewidebug corpus ${name}: v${score.version} "${score.title}" parts=${String(score.parts.length)} staves=${score.staves.map((s) => s.name).join('|')} bars=${String(score.measures.length)} played=${String(order.order.length)} order=${order.order
-        .slice(0, 40)
-        .map((i) => score.measures[i]?.number ?? '?')
-        .join(
-          ',',
-        )} notes=${String(score.notes.length)} voltas=${String(score.voltas.length)} tempos=${score.tempos.map((t) => t.bpm.toFixed(0)).join(',')} warnings=${[...score.warnings, ...order.warnings].join(' / ')}`,
-    );
-  });
+  it.each(files)(
+    '%s exports transposed with every note moved and the key moved with it',
+    (name) => {
+      const score = loadScore(readFileSync(join(dir, 'dl', name)));
+      const xml =
+        score.format === 'musicxml'
+          ? unpackScore(readFileSync(join(dir, 'dl', name)))
+          : score.notation
+            ? toMusicXml(score, score.notation)
+            : null;
+      if (!xml) throw new Error('no notation');
+      const before = buildPerformance(parseScoreText(xml));
+      for (const semitones of [3, -5]) {
+        const after = buildPerformance(
+          parseScoreText(transposeMusicXml(xml, semitones, before.keyFifths)),
+        );
+        expect(after.keyFifths).toBe(transposeFifths(before.keyFifths, semitones));
+        expect(after.notes.map((n) => n.pitch)).toEqual(
+          before.notes.map((n) => n.pitch + semitones),
+        );
+      }
+    },
+    60_000,
+  );
+
+  it.each(files)(
+    '%s parses into notes',
+    (name) => {
+      const bytes = readFileSync(join(dir, 'dl', name));
+      const text = unpackScore(bytes);
+      const score = parseScoreText(text);
+      const written =
+        score.format === 'musescore'
+          ? [
+              ...text
+                .slice(text.indexOf('<Score>') + '<Score>'.length)
+                .replace(/<Score>[\s\S]*?<\/Score>/g, '')
+                .matchAll(/<Note>([\s\S]*?)<\/Note>/g),
+            ].filter((m) => !(m[1] ?? '').includes('<play>0</play>')).length
+          : [...text.matchAll(/<note\b[^>]*>([\s\S]*?)<\/note>/g)].filter(
+              (m) => (m[1] ?? '').includes('<pitch>') && !(m[1] ?? '').includes('<cue/>'),
+            ).length;
+      expect(score.notes.length).toBe(written);
+      const order = unroll(score.measures, score.voltas);
+      expect(score.measures.length).toBeGreaterThan(0);
+      expect(order.order.length).toBeGreaterThanOrEqual(score.measures.length * 0.5);
+      console.info(
+        `dewidebug corpus ${name}: v${score.version} "${score.title}" parts=${String(score.parts.length)} staves=${score.staves.map((s) => s.name).join('|')} bars=${String(score.measures.length)} played=${String(order.order.length)} order=${order.order
+          .slice(0, 40)
+          .map((i) => score.measures[i]?.number ?? '?')
+          .join(
+            ',',
+          )} notes=${String(score.notes.length)} voltas=${String(score.voltas.length)} tempos=${score.tempos.map((t) => t.bpm.toFixed(0)).join(',')} warnings=${[...score.warnings, ...order.warnings].join(' / ')}`,
+      );
+    },
+    60_000,
+  );
 });

@@ -21,6 +21,7 @@ import { BarStrip } from './BarStrip.tsx';
 import { parseScoreText, unpackScore } from './load.ts';
 import { Notation } from './Notation.tsx';
 import { toMusicXml } from './to-musicxml.ts';
+import { download, exportName, performanceToMidi, transposeMusicXml } from './export.ts';
 import { barAt, buildPerformance, type Performance } from './performance.ts';
 import { PianoPlayer, type PlayerEvent } from './player.ts';
 import { PlayAlongLog } from './practice-session.ts';
@@ -232,12 +233,13 @@ export function PlayAlong({
   const readout = useRef<HTMLSpanElement>(null);
   const transpose = music.transpose;
   const colours = useMemo(() => (perf ? staffColours(perf.staves) : []), [perf]);
-  const notationXml = useMemo(() => {
+  const sourceXml = useMemo(() => {
     const data = loaded.data;
-    if (!data || !prefs.notation) return null;
+    if (!data) return null;
     if (data.score.format === 'musicxml') return data.text;
     return data.score.notation ? toMusicXml(data.score, data.score.notation) : null;
-  }, [loaded.data, prefs.notation]);
+  }, [loaded.data]);
+  const notationXml = prefs.notation ? sourceXml : null;
 
   const updatePrefs = useCallback(
     (update: (p: PlayAlongPrefs) => PlayAlongPrefs) => {
@@ -616,6 +618,40 @@ export function PlayAlong({
               🎸 Capo {capo} + written shapes
             </span>
           )}
+        </span>
+        <span className="playalong-field" data-testid="playalong-export">
+          <span>Export</span>
+          <button
+            type="button"
+            className="btn small ghost"
+            disabled={!sourceXml}
+            title={`MusicXML in ${playedKey}, for MuseScore or any notation program`}
+            onClick={() => {
+              if (!sourceXml) return;
+              const xml = transposeMusicXml(sourceXml, transpose, perf.keyFifths);
+              download(
+                exportName(music.name, transpose, 'musicxml'),
+                xml,
+                'application/vnd.recordare.musicxml+xml',
+              );
+            }}
+          >
+            💾 MusicXML
+          </button>
+          <button
+            type="button"
+            className="btn small ghost"
+            title={`MIDI in ${playedKey}, repeats played out`}
+            onClick={() => {
+              download(
+                exportName(music.name, transpose, 'mid'),
+                performanceToMidi(perf, transpose),
+                'audio/midi',
+              );
+            }}
+          >
+            💾 MIDI
+          </button>
         </span>
         <span className="playalong-field" data-testid="playalong-loop">
           <span>Loop</span>

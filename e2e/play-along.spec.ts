@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { makeMscx, makeMusicXml, PIANO_WALTZ, zipScore } from '../packages/fixtures/src/index.ts';
 import { expect, test, type Page } from '@playwright/test';
 import { createPiece, eventuallyInRemote, openLibrary, remoteLog } from './support/helpers.ts';
@@ -222,6 +223,37 @@ test('a minute of play-along is logged to the practice log when you leave the pi
   );
   expect(log).toContain('Play-along: Fixture Waltz, up to 100% speed');
   await expect(page.getByTestId('session-list')).toContainText('Play-along: Fixture Waltz');
+});
+
+test('the piece exports as MusicXML and MIDI in the key it is transposed to', async ({ page }) => {
+  await createPiece(page, 'Export Practice', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-key')).toContainText('G major');
+  await page.getByRole('button', { name: 'Transpose up a semitone' }).click();
+  await page.getByRole('button', { name: 'Transpose up a semitone' }).click();
+  await expect(page.getByTestId('playalong-key')).toContainText('A major');
+
+  const exportButton = (name: string) =>
+    page.getByTestId('playalong-export').getByRole('button', { name });
+  const [xmlFile] = await Promise.all([
+    page.waitForEvent('download'),
+    exportButton('💾 MusicXML').click(),
+  ]);
+  expect(xmlFile.suggestedFilename()).toBe('Fixture Waltz (+2).musicxml');
+  const xml = readFileSync(await xmlFile.path(), 'utf8');
+  expect(xml).toMatch(/^<\?xml/);
+  expect(xml).toContain('<fifths>3</fifths>');
+
+  const [midiFile] = await Promise.all([
+    page.waitForEvent('download'),
+    exportButton('💾 MIDI').click(),
+  ]);
+  expect(midiFile.suggestedFilename()).toBe('Fixture Waltz (+2).mid');
+  expect(
+    readFileSync(await midiFile.path())
+      .subarray(0, 4)
+      .toString('latin1'),
+  ).toBe('MThd');
 });
 
 test('a file that is not music says why', async ({ page }) => {

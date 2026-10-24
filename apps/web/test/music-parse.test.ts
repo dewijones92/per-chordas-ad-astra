@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { loadScore, parseScoreText, unpackScore } from '../src/music/load.ts';
 import { buildPerformance, countInFor } from '../src/music/performance.ts';
 import { spell, toMusicXml } from '../src/music/to-musicxml.ts';
+import { exportName, performanceToMidi, transposeMusicXml } from '../src/music/export.ts';
 
 const enc = (s: string) => new TextEncoder().encode(s);
 
@@ -383,5 +384,44 @@ describe('clicks and count-in', () => {
       ),
     );
     expect(countInFor(pickup, 0, 1)).toEqual({ beats: 3, seconds: 0.5 });
+  });
+});
+
+describe('export transposed', () => {
+  it('transposes MusicXML into the key we show, spelling notes for it', () => {
+    const xml = makeMusicXml(PIANO_WALTZ);
+    const up = transposeMusicXml(xml, 2, 1);
+    const original = buildPerformance(parseScoreText(xml));
+    const moved = buildPerformance(parseScoreText(up));
+    expect(moved.keyFifths).toBe(3);
+    expect(moved.notes.map((n) => [n.pitch, round(n.start)])).toEqual(
+      original.notes.map((n) => [n.pitch + 2, round(n.start)]),
+    );
+    expect(up).toContain('<step>C</step><alter>1</alter><octave>5</octave>');
+    const down = transposeMusicXml(xml, -1, 1);
+    expect(buildPerformance(parseScoreText(down)).keyFifths).toBe(6);
+    expect(down).toContain('<step>F</step><alter>1</alter><octave>4</octave>');
+    expect(transposeMusicXml(xml, 0, 1)).toBe(xml);
+  });
+
+  it('writes a type-1 MIDI file with a track per staff and every note', () => {
+    const perf = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
+    const midi = performanceToMidi(perf, 2);
+    const ascii = (from: number, to: number) => String.fromCharCode(...midi.slice(from, to));
+    expect(ascii(0, 4)).toBe('MThd');
+    expect([midi[8], midi[9], midi[10], midi[11]]).toEqual([0, 1, 0, 3]);
+    const noteOns = [...midi.keys()].filter(
+      (i) => ((midi[i] ?? 0) & 0xf0) === 0x90 && (midi[i + 2] ?? 0) > 0 && (midi[i + 1] ?? 0) < 128,
+    );
+    expect(noteOns.length).toBeGreaterThanOrEqual(perf.notes.length);
+    expect(midi.includes(perf.notes[0] ? perf.notes[0].pitch + 2 : -1)).toBe(true);
+  });
+});
+
+describe('export file names', () => {
+  it('names the export after the music and its transposition', () => {
+    expect(exportName('Gran Vals.mscz', 2, 'musicxml')).toBe('Gran Vals (+2).musicxml');
+    expect(exportName('Gran Vals.mscz', -3, 'mid')).toBe('Gran Vals (-3).mid');
+    expect(exportName('Gran Vals.mscz', 0, 'mid')).toBe('Gran Vals.mid');
   });
 });

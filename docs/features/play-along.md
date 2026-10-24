@@ -35,6 +35,12 @@ keyboard from above, like the bird's-eye piano videos.
 - **Transpose**: − / + by semitone (±24). Shows the written key and the key it now sounds in, minor where
   the file says so, and for transposing up, the capo fret that keeps the written shapes on guitar. Saved
   in `piece.json`, so it opens in your key everywhere; the commit says `Transpose <file> to +2`.
+- **Export**: 💾 MusicXML and 💾 MIDI download the piece in the key it is transposed to, named like
+  `Gran Vals (+2).musicxml`. MusicXML is respelled for the new key (key signature and note names, the same
+  rule as the key line and the notation; printed accidentals are left for the notation program to redo), so
+  it opens in MuseScore or any notation program; MuseScore files go through our own converter first. MIDI
+  is a type-1 file with a track per staff, repeats played out, at the written tempo shape (fixed 120 bpm
+  clock, timings from the performance). Nothing is uploaded; it is built in the browser.
 - **Loop**: drag across bars on the **bar strip** above the notes, or use From here / To here. Click a bar
   to jump to it, Shift+click to stretch the loop. **Speed up each loop** adds 5% every time round until
   full speed; the change happens exactly at the loop point, so no note is cut. Speed (25–200%) and the loop are remembered per file, on every device.
