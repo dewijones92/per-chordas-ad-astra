@@ -1,3 +1,4 @@
+import { units } from '../strings.ts';
 const SHARP_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'] as const;
 const FLAT_NAMES = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'] as const;
 const MAJOR_BY_FIFTHS = [
@@ -74,8 +75,8 @@ export function noteName(pitch: number, preferFlats = false): string {
 }
 
 export function signedSemitones(n: number): string {
-  if (n === 0) return 'written key';
-  return `${n > 0 ? '+' : '−'}${String(Math.abs(n))} semitone${Math.abs(n) === 1 ? '' : 's'}`;
+  if (n === 0) return units.writtenKey;
+  return `${n > 0 ? '+' : '−'}${String(Math.abs(n))} ${Math.abs(n) === 1 ? units.semitone : units.semitones}`;
 }
 
 const MIN_FITTED_KEYS = 36;

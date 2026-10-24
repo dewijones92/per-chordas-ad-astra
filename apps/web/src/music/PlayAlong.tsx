@@ -17,7 +17,7 @@ import { isTypingTarget } from '../annotate/tools.ts';
 import { useAnnotations } from '../annotate/use-annotations.ts';
 import { claimDrawing, useDrawing } from '../annotate/use-drawing.ts';
 import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
-import { strings, tips } from '../strings.ts';
+import { strings, tips, units } from '../strings.ts';
 import { LoopSwitch } from '../ui/LoopSwitch.tsx';
 import { rememberPlayAlong, savedPlayAlong, scoreKey } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
@@ -428,7 +428,11 @@ export function PlayAlong({
         setBarIndex(index);
       }
       if (readout.current) {
-        readout.current.textContent = `Bar ${String(bar?.number ?? 1)} · ${clock(position)} / ${clock(perf.duration)}`;
+        readout.current.textContent = strings.playAlong.position(
+          bar?.number ?? 1,
+          clock(position),
+          clock(perf.duration),
+        );
       }
       if (player.playing) frame = requestAnimationFrame(tick);
     };
@@ -510,17 +514,17 @@ export function PlayAlong({
 
   if (loaded.error) {
     return (
-      <section className="playalong" aria-label="Play-along">
+      <section className="playalong" aria-label={tips.playAlong.panel}>
         <p className="error" data-testid="playalong-error">
-          Could not read {music.name}: {loaded.error}
+          {strings.playAlong.couldNotRead(music.name, loaded.error)}
         </p>
       </section>
     );
   }
   if (!perf) {
     return (
-      <section className="playalong" aria-label="Play-along">
-        <p className="muted playalong-loading">Reading {music.name}…</p>
+      <section className="playalong" aria-label={tips.playAlong.panel}>
+        <p className="muted playalong-loading">{strings.playAlong.reading(music.name)}</p>
       </section>
     );
   }
@@ -530,13 +534,16 @@ export function PlayAlong({
   const playedKey = keyName(transposeFifths(perf.keyFifths, transpose), perf.keyMinor);
   const capo = capoFor(transpose);
   const loopLabel = prefs.loop
-    ? `Bars ${String(perf.bars[prefs.loop.from]?.number ?? '?')}–${String(perf.bars[prefs.loop.to]?.number ?? '?')}`
-    : 'Off';
+    ? strings.playAlong.loopBars(
+        String(perf.bars[prefs.loop.from]?.number ?? '?'),
+        String(perf.bars[prefs.loop.to]?.number ?? '?'),
+      )
+    : strings.playAlong.loopOff;
 
   return (
     <section
       className={`playalong${drawMode ? ' is-drawing' : ''}`}
-      aria-label="Play-along"
+      aria-label={tips.playAlong.panel}
       data-testid="playalong"
     >
       <div className="playalong-bar">
@@ -545,15 +552,15 @@ export function PlayAlong({
           className={`btn small ${playing ? 'coral' : 'primary'}`}
           data-testid="playalong-play"
           aria-pressed={playing}
-          title="Play or pause (K)"
+          title={tips.playAlong.play}
           onClick={toggle}
         >
-          {playing ? '⏸ Pause' : '▶ Play'}
+          {playing ? strings.common.pause : strings.common.play}
         </button>
         <button
           type="button"
           className="btn small icon"
-          aria-label="Back to the start"
+          aria-label={tips.playAlong.toStart}
           onClick={() => {
             const on = activeLoop(prefs);
             const from = on ? perf.bars[on.from] : undefined;
@@ -565,8 +572,8 @@ export function PlayAlong({
         <button
           type="button"
           className="btn small icon"
-          aria-label="Previous bar"
-          title="Previous bar (,)"
+          aria-label={tips.playAlong.previousBar}
+          title={tips.playAlong.previousBarTitle}
           onClick={() => {
             stepBar(-1);
           }}
@@ -576,8 +583,8 @@ export function PlayAlong({
         <button
           type="button"
           className="btn small icon"
-          aria-label="Next bar"
-          title="Next bar (.)"
+          aria-label={tips.playAlong.nextBar}
+          title={tips.playAlong.nextBarTitle}
           onClick={() => {
             stepBar(1);
           }}
@@ -586,15 +593,15 @@ export function PlayAlong({
         </button>
         <span className="playalong-readout" ref={readout} data-testid="playalong-position" />
         <span className="spacer" />
-        <label className="playalong-field" title="Speed ([ and ])">
-          <span>Speed</span>
+        <label className="playalong-field" title={tips.playAlong.speed}>
+          <span>{strings.common.speed}</span>
           <input
             type="range"
             min={PLAY_ALONG_MIN_SPEED * 100}
             max={PLAY_ALONG_MAX_SPEED * 100}
             step={SPEED_STEP * 100}
             value={Math.round(prefs.speed * 100)}
-            aria-label="Play-along speed"
+            aria-label={tips.playAlong.speedLabel}
             onChange={(e) => {
               setSpeed(Number(e.target.value) / 100);
             }}
@@ -604,11 +611,11 @@ export function PlayAlong({
       </div>
       <div className="playalong-bar">
         <span className="playalong-field" data-testid="playalong-transpose">
-          <span>Key</span>
+          <span>{strings.playAlong.key}</span>
           <button
             type="button"
             className="btn small icon"
-            aria-label="Transpose down a semitone"
+            aria-label={tips.playAlong.down}
             disabled={transpose <= -MAX_TRANSPOSE}
             onClick={() => {
               onTranspose(transpose - 1);
@@ -621,8 +628,8 @@ export function PlayAlong({
               <strong>{writtenKey}</strong>
             ) : (
               <>
-                <span className="muted">written in</span> <strong>{writtenKey}</strong>
-                <span aria-hidden="true">→</span> <span className="muted">now</span>{' '}
+                <span className="muted">{units.writtenIn}</span> <strong>{writtenKey}</strong>
+                <span aria-hidden="true">→</span> <span className="muted">{units.now}</span>{' '}
                 <strong>{playedKey}</strong>
               </>
             )}{' '}
@@ -631,7 +638,7 @@ export function PlayAlong({
           <button
             type="button"
             className="btn small icon"
-            aria-label="Transpose up a semitone"
+            aria-label={tips.playAlong.up}
             disabled={transpose >= MAX_TRANSPOSE}
             onClick={() => {
               onTranspose(transpose + 1);
@@ -647,26 +654,26 @@ export function PlayAlong({
                 onTranspose(0);
               }}
             >
-              Reset
+              {strings.playAlong.reset}
             </button>
           )}
           {capo !== null && (
             <span
               className="playalong-capo"
               data-testid="playalong-capo"
-              title={`On guitar: capo on fret ${String(capo)} and play the written shapes to sound ${playedKey}`}
+              title={tips.playAlong.capo(capo, playedKey)}
             >
-              🎸 Capo {capo} + written shapes
+              {strings.playAlong.capo(capo)}
             </span>
           )}
         </span>
         <span className="playalong-field" data-testid="playalong-export">
-          <span>Export</span>
+          <span>{strings.playAlong.export}</span>
           <button
             type="button"
             className="btn small ghost"
             disabled={!sourceXml}
-            title={`MusicXML in ${playedKey}, for MuseScore or any notation program`}
+            title={tips.playAlong.exportXml(playedKey)}
             onClick={() => {
               if (!sourceXml) return;
               const xml = transposeMusicXml(sourceXml, transpose, perf.keyFifths);
@@ -677,12 +684,12 @@ export function PlayAlong({
               );
             }}
           >
-            💾 MusicXML
+            {strings.playAlong.exportXml}
           </button>
           <button
             type="button"
             className="btn small ghost"
-            title={`MIDI in ${playedKey}, repeats played out`}
+            title={tips.playAlong.exportMidi(playedKey)}
             onClick={() => {
               download(
                 exportName(music.name, transpose, 'mid'),
@@ -691,7 +698,7 @@ export function PlayAlong({
               );
             }}
           >
-            💾 MIDI
+            {strings.playAlong.exportMidi}
           </button>
         </span>
         <span className="playalong-field" data-testid="playalong-loop">
@@ -707,7 +714,7 @@ export function PlayAlong({
           <button
             type="button"
             className="btn small ghost"
-            title="Start the loop at the current bar"
+            title={tips.playAlong.fromHere}
             onClick={() => {
               const at = currentBar();
               updatePrefs((p) => ({
@@ -717,12 +724,12 @@ export function PlayAlong({
               }));
             }}
           >
-            From here
+            {strings.playAlong.fromHere}
           </button>
           <button
             type="button"
             className="btn small ghost"
-            title="End the loop at the current bar"
+            title={tips.playAlong.toHere}
             onClick={() => {
               const at = currentBar();
               updatePrefs((p) => ({
@@ -732,13 +739,13 @@ export function PlayAlong({
               }));
             }}
           >
-            To here
+            {strings.playAlong.toHere}
           </button>
           {prefs.loop && (
             <button
               type="button"
               className="btn small ghost"
-              aria-label="Clear the loop"
+              aria-label={tips.playAlong.clearLoop}
               onClick={() => {
                 updatePrefs((p) => ({ ...p, loop: null }));
               }}
@@ -747,10 +754,7 @@ export function PlayAlong({
             </button>
           )}
         </span>
-        <label
-          className="playalong-field"
-          title="Each time the loop comes round, play it 5% faster until full speed"
-        >
+        <label className="playalong-field" title={tips.playAlong.ramp}>
           <input
             type="checkbox"
             checked={prefs.ramp}
@@ -760,7 +764,7 @@ export function PlayAlong({
               updatePrefs((p) => ({ ...p, ramp }));
             }}
           />
-          Speed up each loop
+          {strings.playAlong.ramp}
         </label>
         <span className="spacer" />
         <label className="playalong-field">
@@ -772,9 +776,9 @@ export function PlayAlong({
               updatePrefs((p) => ({ ...p, full }));
             }}
           />
-          All 88 keys
+          {strings.playAlong.fullKeyboard}
         </label>
-        <label className="playalong-field" title="One bar of clicks before the music starts">
+        <label className="playalong-field" title={tips.playAlong.countIn}>
           <input
             type="checkbox"
             checked={prefs.countIn}
@@ -784,9 +788,9 @@ export function PlayAlong({
               updatePrefs((p) => ({ ...p, countIn }));
             }}
           />
-          🥁 Count-in
+          {strings.playAlong.countIn}
         </label>
-        <label className="playalong-field" title="A metronome click on every beat while it plays">
+        <label className="playalong-field" title={tips.playAlong.click}>
           <input
             type="checkbox"
             checked={prefs.click}
@@ -796,7 +800,7 @@ export function PlayAlong({
               updatePrefs((p) => ({ ...p, click }));
             }}
           />
-          Click
+          {strings.playAlong.click}
         </label>
         <label className="playalong-field">
           <input
@@ -808,7 +812,7 @@ export function PlayAlong({
               updatePrefs((p) => ({ ...p, notation }));
             }}
           />
-          🎼 Notation
+          {strings.playAlong.notation}
         </label>
         <button
           type="button"
@@ -844,28 +848,26 @@ export function PlayAlong({
               updatePrefs((p) => ({ ...p, names }));
             }}
           />
-          Note names
+          {strings.playAlong.noteNames}
         </label>
         {samples && <span className="muted small-print">{samples}</span>}
       </div>
       <div
         className="playalong-parts playalong-bits"
-        aria-label="Hard bits"
+        aria-label={tips.playAlong.hardBits}
         data-testid="hard-bits"
       >
-        <span className="playalong-field">📌 Hard bits</span>
+        <span className="playalong-field">{strings.playAlong.hardBits}</span>
         {hardBits.error && !bitsLoaded && (
           <span className="error small-print" data-testid="hard-bits-error">
-            Saved hard bits could not be loaded: {hardBits.error}{' '}
+            {strings.playAlong.hardBitsFailed} {hardBits.error}{' '}
             <button type="button" className="btn small ghost" onClick={reloadHardBits}>
-              Try again
+              {strings.playAlong.tryAgain}
             </button>
           </span>
         )}
         {bitsLoaded && bits.length === 0 && (
-          <span className="muted small-print">
-            Loop a passage, then save it here to come back to it.
-          </span>
+          <span className="muted small-print">{strings.playAlong.hardBitsEmpty}</span>
         )}
         {bits.map((b) => {
           const on = activeLoop(prefs);
@@ -876,7 +878,7 @@ export function PlayAlong({
                 type="button"
                 className="btn small ghost"
                 aria-pressed={active}
-                title={`Loop bars ${String(b.fromBar)}–${String(b.toBar)}`}
+                title={tips.playAlong.hardBit(b.fromBar, b.toBar)}
                 onClick={() => {
                   console.info('dewidebug hard bit chosen', {
                     name: b.name,
@@ -891,14 +893,14 @@ export function PlayAlong({
                 {b.name}
               </button>
               <span className="muted small-print" data-testid="hard-bit-best">
-                best {Math.round(b.bestSpeed * 100)}%
+                {strings.playAlong.best(Math.round(b.bestSpeed * 100))}
               </span>
               <button
                 type="button"
                 className="btn small ghost icon part-toggle"
-                aria-label={`Forget ${b.name}`}
+                aria-label={tips.playAlong.forget(b.name)}
                 onClick={() => {
-                  if (!window.confirm(`Forget the hard bit “${b.name}”?`)) return;
+                  if (!window.confirm(strings.playAlong.forgetConfirm(b.name))) return;
                   saveBits(bits.filter((x) => x.id !== b.id));
                 }}
               >
@@ -920,7 +922,7 @@ export function PlayAlong({
                 const fromBar = perf.bars[loop.from]?.number ?? 0;
                 const toBar = perf.bars[loop.to]?.number ?? 0;
                 const name = window.prompt(
-                  'Name this hard bit',
+                  strings.playAlong.hardBitPrompt,
                   `Bars ${String(fromBar)}–${String(toBar)}`,
                 );
                 if (!name?.trim()) return;
@@ -938,11 +940,11 @@ export function PlayAlong({
                 ]);
               }}
             >
-              📌 Save loop as hard bit
+              {strings.playAlong.saveHardBit}
             </button>
           )}
       </div>
-      <div className="playalong-parts" aria-label="Parts">
+      <div className="playalong-parts" aria-label={tips.playAlong.parts}>
         {perf.staves.map((s) => {
           const colour = colours[s.index];
           const isHidden = prefs.hidden.includes(s.index);
@@ -954,7 +956,7 @@ export function PlayAlong({
               <button
                 type="button"
                 className="btn small ghost icon part-toggle"
-                aria-label={`${isHidden ? 'Show' : 'Hide'} ${s.name}`}
+                aria-label={isHidden ? tips.playAlong.show(s.name) : tips.playAlong.hide(s.name)}
                 onClick={() => {
                   updatePrefs((p) => ({
                     ...p,
@@ -969,7 +971,7 @@ export function PlayAlong({
               <button
                 type="button"
                 className="btn small ghost icon part-toggle"
-                aria-label={`${isMuted ? 'Unmute' : 'Mute'} ${s.name}`}
+                aria-label={isMuted ? tips.playAlong.unmute(s.name) : tips.playAlong.mute(s.name)}
                 onClick={() => {
                   updatePrefs((p) => ({
                     ...p,
@@ -984,8 +986,8 @@ export function PlayAlong({
         })}
         {perf.warnings.length > 0 && (
           <span className="muted small-print" title={perf.warnings.join('\n')}>
-            ⚠ {perf.warnings[0]}
-            {perf.warnings.length > 1 ? ` (+${String(perf.warnings.length - 1)})` : ''}
+            {strings.playAlong.warning(perf.warnings[0] ?? '')}
+            {perf.warnings.length > 1 ? units.moreWarnings(perf.warnings.length - 1) : ''}
           </span>
         )}
       </div>

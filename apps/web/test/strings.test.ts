@@ -6,7 +6,6 @@ import { names, strings, tips, units } from '../src/strings.ts';
 
 const SRC = join(import.meta.dirname, '..', 'src');
 const LEADING_EMOJI = /^(\p{Extended_Pictographic}|\p{Regional_Indicator}|[0-9#*]️?⃣)/u;
-const NOT_YET_MOVED = new Set(['music/PlayAlong.tsx']);
 const PLAIN_ATTRIBUTES = new Set(['title', 'aria-label', 'placeholder', 'alt', 'label']);
 
 type Leaf = string | ((...args: never[]) => string);
@@ -124,12 +123,6 @@ describe('UI strings', () => {
   });
 
   it('come from strings.ts, never typed inline in a component', () => {
-    const files = tsxFiles(SRC).filter((f) => !NOT_YET_MOVED.has(relative(SRC, f)));
-    expect(files.flatMap(inlineText)).toEqual([]);
-  });
-
-  it('list only files that still have inline text as not moved yet', () => {
-    const clean = [...NOT_YET_MOVED].filter((f) => inlineText(join(SRC, f)).length === 0);
-    expect(clean).toEqual([]);
+    expect(tsxFiles(SRC).flatMap(inlineText)).toEqual([]);
   });
 });

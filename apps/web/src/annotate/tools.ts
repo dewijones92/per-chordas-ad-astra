@@ -64,22 +64,7 @@ export const TOOL_LABELS: Record<Tool, { icon: string; label: string; key: strin
   stamp: { icon: '★', label: tips.tools.stamp, key: 'S' },
 };
 
-export const STAMP_LABELS: Record<Glyph, string> = {
-  '1': 'Finger 1',
-  '2': 'Finger 2',
-  '3': 'Finger 3',
-  '4': 'Finger 4',
-  T: 'Thumb',
-  '↑': 'Up-strum',
-  '↓': 'Down-strum',
-  P: 'Pull-off',
-  H: 'Hammer-on',
-  S: 'Slide',
-  '𝄆': 'Repeat start',
-  '𝄇': 'Repeat end',
-  '✓': 'Got it',
-  '!': 'Watch out',
-};
+export const STAMP_LABELS: Record<Glyph, string> = tips.stamps;
 
 export const defaultToolState = (): ToolState => ({
   tool: 'pen',

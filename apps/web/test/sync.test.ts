@@ -1,6 +1,7 @@
 import type { SyncStatus } from '@pcaa/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { describeSync } from '../src/sync/describe.ts';
+import { strings } from '../src/strings.ts';
 import { saves } from '../src/sync/saves.ts';
 
 const status = (over: Partial<SyncStatus> = {}): SyncStatus => ({
@@ -19,19 +20,22 @@ describe('describeSync', () => {
   it('reports the strongest problem first', () => {
     expect(describeSync({ ...idle, lastError: 'boom' }, status(), true).tone).toBe('error');
     expect(describeSync(idle, status(), false).tone).toBe('offline');
-    expect(describeSync({ ...idle, inFlight: 1 }, status(), true).text).toBe('Saving…');
-    expect(describeSync(idle, null, true).text).toBe('Checking…');
+    expect(describeSync({ ...idle, inFlight: 1 }, status(), true).text).toBe(strings.sync.saving);
+    expect(describeSync(idle, null, true).text).toBe(strings.sync.checking);
   });
 
   it('maps every server phase to a pill', () => {
-    expect(describeSync(idle, status(), true)).toMatchObject({ tone: 'github', text: 'In GitHub' });
+    expect(describeSync(idle, status(), true)).toMatchObject({
+      tone: 'github',
+      text: strings.sync.github,
+    });
     expect(describeSync(idle, status({ lastPushAt: null }), true).detail).toBe(
       'Everything is in GitHub.',
     );
     for (const phase of ['dirty', 'committing', 'pushing'] as const) {
       expect(describeSync(idle, status({ phase, pendingChanges: 2 }), true)).toMatchObject({
         tone: 'pi',
-        text: 'Saved on Pi',
+        text: strings.sync.savedOnPi,
       });
     }
     expect(
@@ -44,7 +48,7 @@ describe('describeSync', () => {
         }),
         true,
       ),
-    ).toMatchObject({ tone: 'error', text: 'Not committed' });
+    ).toMatchObject({ tone: 'error', text: strings.sync.notCommitted });
     const failed = describeSync(
       idle,
       status({
@@ -55,7 +59,7 @@ describe('describeSync', () => {
       }),
       true,
     );
-    expect(failed).toMatchObject({ tone: 'error', text: 'GitHub unreachable' });
+    expect(failed).toMatchObject({ tone: 'error', text: strings.sync.githubUnreachable });
     expect(failed.detail).toContain('3 commit(s) waiting');
     expect(failed.detail).toContain('no route');
   });
