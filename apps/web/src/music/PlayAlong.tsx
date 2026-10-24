@@ -83,6 +83,10 @@ function FallingCanvas({
     return from && to ? { start: from.start, end: to.end } : null;
   }, [perf, prefs.loop]);
   const hidden = useMemo(() => new Set(prefs.hidden), [prefs.hidden]);
+  const names = useMemo(
+    () => (prefs.names ? { flats: transposeFifths(perf.keyFifths, transpose) < 0 } : null),
+    [prefs.names, perf.keyFifths, transpose],
+  );
   const muted = useMemo(() => new Set(prefs.muted), [prefs.muted]);
 
   useEffect(() => {
@@ -122,6 +126,7 @@ function FallingCanvas({
         muted,
         colours,
         loop,
+        names,
         width: size.width,
         height: size.height,
       });
@@ -132,7 +137,20 @@ function FallingCanvas({
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [perf, player, playing, transpose, range, hidden, muted, colours, loop, size, prefs.position]);
+  }, [
+    perf,
+    player,
+    playing,
+    transpose,
+    range,
+    hidden,
+    muted,
+    colours,
+    loop,
+    names,
+    size,
+    prefs.position,
+  ]);
 
   const drag = useRef<{ y: number; position: number } | null>(null);
   const pxPerSecond = geometry({ width: size.width, height: size.height, range }).pxPerSecond;
@@ -564,6 +582,18 @@ export function PlayAlong({
             }}
           />
           All 88 keys
+        </label>
+        <label className="playalong-field">
+          <input
+            type="checkbox"
+            checked={prefs.names}
+            data-testid="playalong-names"
+            onChange={(e) => {
+              const names = e.target.checked;
+              updatePrefs((p) => ({ ...p, names }));
+            }}
+          />
+          Note names
         </label>
         {samples && <span className="muted small-print">{samples}</span>}
       </div>

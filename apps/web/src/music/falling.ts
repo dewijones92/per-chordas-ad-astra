@@ -1,6 +1,6 @@
 import type { StaffColour } from './colours.ts';
 import { keyboardLayout, keyForPitch, type KeyboardLayout } from './keyboard.ts';
-import { noteName, type KeyRange } from './keys.ts';
+import { noteName, pitchName, type KeyRange } from './keys.ts';
 import type { PerfNote, Performance } from './performance.ts';
 
 export const LOOKAHEAD_SECONDS = 3;
@@ -16,6 +16,7 @@ export interface FallingView {
   muted: ReadonlySet<number>;
   colours: readonly StaffColour[];
   loop: { start: number; end: number } | null;
+  names: { flats: boolean } | null;
   width: number;
   height: number;
 }
@@ -169,6 +170,15 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): v
     ctx.strokeStyle = '#1d1533';
     ctx.lineWidth = 1.5;
     ctx.stroke();
+    if (view.names && h >= 13 && w >= 11) {
+      const size = Math.max(8, Math.min(12, Math.floor(w * 0.55)));
+      ctx.font = `800 ${String(size)}px Nunito Variable, system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(pitchName(n.pitch + transpose, view.names.flats), x + w / 2, yBottom - 2);
+      ctx.textAlign = 'start';
+    }
     ctx.globalAlpha = 1;
   }
 

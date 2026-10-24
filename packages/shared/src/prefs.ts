@@ -50,6 +50,7 @@ export const PlayAlongPrefs = z.object({
   full: z.boolean(),
   position: z.number().min(0),
   ramp: z.boolean().default(false),
+  names: z.boolean().default(false),
 });
 export type PlayAlongPrefs = z.output<typeof PlayAlongPrefs>;
 export const RAMP_STEP = 0.05;
@@ -62,6 +63,7 @@ export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
   full: false,
   position: 0,
   ramp: false,
+  names: false,
 };
 
 export const VIEW_MODES = ['page', 'spread', 'width'] as const;

@@ -18,6 +18,8 @@ keyboard from above, like the bird's-eye piano videos.
   all 88 keys. Sounding keys light up in their part's colour: right hand violet, left hand teal, other
   parts coral, blue, amber. Bar lines carry their numbers. Drag or scroll the notes to move through the
   piece.
+- **Note names**: a toggle prints each note's letter on it, spelled for the key it now sounds in (flats in
+  flat keys, sharps in sharp keys), following any transposition. Remembered per file.
 - **Parts**: each staff can be hidden (👁, still heard) or muted (🔊, still shown) on its own, to practise one
   hand while the other plays.
 - **Sound**: a sampled grand piano (Salamander, CC BY 3.0, credited in the section), 30 notes in minor

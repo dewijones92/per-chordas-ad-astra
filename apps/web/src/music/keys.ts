@@ -64,10 +64,13 @@ export function capoFor(semitones: number): number | null {
   return semitones >= 1 && semitones <= MAX_CAPO ? semitones : null;
 }
 
-export function noteName(pitch: number, preferFlats = false): string {
+export function pitchName(pitch: number, preferFlats = false): string {
   const pc = ((pitch % 12) + 12) % 12;
-  const octave = Math.floor(pitch / 12) - 1;
-  return `${(preferFlats ? FLAT_NAMES : SHARP_NAMES)[pc] ?? '?'}${String(octave)}`;
+  return (preferFlats ? FLAT_NAMES : SHARP_NAMES)[pc] ?? '?';
+}
+
+export function noteName(pitch: number, preferFlats = false): string {
+  return `${pitchName(pitch, preferFlats)}${String(Math.floor(pitch / 12) - 1)}`;
 }
 
 export function signedSemitones(n: number): string {

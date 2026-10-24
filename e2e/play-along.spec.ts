@@ -62,6 +62,7 @@ test('a MuseScore file plays as falling notes, transposes, loops, and remembers 
   await page.getByRole('button', { name: 'Mute Piano LH' }).click();
   await page.getByLabel('Play-along speed').fill('60');
   await expect(page.getByTestId('playalong-speed')).toHaveText('60%');
+  await page.getByTestId('playalong-names').check();
 
   await page.reload();
   await expect(page.getByTestId('playalong-key')).toContainText('now A major');
@@ -70,6 +71,7 @@ test('a MuseScore file plays as falling notes, transposes, loops, and remembers 
   await expect(page.getByRole('button', { name: 'Show Piano RH' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Unmute Piano LH' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Mute Piano RH' })).toBeVisible();
+  await expect(page.getByTestId('playalong-names')).toBeChecked();
 });
 
 test('speed up each loop plays the looped bar faster every time round', async ({ page }) => {

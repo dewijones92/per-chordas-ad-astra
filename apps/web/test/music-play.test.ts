@@ -8,6 +8,7 @@ import {
   isBlackKey,
   majorKeyName,
   noteName,
+  pitchName,
   signedSemitones,
   transposeFifths,
 } from '../src/music/keys.ts';
@@ -236,6 +237,9 @@ describe('keys and names', () => {
     expect(noteName(60)).toBe('C4');
     expect(noteName(61)).toBe('C♯4');
     expect(noteName(61, true)).toBe('D♭4');
+    expect(pitchName(70)).toBe('A♯');
+    expect(pitchName(70, true)).toBe('B♭');
+    expect(pitchName(-2)).toBe('A♯');
     expect(majorKeyName(0)).toBe('C');
     expect(majorKeyName(-3)).toBe('E♭');
     expect(majorKeyName(1)).toBe('G');
