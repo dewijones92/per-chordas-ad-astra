@@ -61,8 +61,7 @@ export function keyName(fifths: number, minor: boolean): string {
 export const MAX_CAPO = 9;
 
 export function capoFor(semitones: number): number | null {
-  const up = ((semitones % 12) + 12) % 12;
-  return up >= 1 && up <= MAX_CAPO ? up : null;
+  return semitones >= 1 && semitones <= MAX_CAPO ? semitones : null;
 }
 
 export function noteName(pitch: number, preferFlats = false): string {

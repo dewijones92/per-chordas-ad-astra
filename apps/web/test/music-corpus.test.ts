@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadScore } from '../src/music/load.ts';
+import { loadScore, parseScoreText, unpackScore } from '../src/music/load.ts';
 import { unroll } from '../src/music/unroll.ts';
 
 const corpus = process.env['MUSIC_CORPUS'];
@@ -48,7 +48,21 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
     }
   })();
   it.each(files)('%s parses into notes', (name) => {
-    const score = loadScore(readFileSync(join(dir, 'dl', name)));
+    const bytes = readFileSync(join(dir, 'dl', name));
+    const text = unpackScore(bytes);
+    const score = parseScoreText(text);
+    const written =
+      score.format === 'musescore'
+        ? [
+            ...text
+              .slice(text.indexOf('<Score>') + '<Score>'.length)
+              .replace(/<Score>[\s\S]*?<\/Score>/g, '')
+              .matchAll(/<Note>([\s\S]*?)<\/Note>/g),
+          ].filter((m) => !(m[1] ?? '').includes('<play>0</play>')).length
+        : [...text.matchAll(/<note\b[^>]*>([\s\S]*?)<\/note>/g)].filter(
+            (m) => (m[1] ?? '').includes('<pitch>') && !(m[1] ?? '').includes('<cue/>'),
+          ).length;
+    expect(score.notes.length).toBe(written);
     const order = unroll(score.measures, score.voltas);
     expect(score.measures.length).toBeGreaterThan(0);
     expect(order.order.length).toBeGreaterThanOrEqual(score.measures.length * 0.5);

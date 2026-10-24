@@ -58,9 +58,33 @@ test('a MuseScore file plays as falling notes, transposes, loops, and remembers 
   await dragBars(page, 0, 1);
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–2');
 
+  await page.getByRole('button', { name: 'Hide Piano RH' }).click();
+  await page.getByRole('button', { name: 'Mute Piano LH' }).click();
+  await page.getByLabel('Play-along speed').fill('60');
+  await expect(page.getByTestId('playalong-speed')).toHaveText('60%');
+
   await page.reload();
   await expect(page.getByTestId('playalong-key')).toContainText('now A major');
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–2');
+  await expect(page.getByTestId('playalong-speed')).toHaveText('60%');
+  await expect(page.getByRole('button', { name: 'Show Piano RH' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Unmute Piano LH' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Mute Piano RH' })).toBeVisible();
+});
+
+test('speed up each loop plays the looped bar faster every time round', async ({ page }) => {
+  await createPiece(page, 'Ramp Study', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await page.getByLabel('Play-along speed').fill('50');
+  await page.getByRole('button', { name: 'From here' }).click();
+  await page.getByRole('button', { name: 'To here' }).click();
+  await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
+  await page.getByTestId('playalong-ramp').check();
+  await page.getByTestId('playalong-play').click();
+  await expect(page.getByTestId('playalong-speed')).toHaveText('55%', { timeout: 10_000 });
+  await expect(page.getByTestId('playalong-speed')).toHaveText('60%', { timeout: 10_000 });
+  await page.getByTestId('playalong-play').click();
 });
 
 test('the score and the falling notes show side by side, or one at a time', async ({ page }) => {

@@ -23,6 +23,12 @@ export const SCORE_ACCEPT = [...SCORE_EXTENSIONS.map((e) => `.${e}`), 'applicati
 export const AUDIO_ACCEPT = ['audio/*', ...AUDIO_EXTENSIONS.map((e) => `.${e}`)].join(',');
 export const MUSIC_ACCEPT = MUSIC_EXTENSIONS.map((e) => `.${e}`).join(',');
 
+export const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04] as const;
+
+export function isZip(bytes: ArrayLike<number>): boolean {
+  return ZIP_MAGIC.every((b, i) => bytes[i] === b);
+}
+
 export function extensionOf(name: string): string {
   const dot = name.lastIndexOf('.');
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';

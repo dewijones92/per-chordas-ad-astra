@@ -19,6 +19,7 @@ import { BarStrip } from './BarStrip.tsx';
 import { loadScore } from './load.ts';
 import { barAt, buildPerformance, type Performance } from './performance.ts';
 import { PianoPlayer, type PlayerEvent } from './player.ts';
+import { clampSpeed } from './transport.ts';
 import './music.css';
 
 const SPEED_STEP = 0.05;
@@ -214,10 +215,9 @@ export function PlayAlong({
       }
       if (event.kind === 'loop') {
         updatePrefs((p) => {
-          if (!p.ramp || p.speed >= RAMP_TARGET) return p;
-          const speed = Math.min(RAMP_TARGET, Math.round((p.speed + RAMP_STEP) * 100) / 100);
-          console.info('dewidebug play-along loop speed-up', { from: p.speed, to: speed });
-          return { ...p, speed };
+          if (Math.abs(p.speed - event.speed) < 1e-9) return p;
+          console.info('dewidebug play-along loop sped up', { from: p.speed, to: event.speed });
+          return { ...p, speed: event.speed };
         });
       }
     };
@@ -238,10 +238,9 @@ export function PlayAlong({
 
   useEffect(() => {
     if (!player || !perf) return;
-    const hidden = new Set(prefs.hidden);
     const muted = new Set(prefs.muted);
-    player.setInclude((n) => !hidden.has(n.staff) && !muted.has(n.staff));
-  }, [player, perf, prefs.hidden, prefs.muted]);
+    player.setInclude((n) => !muted.has(n.staff));
+  }, [player, perf, prefs.muted]);
 
   useEffect(() => {
     if (!player || !perf) return;
@@ -257,6 +256,10 @@ export function PlayAlong({
   useEffect(() => {
     player?.setSpeed(prefs.speed);
   }, [player, prefs.speed]);
+
+  useEffect(() => {
+    player?.setRamp(prefs.ramp ? { step: RAMP_STEP, target: RAMP_TARGET } : null);
+  }, [player, prefs.ramp]);
 
   useEffect(() => {
     if (!player || !perf) return;
@@ -315,9 +318,7 @@ export function PlayAlong({
 
   const setSpeed = useCallback(
     (speed: number) => {
-      const clamped =
-        Math.round(Math.min(PLAY_ALONG_MAX_SPEED, Math.max(PLAY_ALONG_MIN_SPEED, speed)) * 100) /
-        100;
+      const clamped = Math.round(clampSpeed(speed) * 100) / 100;
       updatePrefs((p) => ({ ...p, speed: clamped }));
     },
     [updatePrefs],

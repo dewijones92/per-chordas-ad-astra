@@ -570,9 +570,10 @@ export function PiecePage({ id }: { id: string }) {
     rememberPieceView(id, mode, file);
   };
   const transposeMusic = (file: string, semitones: number) => {
-    stablePatch({
-      music: current.music.map((m) => (m.file === file ? { ...m, transpose: semitones } : m)),
-    });
+    const music = current.music.map((m) => (m.file === file ? { ...m, transpose: semitones } : m));
+    console.info('dewidebug transpose', { id, file, semitones });
+    setData((p) => (p ? { ...p, music } : p));
+    stablePatch({ music });
   };
 
   return (

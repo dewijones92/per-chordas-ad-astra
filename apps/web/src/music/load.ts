@@ -1,14 +1,9 @@
+import { isZip } from '@pcaa/shared';
 import { unzipSync } from 'fflate';
 import type { ScoreModel } from './model.ts';
 import { parseMscx } from './mscx.ts';
 import { parseMusicXml } from './musicxml.ts';
 import { child, parseXml } from './xml.ts';
-
-const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04];
-
-function isZip(bytes: Uint8Array): boolean {
-  return ZIP_MAGIC.every((b, i) => bytes[i] === b);
-}
 
 function decode(bytes: Uint8Array): string {
   return new TextDecoder('utf-8').decode(bytes).replace(/^\uFEFF/, '');

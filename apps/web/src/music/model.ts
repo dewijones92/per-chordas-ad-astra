@@ -1,4 +1,5 @@
 export const TPQ = 480;
+export const GRACE_TICKS = TPQ / 8;
 
 export type StaffRole = 'right' | 'left' | 'single';
 
@@ -115,6 +116,18 @@ export function velocityForDynamic(name: string): number | null {
 export function roleFor(staffCount: number, position: number): StaffRole {
   if (staffCount < 2) return 'single';
   return position === 0 ? 'right' : 'left';
+}
+
+export function staffName(partName: string, staffCount: number, position: number): string {
+  if (staffCount === 1) return partName;
+  const role = roleFor(staffCount, position);
+  return `${partName} ${role === 'right' ? 'RH' : role === 'left' ? 'LH' : String(position + 1)}`;
+}
+
+export function firstPerTick<T extends { tick: number }>(items: readonly T[]): T[] {
+  const byTick = new Map<number, T>();
+  for (const item of items) if (!byTick.has(item.tick)) byTick.set(item.tick, item);
+  return [...byTick.values()].sort((a, b) => a.tick - b.tick);
 }
 
 export function uniqueStaffNames(staves: ScoreStaff[]): void {

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { soundingAt, visibleNotes, maxNoteLength, geometry } from '../src/music/falling.ts';
 import { keyboardLayout, keyForPitch } from '../src/music/keyboard.ts';
 import {
+  capoFor,
   fitRange,
+  keyName,
   isBlackKey,
   majorKeyName,
   noteName,
@@ -184,6 +186,43 @@ describe('Transport', () => {
     expect(t.songAt(6 + START_LEAD_SECONDS)).toBe(0);
   });
 
+  it('speeds up each loop at the wrap without dropping the first note of a pass', () => {
+    const t = new Transport(notes, 4);
+    t.setSpeed(0.5, 0);
+    t.setLoop({ start: 0, end: 2 }, 0);
+    t.ramp = { step: 0.25, target: 1 };
+    t.play(0);
+    const lead = START_LEAD_SECONDS;
+    const s = t.pump(0, 9, () => true);
+    expect(
+      s.map((x) => [
+        x.note.pitch,
+        Number((x.when - lead).toFixed(3)),
+        Number(x.duration.toFixed(3)),
+      ]),
+    ).toEqual([
+      [60, 0, 2],
+      [62, 2, 2],
+      [60, 4, 1.333],
+      [62, 5.333, 1.333],
+      [60, 6.667, 1],
+      [62, 7.667, 1],
+      [60, 8.667, 1],
+    ]);
+    expect(t.speedAt(lead + 1)).toBe(0.5);
+    expect(t.speedAt(lead + 5)).toBe(0.75);
+    expect(t.speedAt(lead + 8)).toBe(1);
+    expect(t.songAt(lead + 3.999)).toBeCloseTo(2, 2);
+    expect(t.songAt(lead + 4.001)).toBeCloseTo(0, 2);
+  });
+
+  it('treats setting the same speed as no change', () => {
+    const t = new Transport(notes, 4);
+    t.play(0);
+    expect(t.setSpeed(1, 0)).toBe(false);
+    expect(t.setSpeed(0.5, 0)).toBe(true);
+  });
+
   it('does nothing when not playing', () => {
     const t = new Transport(notes, 4);
     expect(t.pump(0, 1, () => true)).toEqual([]);
@@ -208,6 +247,17 @@ describe('keys and names', () => {
     expect(signedSemitones(3)).toBe('+3 semitones');
     expect(isBlackKey(61)).toBe(true);
     expect(isBlackKey(60)).toBe(false);
+  });
+
+  it('suggests a capo only when transposing up, and only up to fret 9', () => {
+    expect(capoFor(2)).toBe(2);
+    expect(capoFor(9)).toBe(9);
+    expect(capoFor(0)).toBeNull();
+    expect(capoFor(-3)).toBeNull();
+    expect(capoFor(10)).toBeNull();
+    expect(keyName(-3, false)).toBe('E♭ major');
+    expect(keyName(0, true)).toBe('A minor');
+    expect(keyName(transposeFifths(0, 2), true)).toBe('B minor');
   });
 
   it('fits the keyboard to the music in whole octaves, at least three', () => {

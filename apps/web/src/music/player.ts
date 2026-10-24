@@ -1,6 +1,6 @@
 import type { PerfNote, Performance } from './performance.ts';
 import { chooseSample, gainFor, SampleManifest, sampleFile } from './samples.ts';
-import { Transport, type Loop } from './transport.ts';
+import { Transport, type Loop, type Ramp } from './transport.ts';
 
 const SAMPLE_BASE = '/piano/';
 const PUMP_MS = 25;
@@ -23,7 +23,11 @@ function loadManifest(): Promise<SampleManifest> {
       if (!r.ok) throw new Error(`${String(r.status)} ${r.statusText}`);
       return r.json();
     })
-    .then((json: unknown) => SampleManifest.parse(json));
+    .then((json: unknown) => SampleManifest.parse(json))
+    .catch((error: unknown) => {
+      manifestPromise = null;
+      throw error;
+    });
   return manifestPromise;
 }
 
@@ -46,6 +50,10 @@ async function loadLayer(
           .then((data) => ctx.decodeAudioData(data))
           .then((buffer) => {
             buffers.set(file, buffer);
+          })
+          .catch((error: unknown) => {
+            loading.delete(file);
+            throw error;
           });
         loading.set(file, pending);
       }
@@ -58,7 +66,7 @@ export type PlayerEvent =
   | { kind: 'state'; playing: boolean }
   | { kind: 'samples'; loaded: number; total: number; error?: string }
   | { kind: 'ended' }
-  | { kind: 'loop'; position: number };
+  | { kind: 'loop'; position: number; speed: number };
 
 export class PianoPlayer {
   private ctx: AudioContext | null = null;
@@ -161,8 +169,12 @@ export class PianoPlayer {
   }
 
   setSpeed(speed: number): void {
-    this.transport.setSpeed(speed, this.ctx?.currentTime ?? 0);
-    if (this.transport.playing) this.silence();
+    const changed = this.transport.setSpeed(speed, this.ctx?.currentTime ?? 0);
+    if (changed && this.transport.playing) this.silence();
+  }
+
+  setRamp(ramp: Ramp | null): void {
+    this.transport.ramp = ramp;
   }
 
   setLoop(loop: Loop | null): void {
@@ -200,7 +212,7 @@ export class PianoPlayer {
           from: this.lastPosition.toFixed(2),
           to: position.toFixed(2),
         });
-        this.onEvent({ kind: 'loop', position });
+        this.onEvent({ kind: 'loop', position, speed: this.transport.speedAt(ctx.currentTime) });
       }
       this.lastPosition = position;
       for (const s of this.transport.pump(ctx.currentTime, HORIZON_SECONDS, this.include)) {

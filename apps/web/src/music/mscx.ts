@@ -1,5 +1,8 @@
 import {
+  firstPerTick,
+  GRACE_TICKS,
   roleFor,
+  staffName,
   TPQ,
   uniqueStaffNames,
   velocityForDynamic,
@@ -42,7 +45,6 @@ const QUARTERS: Readonly<Record<string, number>> = {
 
 const GRACE_BEFORE = new Set(['acciaccatura', 'appoggiatura', 'grace4', 'grace16', 'grace32']);
 const GRACE_AFTER = new Set(['grace8after', 'grace16after', 'grace32after']);
-const GRACE_TICKS = TPQ / 8;
 
 interface StaffDef {
   id: number;
@@ -238,10 +240,7 @@ export function parseMscx(doc: Document): ScoreModel {
       const staff = staves[s];
       if (!staff) return;
       staff.role = roleFor(part.staves.length, i);
-      staff.name =
-        part.staves.length === 1
-          ? part.name
-          : `${part.name} ${staff.role === 'right' ? 'RH' : staff.role === 'left' ? 'LH' : String(i + 1)}`;
+      staff.name = staffName(part.name, part.staves.length, i);
     });
   }
 
@@ -545,15 +544,9 @@ export function parseMscx(doc: Document): ScoreModel {
     measures,
     voltas: uniqueVoltas.sort((a, b) => a.start - b.start),
     notes: notes.sort((a, b) => a.tick - b.tick || a.pitch - b.pitch),
-    tempos: dedupeByTick(tempos),
+    tempos: firstPerTick(tempos),
     dynamics: dynamics.sort((a, b) => a.tick - b.tick),
-    keys: dedupeByTick(keys),
+    keys: firstPerTick(keys),
     warnings,
   };
-}
-
-function dedupeByTick<T extends { tick: number }>(items: readonly T[]): T[] {
-  const byTick = new Map<number, T>();
-  for (const item of items) if (!byTick.has(item.tick)) byTick.set(item.tick, item);
-  return [...byTick.values()].sort((a, b) => a.tick - b.tick);
 }

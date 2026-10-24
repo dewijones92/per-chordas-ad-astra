@@ -9,6 +9,12 @@ export interface Loop {
 export interface Anchor {
   ctx: number;
   song: number;
+  speed: number;
+}
+
+export interface Ramp {
+  step: number;
+  target: number;
 }
 
 export interface Scheduled {
@@ -41,6 +47,7 @@ export class Transport {
   playing = false;
   speed = 1;
   loop: Loop | null = null;
+  ramp: Ramp | null = null;
 
   constructor(
     private readonly notes: readonly PerfNote[],
@@ -52,7 +59,7 @@ export class Transport {
     let anchor = this.anchors[0];
     for (const a of this.anchors) if (a.ctx <= ctx) anchor = a;
     if (!anchor) return this.paused;
-    const song = anchor.song + Math.max(0, ctx - anchor.ctx) * this.speed;
+    const song = anchor.song + Math.max(0, ctx - anchor.ctx) * anchor.speed;
     return this.loop ? song : Math.min(song, this.duration);
   }
 
@@ -80,10 +87,19 @@ export class Transport {
     this.restartAt(target, ctx + START_LEAD_SECONDS);
   }
 
-  setSpeed(speed: number, ctx: number): void {
+  speedAt(ctx: number): number {
+    let anchor = this.anchors[0];
+    for (const a of this.anchors) if (a.ctx <= ctx) anchor = a;
+    return anchor?.speed ?? this.speed;
+  }
+
+  setSpeed(speed: number, ctx: number): boolean {
+    const next = clampSpeed(speed);
+    if (Math.abs(next - this.speed) < 1e-9) return false;
     const now = this.songAt(ctx);
-    this.speed = clampSpeed(speed);
+    this.speed = next;
     if (this.playing) this.restartAt(now, ctx);
+    return true;
   }
 
   setLoop(loop: Loop | null, ctx: number): void {
@@ -111,8 +127,8 @@ export class Transport {
     while (this.scheduledUntil < until && guard++ < 64) {
       const anchor = this.anchors.at(-1);
       if (!anchor) break;
-      const songFrom = anchor.song + (this.scheduledUntil - anchor.ctx) * this.speed;
-      let songTo = anchor.song + (until - anchor.ctx) * this.speed;
+      const songFrom = anchor.song + (this.scheduledUntil - anchor.ctx) * anchor.speed;
+      let songTo = anchor.song + (until - anchor.ctx) * anchor.speed;
       const loop = this.loop;
       const wraps = loop !== null && songTo >= loop.end;
       if (wraps) songTo = loop.end;
@@ -124,13 +140,20 @@ export class Transport {
         const end = loop ? Math.min(note.end, loop.end) : note.end;
         out.push({
           note,
-          when: anchor.ctx + (note.start - anchor.song) / this.speed,
-          duration: Math.max(0.02, (end - note.start) / this.speed),
+          when: anchor.ctx + (note.start - anchor.song) / anchor.speed,
+          duration: Math.max(0.02, (end - note.start) / anchor.speed),
         });
       }
       if (wraps) {
-        const wrapCtx = anchor.ctx + (loop.end - anchor.song) / this.speed;
-        this.anchors.push({ ctx: wrapCtx, song: loop.start });
+        const wrapCtx = anchor.ctx + (loop.end - anchor.song) / anchor.speed;
+        const speed = this.ramp
+          ? Math.max(
+              anchor.speed,
+              Math.min(this.ramp.target, Math.round((anchor.speed + this.ramp.step) * 100) / 100),
+            )
+          : anchor.speed;
+        this.speed = speed;
+        this.anchors.push({ ctx: wrapCtx, song: loop.start, speed });
         this.anchors = this.anchors.filter((a, i, all) => i >= all.length - 3 || a.ctx > ctx - 1);
         this.cursor = firstAtOrAfter(this.notes, loop.start);
         this.scheduledUntil = wrapCtx;
@@ -142,7 +165,7 @@ export class Transport {
   }
 
   private restartAt(song: number, ctx: number): void {
-    this.anchors = [{ ctx, song }];
+    this.anchors = [{ ctx, song, speed: this.speed }];
     this.cursor = firstAtOrAfter(this.notes, song);
     this.scheduledUntil = ctx;
     this.paused = song;

@@ -11,6 +11,7 @@ import {
   type MusicRef,
   ZIPPED_MUSIC_EXTENSIONS,
   extensionOf,
+  isZip,
   Loop,
   type FileName,
   Loops,
@@ -312,9 +313,7 @@ export class DataRepo {
       tooLarge,
       checkHead: (head) => {
         if (zipped) {
-          return head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04
-            ? null
-            : new RejectedError(`That .${ext} file is not a zip archive`);
+          return isZip(head) ? null : new RejectedError(`That .${ext} file is not a zip archive`);
         }
         const text = new TextDecoder()
           .decode(head.subarray(0, 64))

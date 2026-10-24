@@ -18,8 +18,8 @@ keyboard from above, like the bird's-eye piano videos.
   all 88 keys. Sounding keys light up in their part's colour: right hand violet, left hand teal, other
   parts coral, blue, amber. Bar lines carry their numbers. Drag or scroll the notes to move through the
   piece.
-- **Parts**: each staff can be hidden (👁) or muted (🔊) on its own, to practise one hand while the other
-  plays.
+- **Parts**: each staff can be hidden (👁, still heard) or muted (🔊, still shown) on its own, to practise one
+  hand while the other plays.
 - **Sound**: a sampled grand piano (Salamander, CC BY 3.0, credited in the section), 30 notes in minor
   thirds at three loudnesses, about 3 MB, loaded on the first Play. Dynamics in the file set the loudness.
 - **Play order**: repeats, first and second endings, D.C., D.S., al Fine, al Coda and section breaks are
@@ -29,7 +29,7 @@ keyboard from above, like the bird's-eye piano videos.
   in `piece.json`, so it opens in your key everywhere; the commit says `Transpose <file> to +2`.
 - **Loop**: drag across bars on the **bar strip** above the notes, or use From here / To here. Click a bar
   to jump to it, Shift+click to stretch the loop. **Speed up each loop** adds 5% every time round until
-  full speed. Speed (25–200%) and the loop are remembered per file, on every device.
+  full speed; the change happens exactly at the loop point, so no note is cut. Speed (25–200%) and the loop are remembered per file, on every device.
 - **Keys**: K play/pause, `[` `]` slower/faster, `,` `.` previous/next bar. Space plays in the Notes view;
   where the PDF is showing, Space stays with the metronome.
 

@@ -1,5 +1,8 @@
 import {
+  firstPerTick,
+  GRACE_TICKS,
   roleFor,
+  staffName,
   TPQ,
   uniqueStaffNames,
   type DynamicMark,
@@ -16,7 +19,6 @@ import {
 import { child, childElements, childNumber, childrenNamed, childText, text } from './xml.ts';
 
 const STEP: Readonly<Record<string, number>> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-const GRACE_TICKS = TPQ / 8;
 
 interface MeasureFacts {
   nominal: number;
@@ -126,10 +128,7 @@ export function parseMusicXml(doc: Document): ScoreModel {
         index: base + s,
         part: partIndex,
         role,
-        name:
-          staffCount === 1
-            ? name
-            : `${name} ${role === 'right' ? 'RH' : role === 'left' ? 'LH' : String(s + 1)}`,
+        name: staffName(name, staffCount, s),
       });
       part.staves.push(base + s);
     }
@@ -390,12 +389,6 @@ export function parseMusicXml(doc: Document): ScoreModel {
   if (tempos.length === 0) warnings.push('No tempo marking; playing at 120 bpm');
   uniqueStaffNames(staves);
 
-  const byTick = <T extends { tick: number }>(items: T[]) => {
-    const seen = new Map<number, T>();
-    for (const item of items) if (!seen.has(item.tick)) seen.set(item.tick, item);
-    return [...seen.values()].sort((a, b) => a.tick - b.tick);
-  };
-
   return {
     title,
     format: 'musicxml',
@@ -405,9 +398,9 @@ export function parseMusicXml(doc: Document): ScoreModel {
     measures,
     voltas,
     notes: notes.sort((a, b) => a.tick - b.tick || a.pitch - b.pitch),
-    tempos: byTick(tempos),
+    tempos: firstPerTick(tempos),
     dynamics: dynamics.sort((a, b) => a.tick - b.tick),
-    keys: byTick(keys),
+    keys: firstPerTick(keys),
     warnings,
   };
 }

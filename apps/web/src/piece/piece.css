@@ -165,3 +165,7 @@
 .piece-views {
   gap: 4px;
 }
+
+.piece-main.view-split .tool-group {
+  flex-wrap: wrap;
+}

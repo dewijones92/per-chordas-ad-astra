@@ -46,11 +46,20 @@ reversal).
   `console.info('dewidebug …')`.
 - **No new code comments.** The why goes in commit messages, ADRs and docs.
 - CI must stay green. Commit at each green state.
-- **Independent review after a big batch, not after every change.** When a batch of work is done (a whole
-  feature, or several related changes, before pushing), spawn one fresh Opus reviewer (the `reviewer` agent,
-  high effort) on the whole batch's diff with the request and decisions it implements. It attacks the change
-  for regressions, missing tests and docs that overclaim, and runs the gate and the e2e flows end to end. Fix
-  what it confirms, re-run the gate, then push. Skip it for small single changes. (Dewi, 24 Oct 2026.)
+- **How a batch runs** (Dewi, 24 Oct 2026, in the shape of Totum's):
+  1. **Start with a discussion.** Before a batch, list what it will contain and ask Dewi the questions only he can
+     answer (scope, defaults, trade-offs) with `AskUserQuestion`; write each decision into the ADRs or
+     `docs/todos/_index.md` and the session's task file so it survives a context reset. Never ask what the code can answer.
+  2. **Each feature ships on its own**, so Dewi can try it on the Pi straight away: tests (a bug fix's test seen red
+     first), docs and ADRs in the same commit, the full `pnpm gate`, a look at the changed screen, then push **only
+     when the gate's exit code is 0** (`e=$?; [ $e -eq 0 ] && git push`). The push deploys; watch CI until the Pi
+     reports the new sha healthy. No review or soak per feature; do not hold features back waiting for one.
+  3. **The batch ends with a soak and an Opus review, in parallel.** The soak: `pnpm e2e --repeat-each=3` (flakes
+     are findings, not noise to retry past), the opt-in real-file corpus (`MUSIC_CORPUS`, see `docs/tests/_index.md`) when the batch touched Play-along, and a look at every changed screen on
+     the deployed build. The review: one `reviewer` agent (Opus, high effort) on the batch's commits, given Dewi's
+     requests and the accepted decisions. Read the whole report, check each finding against the code, fix what holds
+     up with a test seen red first, and push.
+  4. **Then report** in the end-of-run shape (🚧 Needs you, Changed, 🔍 Found, ⚠️ Couldn't confirm).
 
 ## Architecture (short; see docs/architecture.md)
 
