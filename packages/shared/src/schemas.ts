@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AUDIO_EXTENSIONS, MUSIC_EXTENSIONS, SCORE_EXTENSIONS } from './files.ts';
+import { PLAY_ALONG_MAX_SPEED } from './prefs.ts';
 
 export const SCHEMA_VERSION = 1;
 
@@ -223,7 +224,7 @@ export const HardBit = z
     to: z.int().min(0),
     fromBar: z.int().min(0),
     toBar: z.int().min(0),
-    bestSpeed: z.number().min(0).max(2),
+    bestSpeed: z.number().min(0).max(PLAY_ALONG_MAX_SPEED),
   })
   .refine((b) => b.to >= b.from, 'A hard bit must end at or after its start');
 export type HardBit = z.infer<typeof HardBit>;

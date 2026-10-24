@@ -223,6 +223,51 @@ describe('Transport', () => {
     expect(t.songAt(lead + 4.001)).toBeCloseTo(0, 2);
   });
 
+  it('keeps the music waiting for a count-in when you seek, change speed or loop during it', () => {
+    const t = new Transport(notes, 4);
+    t.play(10);
+    const start = 10 + START_LEAD_SECONDS;
+    t.seek(2, 1);
+    expect(t.songAt(5)).toBe(2);
+    expect(t.pump(1, 12, () => true).map((x) => [x.note.pitch, x.when])).toEqual([
+      [64, start],
+      [65, start + 1],
+    ]);
+    t.setSpeed(0.5, 2);
+    expect(t.songAt(5)).toBe(2);
+    expect(t.songAt(start + 1)).toBeCloseTo(2.5);
+    t.setLoop({ start: 1, end: 3 }, 3);
+    expect(t.songAt(5)).toBe(2);
+    expect(t.songAt(start + 1)).toBeCloseTo(2.5);
+  });
+
+  it('counts a loop pass only when it ran whole, at the speed it was played', () => {
+    const lead = START_LEAD_SECONDS;
+    const t = new Transport(notes, 4);
+    t.setLoop({ start: 0, end: 2 }, 0);
+    t.setSpeed(0.5, 0);
+    t.play(0);
+    t.pump(0, 5, () => true);
+    expect(t.takePasses(lead + 3)).toEqual([]);
+    expect(t.takePasses(lead + 4.01)).toEqual([0.5]);
+
+    const u = new Transport(notes, 4);
+    u.setLoop({ start: 0, end: 2 }, 0);
+    u.seek(1.5, 0);
+    u.setSpeed(1, 0);
+    u.play(0);
+    u.pump(0, 4, () => true);
+    expect(u.takePasses(lead + 1)).toEqual([]);
+    expect(u.takePasses(lead + 2.6)).toEqual([1]);
+    u.seek(1, lead + 3);
+    u.pump(lead + 3, 3, () => true);
+    expect(u.takePasses(2 * lead + 4.1)).toEqual([]);
+    u.pump(2 * lead + 5, 3, () => true);
+    expect(u.takePasses(2 * lead + 6.1)).toEqual([1]);
+    u.pause(2 * lead + 6.2);
+    expect(u.takePasses(100)).toEqual([]);
+  });
+
   it('treats setting the same speed as no change', () => {
     const t = new Transport(notes, 4);
     t.play(0);

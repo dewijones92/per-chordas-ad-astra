@@ -279,6 +279,8 @@ describe('MuseScore to MusicXML for the notation view', () => {
     expect(xml).toContain('<tuplet type="start"/>');
     expect(xml).toContain('<grace slash="yes"/>');
     expect(xml).toContain('<tied type="start"/>');
+    expect(xml.match(/<slur type="start" number="1"\/>/g)).toHaveLength(1);
+    expect(xml.match(/<slur type="stop" number="1"\/>/g)).toHaveLength(1);
     expect(xml).toContain('<ending number="1" type="start"/>');
     expect(xml).toContain('<repeat direction="backward" times="2"/>');
   });
@@ -404,17 +406,86 @@ describe('export transposed', () => {
     expect(transposeMusicXml(xml, 0, 1)).toBe(xml);
   });
 
+  it('moves every key change by the same interval and spells its notes in it', () => {
+    const note = (step: string, alter: number, octave: number) =>
+      `<note><pitch><step>${step}</step>${alter ? `<alter>${String(alter)}</alter>` : ''}<octave>${String(octave)}</octave></pitch><duration>1</duration><voice>1</voice><type>quarter</type></note>`;
+    const xml = `<?xml version="1.0"?><score-partwise><part-list><score-part id="P1"><part-name>G</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time></attributes>${note('C', 0, 4)}${note('E', 0, 4)}${note('G', 0, 4)}${note('C', 0, 5)}</measure><measure number="2"><attributes><key><fifths>-1</fifths></key></attributes>${note('F', 0, 4)}${note('A', 0, 4)}${note('B', -1, 4)}${note('C', 0, 5)}</measure><measure number="3"><attributes><key><fifths>6</fifths></key></attributes>${note('F', 1, 4)}${note('A', 1, 4)}${note('C', 1, 5)}${note('E', 1, 5)}</measure></part></score-partwise>`;
+    const out = transposeMusicXml(xml, 1, 0);
+    const bars = out
+      .split('<measure')
+      .slice(1)
+      .map((m) => ({
+        key: Number(/<fifths>(-?\d+)<\/fifths>/.exec(m)?.[1]),
+        notes: [...m.matchAll(/<step>(\w)<\/step>(?:<alter>(-?\d)<\/alter>)?<octave>(\d)/g)].map(
+          (x) => `${x[1] ?? ''}${x[2] === '1' ? '#' : x[2] === '-1' ? 'b' : ''}${x[3] ?? ''}`,
+        ),
+      }));
+    expect(bars).toEqual([
+      { key: -5, notes: ['Db4', 'F4', 'Ab4', 'Db5'] },
+      { key: -6, notes: ['Gb4', 'Bb4', 'Cb5', 'Db5'] },
+      { key: 1, notes: ['G4', 'B4', 'D5', 'F#5'] },
+    ]);
+    expect(buildPerformance(parseScoreText(out)).notes.map((n) => n.pitch)).toEqual(
+      buildPerformance(parseScoreText(xml)).notes.map((n) => n.pitch + 1),
+    );
+  });
+
   it('writes a type-1 MIDI file with a track per staff and every note', () => {
     const perf = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
     const midi = performanceToMidi(perf, 2);
     const ascii = (from: number, to: number) => String.fromCharCode(...midi.slice(from, to));
+    const byte = (at: number) => midi[at] ?? 0;
     expect(ascii(0, 4)).toBe('MThd');
-    expect([midi[8], midi[9], midi[10], midi[11]]).toEqual([0, 1, 0, 3]);
-    const noteOns = [...midi.keys()].filter(
-      (i) => ((midi[i] ?? 0) & 0xf0) === 0x90 && (midi[i + 2] ?? 0) > 0 && (midi[i + 1] ?? 0) < 128,
-    );
-    expect(noteOns.length).toBeGreaterThanOrEqual(perf.notes.length);
-    expect(midi.includes(perf.notes[0] ? perf.notes[0].pitch + 2 : -1)).toBe(true);
+    expect([byte(8), byte(9), byte(10), byte(11), byte(12) * 256 + byte(13)]).toEqual([
+      0, 1, 0, 3, 480,
+    ]);
+    const tracks: { name: string; on: [number, number][]; off: number }[] = [];
+    let at = 14;
+    while (at < midi.length) {
+      expect(ascii(at, at + 4)).toBe('MTrk');
+      const end =
+        at + 8 + ((byte(at + 4) << 24) | (byte(at + 5) << 16) | (byte(at + 6) << 8) | byte(at + 7));
+      at += 8;
+      let tick = 0;
+      const track = { name: '', on: [] as [number, number][], off: 0 };
+      const varLen = () => {
+        let v = 0;
+        for (;;) {
+          const b = byte(at++);
+          v = (v << 7) | (b & 0x7f);
+          if (b < 0x80) return v;
+        }
+      };
+      while (at < end) {
+        tick += varLen();
+        const status = byte(at++);
+        if (status === 0xff) {
+          const type = byte(at++);
+          const len = varLen();
+          if (type === 0x03) track.name = ascii(at, at + len);
+          at += len;
+        } else if ((status & 0xf0) === 0xc0) {
+          at += 1;
+        } else {
+          expect(status & 0x0f).not.toBe(9);
+          const pitch = byte(at++);
+          const velocity = byte(at++);
+          if ((status & 0xf0) === 0x90 && velocity > 0) track.on.push([tick, pitch]);
+          else track.off += 1;
+        }
+      }
+      tracks.push(track);
+    }
+    expect(tracks.map((t) => t.name)).toEqual(['Fixture Waltz', ...perf.staves.map((s) => s.name)]);
+    perf.staves.forEach((staff, k) => {
+      const expected = perf.notes
+        .filter((n) => n.staff === staff.index)
+        .map((n): [number, number] => [Math.round(n.start * 960), n.pitch + 2])
+        .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const got = [...(tracks[k + 1]?.on ?? [])].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      expect(got).toEqual(expected);
+      expect(tracks[k + 1]?.off).toBe(expected.length);
+    });
   });
 });
 

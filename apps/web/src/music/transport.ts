@@ -47,6 +47,9 @@ export class Transport<T extends Timed = Timed> {
   private paused = 0;
   private cursor = 0;
   private scheduledUntil = 0;
+  private startsAt = 0;
+  private wholePass: number | null = null;
+  private passes: { ctx: number; speed: number }[] = [];
   playing = false;
   speed = 1;
   loop: Loop | null = null;
@@ -76,7 +79,8 @@ export class Transport<T extends Timed = Timed> {
     if (this.playing) return;
     const from = this.startPoint();
     this.playing = true;
-    this.restartAt(from, ctx + START_LEAD_SECONDS);
+    this.startsAt = ctx + START_LEAD_SECONDS;
+    this.restartAt(from, this.startsAt, ctx);
   }
 
   pause(ctx: number): void {
@@ -84,6 +88,8 @@ export class Transport<T extends Timed = Timed> {
     this.paused = this.songAt(ctx);
     this.playing = false;
     this.anchors = [];
+    this.passes = [];
+    this.wholePass = null;
   }
 
   seek(song: number, ctx: number): void {
@@ -92,7 +98,7 @@ export class Transport<T extends Timed = Timed> {
       this.paused = target;
       return;
     }
-    this.restartAt(target, ctx + START_LEAD_SECONDS);
+    this.restartAt(target, Math.max(ctx + START_LEAD_SECONDS, this.startsAt), ctx);
   }
 
   speedAt(ctx: number): number {
@@ -106,7 +112,7 @@ export class Transport<T extends Timed = Timed> {
     if (Math.abs(next - this.speed) < 1e-9) return false;
     const now = this.songAt(ctx);
     this.speed = next;
-    if (this.playing) this.restartAt(now, ctx);
+    if (this.playing) this.restartAt(now, Math.max(ctx, this.startsAt), ctx);
     return true;
   }
 
@@ -120,7 +126,7 @@ export class Transport<T extends Timed = Timed> {
     }
     const now = this.songAt(ctx);
     const inside = this.loop ? now >= this.loop.start && now < this.loop.end : true;
-    this.restartAt(inside ? now : (this.loop?.start ?? now), ctx);
+    this.restartAt(inside ? now : (this.loop?.start ?? now), Math.max(ctx, this.startsAt), ctx);
   }
 
   finished(ctx: number): boolean {
@@ -161,6 +167,8 @@ export class Transport<T extends Timed = Timed> {
             )
           : anchor.speed;
         this.speed = speed;
+        if (this.wholePass !== null) this.passes.push({ ctx: wrapCtx, speed: this.wholePass });
+        this.wholePass = speed;
         this.anchors.push({ ctx: wrapCtx, song: loop.start, speed });
         this.anchors = this.anchors.filter((a, i, all) => i >= all.length - 3 || a.ctx > ctx - 1);
         this.cursor = firstAtOrAfter(this.notes, loop.start);
@@ -172,7 +180,15 @@ export class Transport<T extends Timed = Timed> {
     return out;
   }
 
-  private restartAt(song: number, ctx: number): void {
+  takePasses(ctx: number): number[] {
+    const done = this.passes.filter((p) => p.ctx <= ctx);
+    this.passes = this.passes.filter((p) => p.ctx > ctx);
+    return done.map((p) => p.speed);
+  }
+
+  private restartAt(song: number, ctx: number, now: number): void {
+    this.passes = this.passes.filter((p) => p.ctx <= now);
+    this.wholePass = this.loop && Math.abs(song - this.loop.start) < 1e-9 ? this.speed : null;
     this.anchors = [{ ctx, song, speed: this.speed }];
     this.cursor = firstAtOrAfter(this.notes, song);
     this.scheduledUntil = ctx;

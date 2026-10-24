@@ -218,17 +218,25 @@ export function PlayAlong({
   const [samples, setSamples] = useState<string | null>(null);
   const [barIndex, setBarIndex] = useState(0);
   const hardBits = useAsync(() => api.getHardBits(pieceId), `hard-bits:${pieceId}`);
+  const bitsLoaded = hardBits.data !== undefined;
   const bits = useMemo(() => hardBits.data?.files[music.file] ?? [], [hardBits.data, music.file]);
   const { setData: setHardBitsData, reload: reloadHardBits } = hardBits;
   const saveBits = useCallback(
     (next: HardBit[]) => {
+      if (!bitsLoaded) {
+        console.warn('dewidebug hard bits not saved: the saved list has not loaded', {
+          file: music.file,
+          count: next.length,
+        });
+        return;
+      }
       setHardBitsData((data) => ({ files: { ...(data?.files ?? {}), [music.file]: next } }));
       api.putHardBits(pieceId, music.file, next).catch((error: unknown) => {
         console.warn('dewidebug hard bits save failed; reloading', { error: String(error) });
         reloadHardBits();
       });
     },
-    [pieceId, music.file, setHardBitsData, reloadHardBits],
+    [bitsLoaded, pieceId, music.file, setHardBitsData, reloadHardBits],
   );
   const readout = useRef<HTMLSpanElement>(null);
   const transpose = music.transpose;
@@ -780,7 +788,15 @@ export function PlayAlong({
         data-testid="hard-bits"
       >
         <span className="playalong-field">📌 Hard bits</span>
-        {bits.length === 0 && (
+        {hardBits.error && !bitsLoaded && (
+          <span className="error small-print" data-testid="hard-bits-error">
+            Saved hard bits could not be loaded: {hardBits.error}{' '}
+            <button type="button" className="btn small ghost" onClick={reloadHardBits}>
+              Try again
+            </button>
+          </span>
+        )}
+        {bitsLoaded && bits.length === 0 && (
           <span className="muted small-print">
             Loop a passage, then save it here to come back to it.
           </span>
@@ -824,38 +840,40 @@ export function PlayAlong({
             </span>
           );
         })}
-        {prefs.loop && !bits.some((b) => b.from === prefs.loop?.from && b.to === prefs.loop.to) && (
-          <button
-            type="button"
-            className="btn small sun"
-            data-testid="save-hard-bit"
-            onClick={() => {
-              const loop = prefs.loop;
-              if (!loop) return;
-              const fromBar = perf.bars[loop.from]?.number ?? 0;
-              const toBar = perf.bars[loop.to]?.number ?? 0;
-              const name = window.prompt(
-                'Name this hard bit',
-                `Bars ${String(fromBar)}–${String(toBar)}`,
-              );
-              if (!name?.trim()) return;
-              saveBits([
-                ...bits,
-                {
-                  id: newId(),
-                  name: name.trim(),
-                  from: loop.from,
-                  to: loop.to,
-                  fromBar,
-                  toBar,
-                  bestSpeed: 0,
-                },
-              ]);
-            }}
-          >
-            📌 Save loop as hard bit
-          </button>
-        )}
+        {bitsLoaded &&
+          prefs.loop &&
+          !bits.some((b) => b.from === prefs.loop?.from && b.to === prefs.loop.to) && (
+            <button
+              type="button"
+              className="btn small sun"
+              data-testid="save-hard-bit"
+              onClick={() => {
+                const loop = prefs.loop;
+                if (!loop) return;
+                const fromBar = perf.bars[loop.from]?.number ?? 0;
+                const toBar = perf.bars[loop.to]?.number ?? 0;
+                const name = window.prompt(
+                  'Name this hard bit',
+                  `Bars ${String(fromBar)}–${String(toBar)}`,
+                );
+                if (!name?.trim()) return;
+                saveBits([
+                  ...bits,
+                  {
+                    id: newId(),
+                    name: name.trim(),
+                    from: loop.from,
+                    to: loop.to,
+                    fromBar,
+                    toBar,
+                    bestSpeed: 0,
+                  },
+                ]);
+              }}
+            >
+              📌 Save loop as hard bit
+            </button>
+          )}
       </div>
       <div className="playalong-parts" aria-label="Parts">
         {perf.staves.map((s) => {

@@ -380,6 +380,9 @@ export function parseMscx(doc: Document): ScoreModel {
             ? `${String(w.staff)}:${String(measure.index)}:${String(w.voice)}:${ref}`
             : (top?.key ?? null);
           const slurs = childrenNamed(el, 'Slur');
+          const chordSlurs = childrenNamed(el, 'Spanner').filter(
+            (x) => x.getAttribute('type') === 'Slur',
+          );
           const type = childText(el, 'durationType');
           const track = childNumber(el, 'track');
           events.push({
@@ -397,8 +400,15 @@ export function parseMscx(doc: Document): ScoreModel {
             tupletKey: grace ? null : tupletKey,
             beam: beamMode(childText(el, 'BeamMode')),
             slurStart:
-              !rest && (slurStart || slurs.some((x) => x.getAttribute('type') === 'start')),
-            slurStop: !rest && (slurStop || slurs.some((x) => x.getAttribute('type') === 'stop')),
+              !rest &&
+              (slurStart ||
+                slurs.some((x) => x.getAttribute('type') === 'start') ||
+                chordSlurs.some((x) => child(x, 'next') !== null)),
+            slurStop:
+              !rest &&
+              (slurStop ||
+                slurs.some((x) => x.getAttribute('type') === 'stop') ||
+                chordSlurs.some((x) => child(x, 'prev') !== null)),
             notes: rest
               ? []
               : childrenNamed(el, 'Note').flatMap((note) => {

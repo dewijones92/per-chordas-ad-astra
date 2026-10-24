@@ -1,3 +1,4 @@
+import { beatTicks } from '../metronome/click.ts';
 import { sectionsOf } from './unroll.ts';
 import {
   TPQ,
@@ -42,6 +43,10 @@ function esc(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+export function tpcOf(step: string, alter: number): number {
+  return STEPS.indexOf(step.toUpperCase()) + 13 + 7 * alter;
+}
+
 export function spell(
   pitch: number,
   tpc: number | null,
@@ -61,9 +66,8 @@ function beamGroup(time: TimeMark | undefined): number {
   const n = time?.n ?? 4;
   const d = time?.d ?? 4;
   const beat = (TPQ * 4) / d;
-  if (d >= 8 && n % 3 === 0 && n > 3) return beat * 3;
-  if (d >= 8) return beat * n;
-  return beat;
+  const counted = beatTicks(n, d, TPQ);
+  return d >= 8 && counted === beat ? beat * n : counted;
 }
 
 export function beamsFor(

@@ -19,7 +19,15 @@ import {
 } from './model.ts';
 import { child, childElements, childNumber, childrenNamed, childText, text } from './xml.ts';
 
-const STEP: Readonly<Record<string, number>> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+export const STEP_SEMITONES: Readonly<Record<string, number>> = {
+  C: 0,
+  D: 2,
+  E: 4,
+  F: 5,
+  G: 7,
+  A: 9,
+  B: 11,
+};
 
 interface MeasureFacts {
   nominal: number;
@@ -227,7 +235,7 @@ export function parseMusicXml(doc: Document): ScoreModel {
             const silent = el.getAttribute('dynamics') === '0';
             if (pitchEl && child(el, 'cue') === null && !silent) {
               seen.pitched = true;
-              const step = STEP[childText(pitchEl, 'step').toUpperCase()] ?? 0;
+              const step = STEP_SEMITONES[childText(pitchEl, 'step').toUpperCase()] ?? 0;
               const octave = childNumber(pitchEl, 'octave') ?? 4;
               const alter = Math.round(childNumber(pitchEl, 'alter') ?? 0);
               const note: PendingNote = {

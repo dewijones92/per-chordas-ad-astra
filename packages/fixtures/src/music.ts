@@ -9,6 +9,7 @@ export interface FixtureChord {
   tie?: boolean;
   grace?: boolean;
   triplet?: boolean;
+  slur?: 'start' | 'stop';
 }
 
 export interface FixtureMeasure {
@@ -152,8 +153,15 @@ export function makeMscx(score: FixtureScore, version: MuseScoreVersion): string
             return `<Note>${tie}<pitch>${String(p)}</pitch><tpc>${String(SHARP_TPC[((p % 12) + 12) % 12] ?? 14)}</tpc></Note>`;
           })
           .join('');
+        const slur = !c.slur
+          ? ''
+          : v2
+            ? `<Slur type="${c.slur}" id="900"/>`
+            : c.slur === 'start'
+              ? '<Spanner type="Slur"><Slur></Slur><next><location><fractions>1/4</fractions></location></next></Spanner>'
+              : '<Spanner type="Slur"><prev><location><fractions>-1/4</fractions></location></prev></Spanner>';
         body.push(
-          `<Chord>${tuplet}${dots}<durationType>${c.dur}</durationType>${c.grace ? '<acciaccatura/>' : ''}${notes}</Chord>`,
+          `<Chord>${tuplet}${dots}<durationType>${c.dur}</durationType>${c.grace ? '<acciaccatura/>' : ''}${slur}${notes}</Chord>`,
         );
       }
       if (inTuplet && !v2) body.push('<endTuplet/>');
@@ -230,10 +238,12 @@ export function makeMusicXml(score: FixtureScore): string {
             const pc = ((pitch % 12) + 12) % 12;
             const alter = ALTERS[pc] ? `<alter>${String(ALTERS[pc])}</alter>` : '';
             const tie = c.tie ? '<tie type="start"/>' : '';
+            const slur =
+              c.slur && k === 0 ? `<notations><slur type="${c.slur}" number="1"/></notations>` : '';
             const grace = c.grace ? '<grace slash="yes"/>' : '';
             const dur = c.grace ? '' : `<duration>${String(duration)}</duration>`;
             out.push(
-              `<note>${grace}${k > 0 ? '<chord/>' : ''}<pitch><step>${STEPS[pc] ?? 'C'}</step>${alter}<octave>${String(Math.floor(pitch / 12) - 1)}</octave></pitch>${dur}${tie}<voice>1</voice><type>${c.dur}</type>${dots}${time}<staff>${String(s + 1)}</staff></note>`,
+              `<note>${grace}${k > 0 ? '<chord/>' : ''}<pitch><step>${STEPS[pc] ?? 'C'}</step>${alter}<octave>${String(Math.floor(pitch / 12) - 1)}</octave></pitch>${dur}${tie}<voice>1</voice><type>${c.dur}</type>${dots}${time}<staff>${String(s + 1)}</staff>${slur}</note>`,
             );
           });
           if (!c.grace) used += duration;
@@ -318,10 +328,10 @@ export const PIANO_WALTZ: FixtureScore = {
       staves: [
         [
           { pitches: [74], dur: 'eighth', grace: true },
-          { pitches: [72], dur: 'eighth', triplet: true },
+          { pitches: [72], dur: 'eighth', triplet: true, slur: 'start' },
           { pitches: [71], dur: 'eighth', triplet: true },
           { pitches: [69], dur: 'eighth', triplet: true },
-          { pitches: [67], dur: 'half' },
+          { pitches: [67], dur: 'half', slur: 'stop' },
         ],
         [{ dur: 'quarter' }, { pitches: [55], dur: 'half' }],
       ],

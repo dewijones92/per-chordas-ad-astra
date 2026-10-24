@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { loadScore, parseScoreText, unpackScore } from '../src/music/load.ts';
 import { unroll } from '../src/music/unroll.ts';
 import { buildPerformance } from '../src/music/performance.ts';
-import { toMusicXml } from '../src/music/to-musicxml.ts';
+import { toMusicXml, tpcOf } from '../src/music/to-musicxml.ts';
 import { transposeMusicXml } from '../src/music/export.ts';
 import { transposeFifths } from '../src/music/keys.ts';
 
@@ -87,11 +87,32 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
             : null;
       if (!xml) throw new Error('no notation');
       const before = buildPerformance(parseScoreText(xml));
-      for (const semitones of [3, -5]) {
+      for (const semitones of [3, -5, 1, -1]) {
         const after = buildPerformance(
           parseScoreText(transposeMusicXml(xml, semitones, before.keyFifths)),
         );
         expect(after.keyFifths).toBe(transposeFifths(before.keyFifths, semitones));
+        const spelling = (text: string) => {
+          const doc = new DOMParser().parseFromString(text, 'application/xml');
+          const out: number[] = [];
+          for (const part of Array.from(doc.getElementsByTagName('part'))) {
+            let key = before.keyFifths;
+            for (const el of Array.from(part.getElementsByTagName('*'))) {
+              const text = (name: string) => el.getElementsByTagName(name)[0]?.textContent ?? '';
+              if (el.tagName === 'key' && text('fifths') !== '') key = Number(text('fifths'));
+              if (el.tagName === 'pitch')
+                out.push(tpcOf(text('step'), Number(text('alter') || 0)) - key);
+            }
+          }
+          return out;
+        };
+        const moved = transposeMusicXml(xml, semitones, before.keyFifths);
+        expect(
+          [...moved.matchAll(/<fifths>(-?\d+)<\/fifths>/g)].every(
+            (m) => Math.abs(Number(m[1])) <= 7,
+          ),
+        ).toBe(true);
+        expect(spelling(moved)).toEqual(spelling(xml));
         expect(after.notes.map((n) => n.pitch)).toEqual(
           before.notes.map((n) => n.pitch + semitones),
         );

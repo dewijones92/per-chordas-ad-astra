@@ -19,6 +19,23 @@ function render(xml: string, interval: string): Promise<NotationResult> {
       waiting.delete(event.data.id);
       done?.(event.data);
     };
+    worker.onerror = (event: ErrorEvent) => {
+      console.warn('dewidebug notation worker crashed', {
+        message: event.message,
+        waiting: waiting.size,
+      });
+      for (const [id, done] of waiting)
+        done({
+          id,
+          svg: '',
+          measures: [],
+          notes: [],
+          ms: 0,
+          error: event.message || 'the notation engine failed to load',
+        });
+      waiting.clear();
+      worker = null;
+    };
   }
   serial += 1;
   const request: NotationRequest = { id: serial, xml, interval, scale: SCALE };

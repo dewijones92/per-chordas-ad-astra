@@ -36,7 +36,8 @@ keyboard from above, like the bird's-eye piano videos.
   the file says so, and for transposing up, the capo fret that keeps the written shapes on guitar. Saved
   in `piece.json`, so it opens in your key everywhere; the commit says `Transpose <file> to +2`.
 - **Export**: 💾 MusicXML and 💾 MIDI download the piece in the key it is transposed to, named like
-  `Gran Vals (+2).musicxml`. MusicXML is respelled for the new key (key signature and note names, the same
+  `Gran Vals (+2).musicxml`. MusicXML is respelled for the new key (every key signature, key changes included, moves
+  by the same interval, folded into seven sharps or flats, and each note is spelled in the key in force; the same
   rule as the key line and the notation; printed accidentals are left for the notation program to redo), so
   it opens in MuseScore or any notation program; MuseScore files go through our own converter first. MIDI
   is a type-1 file with a track per staff, repeats played out, at the written tempo shape (fixed 120 bpm
@@ -47,10 +48,15 @@ keyboard from above, like the bird's-eye piano videos.
 - **Count-in and click**: 🥁 Count-in (on by default) plays one bar of clicks at the playing speed
   before the music starts (after a pickup, the next full bar's beats); Click puts a metronome click on
   every beat while it plays, accented on the first. Compound time counts dotted beats (6/8 in two). The
-  click is the metronome's own sound (`metronome/click.ts`).
+  click is the metronome's own sound (`metronome/click.ts`). Pausing during the count-in silences the clicks
+  already scheduled, and a seek, speed or loop change during it keeps the music waiting for the count-in to
+  end.
 - **Hard bits** (📌): with a loop set, **Save loop as hard bit** names it (default "Bars 12–16"). Saved
   hard bits are chips: click one to loop it, ✕ to forget it. Each remembers the **best speed** a whole pass
-  has been played at; with "speed up each loop" it climbs pass by pass. Stored per music file in
+  has been played at: a pass counts only when it ran from the loop's start to its end with no jump, speed
+  change or loop change inside it, so pausing near the end and speeding up does not count. With "speed up
+  each loop" it climbs pass by pass. If the saved list fails to load, the panel says so with **Try again**
+  and offers no save until it has loaded, so a new hard bit cannot replace the ones it could not see. Stored per music file in
   `hard-bits.json` in the data repo, saved one file at a time; commits read "Mark hard bit 'The run'" and
   "Hard bit 'The run' up to 75%".
 - **Practice log**: play-along time logs itself (see the practice log feature).

@@ -20,7 +20,10 @@ notes, but it cannot follow playback, and his MuseScore files have no PDF. He ag
 - Verovio does not read MuseScore files, so **`music/to-musicxml.ts`** converts our MuseScore model to
   MusicXML: spelling from `tpc`, voices, rests, tuplets, ties, grace notes, slurs, clefs, beams (MuseScore
   stores only overrides, so default beaming is computed by beat and the overrides honoured), endings,
-  repeats, markers, jumps and tempo offsets. MusicXML files are shown as they are.
+  repeats, markers, jumps and tempo offsets. MusicXML files are shown as they are. Slurs come from 2.x
+  `<Slur type>` on the chord, and from the `<Spanner type="Slur">` that 3.x (and, by the same layout, 4.x)
+  writes inside the chord; the batch review (24 Oct 2026) found 3.x files losing every slur. One slur per
+  chord is written, so a chord starting two slurs at once (an octave grace in Gran Vals) draws one.
 - **The play order stays ours.** Verovio would expand repeats its own way, so it runs with
   `expandNever` and its timemap is in written-score quarters. The playing position maps through our
   unrolled bars: the bar being played and how far through it, giving a written-score quarter, whose

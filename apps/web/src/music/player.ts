@@ -69,6 +69,25 @@ export type PlayerEvent =
   | { kind: 'ended' }
   | { kind: 'loop'; position: number; speed: number };
 
+function keep(nodes: Set<AudioScheduledSourceNode>, node: AudioScheduledSourceNode): void {
+  nodes.add(node);
+  node.addEventListener('ended', () => {
+    nodes.delete(node);
+  });
+}
+
+function stopAll(nodes: Set<AudioScheduledSourceNode>, at: number): void {
+  if (nodes.size > 0) console.info('dewidebug play-along clicks cancelled', { count: nodes.size });
+  for (const node of nodes) {
+    try {
+      node.stop(at);
+    } catch (error) {
+      console.info('dewidebug play-along click already stopped', { error: String(error) });
+    }
+  }
+  nodes.clear();
+}
+
 export class PianoPlayer {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -79,13 +98,14 @@ export class PianoPlayer {
   private readonly perf: Performance;
   private timer: number | undefined;
   private voices = new Set<Voice>();
+  private countInClicks = new Set<AudioScheduledSourceNode>();
+  private trackClicks = new Set<AudioScheduledSourceNode>();
   private include: (note: PerfNote) => boolean = () => true;
   private transpose = 0;
   private fallbackLogged = false;
   private lastPosition = 0;
   private startRequest = 0;
   private passListener: (speed: number) => void = () => undefined;
-  private lastSpeed = 1;
   private startingNow = false;
 
   constructor(
@@ -178,11 +198,14 @@ export class PianoPlayer {
       : null;
     if (count) {
       for (let k = 0; k < count.beats; k++) {
-        playClick(
-          ctx,
-          master,
-          now + START_LEAD_SECONDS + k * count.seconds,
-          k === 0 ? 'bar' : 'beat',
+        keep(
+          this.countInClicks,
+          playClick(
+            ctx,
+            master,
+            now + START_LEAD_SECONDS + k * count.seconds,
+            k === 0 ? 'bar' : 'beat',
+          ),
         );
       }
     }
@@ -212,6 +235,7 @@ export class PianoPlayer {
     });
     this.stopPump();
     this.silence();
+    stopAll(this.countInClicks, at);
     console.info('dewidebug play-along pause', { at: this.position().toFixed(2) });
     this.onEvent({ kind: 'state', playing: false });
   }
@@ -221,7 +245,7 @@ export class PianoPlayer {
     this.both((t) => {
       t.seek(song, at);
     });
-    this.lastPosition = Math.min(this.lastPosition, song);
+    this.lastPosition = song;
     if (this.transport.playing) this.silence();
   }
 
@@ -267,6 +291,7 @@ export class PianoPlayer {
   dispose(): void {
     this.stopPump();
     this.silence();
+    stopAll(this.countInClicks, this.ctx?.currentTime ?? 0);
     void this.ctx?.close();
     this.ctx = null;
   }
@@ -283,14 +308,17 @@ export class PianoPlayer {
           from: this.lastPosition.toFixed(2),
           to: position.toFixed(2),
         });
-        this.passListener(this.lastSpeed);
         this.onEvent({ kind: 'loop', position, speed: this.transport.speedAt(ctx.currentTime) });
       }
       this.lastPosition = position;
-      this.lastSpeed = this.transport.speedAt(ctx.currentTime);
+      for (const speed of this.transport.takePasses(ctx.currentTime)) {
+        console.info('dewidebug play-along whole loop pass', { speed });
+        this.passListener(speed);
+      }
       if (this.clickOn) {
         for (const c of this.clicks.pump(ctx.currentTime, HORIZON_SECONDS, () => true)) {
-          if (this.master) playClick(ctx, this.master, c.when, c.note.kind, 0.8);
+          if (this.master)
+            keep(this.trackClicks, playClick(ctx, this.master, c.when, c.note.kind, 0.8));
         }
       } else {
         this.clicks.pump(ctx.currentTime, HORIZON_SECONDS, () => false);
@@ -332,6 +360,7 @@ export class PianoPlayer {
       }
     }
     this.voices.clear();
+    stopAll(this.trackClicks, now);
   }
 
   private voice(note: PerfNote, when: number, duration: number): void {

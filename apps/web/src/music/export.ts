@@ -1,9 +1,9 @@
 import { transposeFifths } from './keys.ts';
+import { STEP_SEMITONES } from './musicxml.ts';
 import type { Performance } from './performance.ts';
+import { spell, tpcOf } from './to-musicxml.ts';
 
-const STEP_FIFTHS: Readonly<Record<string, number>> = { F: -1, C: 0, G: 1, D: 2, A: 3, E: 4, B: 5 };
-const STEPS_BY_FIFTH = 'FCGDAEB';
-const STEP_PC: Readonly<Record<string, number>> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const MAX_KEY_FIFTHS = 7;
 
 function firstChild(el: Element, name: string): Element | null {
   for (const c of Array.from(el.children)) if (c.tagName === name) return c;
@@ -24,31 +24,47 @@ function setChild(el: Element, name: string, value: string | null, before: strin
   node.textContent = value;
 }
 
+function respell(pitch: Element, semitones: number, fifthsShift: number): void {
+  const step = (firstChild(pitch, 'step')?.textContent ?? 'C').trim().toUpperCase();
+  const alter = Math.round(Number(firstChild(pitch, 'alter')?.textContent ?? 0));
+  const octave = Number(firstChild(pitch, 'octave')?.textContent ?? 4);
+  const midi = 12 * (octave + 1) + (STEP_SEMITONES[step] ?? 0) + alter + semitones;
+  const spelt = spell(midi, tpcOf(step, alter) + fifthsShift);
+  setChild(pitch, 'step', spelt.step, null);
+  setChild(pitch, 'alter', spelt.alter === 0 ? null : String(spelt.alter), 'octave');
+  setChild(pitch, 'octave', String(spelt.octave), null);
+}
+
 export function transposeMusicXml(xml: string, semitones: number, fromFifths: number): string {
   if (semitones === 0) return xml;
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   if (doc.getElementsByTagName('parsererror').length > 0)
     throw new Error('The MusicXML could not be read');
   const shift = transposeFifths(fromFifths, semitones) - fromFifths;
-  for (const key of Array.from(doc.getElementsByTagName('key'))) {
-    const fifths = firstChild(key, 'fifths');
-    if (fifths)
-      fifths.textContent = String(transposeFifths(Number(fifths.textContent) || 0, semitones));
-  }
-  for (const pitch of Array.from(doc.getElementsByTagName('pitch'))) {
-    const step = (firstChild(pitch, 'step')?.textContent ?? 'C').trim().toUpperCase();
-    const alter = Math.round(Number(firstChild(pitch, 'alter')?.textContent ?? 0));
-    const octave = Number(firstChild(pitch, 'octave')?.textContent ?? 4);
-    const midi = 12 * (octave + 1) + (STEP_PC[step] ?? 0) + alter + semitones;
-    const line = (STEP_FIFTHS[step] ?? 0) + 7 * alter + shift;
-    const newStep = STEPS_BY_FIFTH[(((line + 1) % 7) + 7) % 7] ?? 'C';
-    const newAlter = Math.floor((line + 1) / 7);
-    const newOctave = Math.floor((midi - newAlter - (STEP_PC[newStep] ?? 0)) / 12) - 1;
-    setChild(pitch, 'step', newStep, null);
-    setChild(pitch, 'alter', newAlter === 0 ? null : String(newAlter), 'octave');
-    setChild(pitch, 'octave', String(newOctave), null);
+  const shiftFor = (fifths: number) => {
+    let to = fifths + shift;
+    while (to > MAX_KEY_FIFTHS) to -= 12;
+    while (to < -MAX_KEY_FIFTHS) to += 12;
+    return to - fifths;
+  };
+  const keys: number[] = [];
+  for (const part of Array.from(doc.getElementsByTagName('part'))) {
+    let current = shift;
+    for (const el of Array.from(part.getElementsByTagName('*'))) {
+      if (el.tagName === 'key') {
+        const fifths = firstChild(el, 'fifths');
+        if (!fifths) continue;
+        const from = Number(fifths.textContent) || 0;
+        current = shiftFor(from);
+        fifths.textContent = String(from + current);
+        keys.push(from + current);
+      } else if (el.tagName === 'pitch') {
+        respell(el, semitones, current);
+      }
+    }
   }
   for (const accidental of Array.from(doc.getElementsByTagName('accidental'))) accidental.remove();
+  console.info('dewidebug export transposed', { semitones, fromFifths, shift, keys });
   return new XMLSerializer().serializeToString(doc);
 }
 

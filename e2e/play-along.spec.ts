@@ -110,6 +110,34 @@ test('speed up each loop plays the looped bar faster every time round, and a har
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
 });
 
+test('hard bits that failed to load cannot be overwritten by saving a new one', async ({
+  page,
+}) => {
+  const id = await createPiece(page, 'Hard Bit Guard', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await page.getByRole('button', { name: 'From here' }).click();
+  await page.getByRole('button', { name: 'To here' }).click();
+  page.once('dialog', (d) => void d.accept('Opening'));
+  await page.getByTestId('save-hard-bit').click();
+  await eventuallyInRemote(`pieces/${id}/hard-bits.json`, (t) => t.includes('Opening'));
+
+  let failing = true;
+  await page.route('**/api/pieces/*/hard-bits', (route) =>
+    failing ? route.fulfill({ status: 502, body: 'bad gateway' }) : route.fallback(),
+  );
+  await page.reload();
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await dragBars(page, 1, 2);
+  await expect(page.getByTestId('hard-bits-error')).toBeVisible();
+  await expect(page.getByTestId('save-hard-bit')).toHaveCount(0);
+
+  failing = false;
+  await page.getByTestId('hard-bits-error').getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByTestId('hard-bit')).toContainText('Opening');
+  await expect(page.getByTestId('save-hard-bit')).toBeVisible();
+});
+
 test('the score and the falling notes show side by side, or one at a time', async ({ page }) => {
   await createPiece(page, 'Split View Etude');
   await expect(page.locator('.page canvas').first()).toBeVisible();
