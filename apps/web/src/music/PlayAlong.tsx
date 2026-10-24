@@ -4,6 +4,8 @@ import {
   PLAY_ALONG_MIN_SPEED,
   RAMP_STEP,
   RAMP_TARGET,
+  newId,
+  type HardBit,
   type MusicRef,
   type PlayAlongPrefs,
 } from '@pcaa/shared';
@@ -21,6 +23,7 @@ import { Notation } from './Notation.tsx';
 import { toMusicXml } from './to-musicxml.ts';
 import { barAt, buildPerformance, type Performance } from './performance.ts';
 import { PianoPlayer, type PlayerEvent } from './player.ts';
+import { PlayAlongLog } from './practice-session.ts';
 import { clampSpeed } from './transport.ts';
 import './music.css';
 
@@ -29,6 +32,16 @@ const SPEED_STEP = 0.05;
 function clock(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   return `${String(Math.floor(s / 60))}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function loopRangeText(
+  perf: Performance | undefined,
+  loop: { from: number; to: number } | null,
+): string | null {
+  if (!perf || !loop) return null;
+  const from = perf.bars[loop.from]?.number;
+  const to = perf.bars[loop.to]?.number;
+  return from === undefined || to === undefined ? null : `bars ${String(from)}–${String(to)}`;
 }
 
 function usePerformance(pieceId: string, file: string) {
@@ -203,6 +216,19 @@ export function PlayAlong({
   const [playing, setPlaying] = useState(false);
   const [samples, setSamples] = useState<string | null>(null);
   const [barIndex, setBarIndex] = useState(0);
+  const hardBits = useAsync(() => api.getHardBits(pieceId), `hard-bits:${pieceId}`);
+  const bits = useMemo(() => hardBits.data?.files[music.file] ?? [], [hardBits.data, music.file]);
+  const { setData: setHardBitsData, reload: reloadHardBits } = hardBits;
+  const saveBits = useCallback(
+    (next: HardBit[]) => {
+      setHardBitsData((data) => ({ files: { ...(data?.files ?? {}), [music.file]: next } }));
+      api.putHardBits(pieceId, music.file, next).catch((error: unknown) => {
+        console.warn('dewidebug hard bits save failed; reloading', { error: String(error) });
+        reloadHardBits();
+      });
+    },
+    [pieceId, music.file, setHardBitsData, reloadHardBits],
+  );
   const readout = useRef<HTMLSpanElement>(null);
   const transpose = music.transpose;
   const colours = useMemo(() => (perf ? staffColours(perf.staves) : []), [perf]);
@@ -291,6 +317,66 @@ export function PlayAlong({
   useEffect(() => {
     player?.setClick(prefs.click);
   }, [player, prefs.click]);
+
+  const [practice] = useState(() => new PlayAlongLog());
+  const logTarget = useMemo(
+    () => ({ pieceId, name: music.name, baseBpm: perf?.baseBpm ?? null }),
+    [pieceId, music.name, perf],
+  );
+  const submitPractice = useCallback(
+    (keepalive: boolean) => {
+      const session = practice.take(Date.now(), logTarget);
+      if (!session) return;
+      console.info('dewidebug play-along practice logged', session);
+      api.addSession(session, keepalive).catch((error: unknown) => {
+        console.warn('dewidebug play-along practice log failed', { error: String(error) });
+      });
+    },
+    [practice, logTarget],
+  );
+
+  useEffect(() => {
+    if (playing) practice.play(Date.now(), prefs.speed);
+    else practice.pause(Date.now());
+  }, [practice, playing, prefs.speed]);
+
+  const loopText = loopRangeText(perf, prefs.loop);
+  useEffect(() => {
+    if (playing && loopText) practice.noteLoop(loopText);
+  }, [practice, playing, loopText]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (practice.due(Date.now())) submitPractice(false);
+    }, 15_000);
+    const onHide = () => {
+      practice.pause(Date.now());
+      submitPractice(true);
+    };
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('pagehide', onHide);
+      practice.pause(Date.now());
+      submitPractice(true);
+    };
+  }, [practice, submitPractice]);
+
+  const loopNow = prefs.loop;
+  useEffect(() => {
+    if (!player) return;
+    player.setPassListener((speed) => {
+      if (!loopNow) return;
+      const bit = bits.find((b) => b.from === loopNow.from && b.to === loopNow.to);
+      if (!bit || speed <= bit.bestSpeed + 1e-9) return;
+      console.info('dewidebug hard bit new best', {
+        name: bit.name,
+        from: bit.bestSpeed,
+        to: speed,
+      });
+      saveBits(bits.map((b) => (b.id === bit.id ? { ...b, bestSpeed: speed } : b)));
+    });
+  }, [player, loopNow, bits, saveBits]);
 
   useEffect(() => {
     if (!player || !perf) return;
@@ -651,6 +737,89 @@ export function PlayAlong({
           Note names
         </label>
         {samples && <span className="muted small-print">{samples}</span>}
+      </div>
+      <div
+        className="playalong-parts playalong-bits"
+        aria-label="Hard bits"
+        data-testid="hard-bits"
+      >
+        <span className="playalong-field">📌 Hard bits</span>
+        {bits.length === 0 && (
+          <span className="muted small-print">
+            Loop a passage, then save it here to come back to it.
+          </span>
+        )}
+        {bits.map((b) => {
+          const active = prefs.loop?.from === b.from && prefs.loop.to === b.to;
+          return (
+            <span key={b.id} className="playalong-part" data-testid="hard-bit">
+              <button
+                type="button"
+                className="btn small ghost"
+                aria-pressed={active}
+                title={`Loop bars ${String(b.fromBar)}–${String(b.toBar)}`}
+                onClick={() => {
+                  console.info('dewidebug hard bit chosen', {
+                    name: b.name,
+                    from: b.from,
+                    to: b.to,
+                  });
+                  updatePrefs((p) => ({ ...p, loop: { from: b.from, to: b.to } }));
+                  const bar = perf.bars[b.from];
+                  if (bar && player && !player.playing) seekTo(bar.start);
+                }}
+              >
+                {b.name}
+              </button>
+              <span className="muted small-print" data-testid="hard-bit-best">
+                best {Math.round(b.bestSpeed * 100)}%
+              </span>
+              <button
+                type="button"
+                className="btn small ghost icon part-toggle"
+                aria-label={`Forget ${b.name}`}
+                onClick={() => {
+                  if (!window.confirm(`Forget the hard bit “${b.name}”?`)) return;
+                  saveBits(bits.filter((x) => x.id !== b.id));
+                }}
+              >
+                ✕
+              </button>
+            </span>
+          );
+        })}
+        {prefs.loop && !bits.some((b) => b.from === prefs.loop?.from && b.to === prefs.loop.to) && (
+          <button
+            type="button"
+            className="btn small sun"
+            data-testid="save-hard-bit"
+            onClick={() => {
+              const loop = prefs.loop;
+              if (!loop) return;
+              const fromBar = perf.bars[loop.from]?.number ?? 0;
+              const toBar = perf.bars[loop.to]?.number ?? 0;
+              const name = window.prompt(
+                'Name this hard bit',
+                `Bars ${String(fromBar)}–${String(toBar)}`,
+              );
+              if (!name?.trim()) return;
+              saveBits([
+                ...bits,
+                {
+                  id: newId(),
+                  name: name.trim(),
+                  from: loop.from,
+                  to: loop.to,
+                  fromBar,
+                  toBar,
+                  bestSpeed: 0,
+                },
+              ]);
+            }}
+          >
+            📌 Save loop as hard bit
+          </button>
+        )}
       </div>
       <div className="playalong-parts" aria-label="Parts">
         {perf.staves.map((s) => {

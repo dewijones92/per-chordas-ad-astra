@@ -646,3 +646,66 @@ describe('DataRepo music files', () => {
     await expect(repo.filePath(piece.id, ref.file)).rejects.toThrow(NotFoundError);
   });
 });
+
+describe('DataRepo hard bits', () => {
+  let cleanup: () => Promise<void>;
+  let changes: RecordingChanges;
+  let repo: DataRepo;
+  const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]);
+  const bit = (over: Record<string, unknown> = {}) => ({
+    id: 'b1',
+    name: 'The run',
+    from: 11,
+    to: 15,
+    fromBar: 12,
+    toBar: 16,
+    bestSpeed: 0.6,
+    ...over,
+  });
+
+  beforeEach(async () => {
+    let dir: string;
+    ({ path: dir, cleanup } = await tempDir());
+    changes = new RecordingChanges();
+    repo = new DataRepo({ dir, changes, log: silentLog });
+  });
+  afterEach(async () => cleanup());
+
+  it('keeps hard bits per music file and says what changed', async () => {
+    const piece = await repo.createPiece({ title: 'Gran Vals' });
+    const a = await repo.addMusic(piece.id, 'a.mscz', new Blob([zip]));
+    const b = await repo.addMusic(piece.id, 'b.mscz', new Blob([zip]));
+    await repo.putFileHardBits(piece.id, a.file, [bit()]);
+    expect(changes.descriptions.at(-1)).toBe("Mark hard bit 'The run' in 'Gran Vals' (a.mscz)");
+    await repo.putFileHardBits(piece.id, b.file, [bit({ id: 'b2', name: 'Coda' })]);
+    await repo.putFileHardBits(piece.id, a.file, [bit({ bestSpeed: 0.75 })]);
+    expect(changes.descriptions.at(-1)).toBe(
+      "Hard bit 'The run' up to 75% in 'Gran Vals' (a.mscz)",
+    );
+    const stored = await repo.getHardBits(piece.id);
+    expect(Object.keys(stored.files)).toEqual(['b.mscz', 'a.mscz']);
+    expect(stored.files['b.mscz']?.[0]?.name).toBe('Coda');
+    await repo.putFileHardBits(piece.id, a.file, []);
+    expect(changes.descriptions.at(-1)).toBe("Remove hard bit 'The run' in 'Gran Vals' (a.mscz)");
+    expect(Object.keys((await repo.getHardBits(piece.id)).files)).toEqual(['b.mscz']);
+  });
+
+  it('refuses hard bits for a file the piece does not have, or that end before they start', async () => {
+    const piece = await repo.createPiece({ title: 'X' });
+    const a = await repo.addMusic(piece.id, 'a.mscz', new Blob([zip]));
+    await expect(repo.putFileHardBits(piece.id, file('ghost.mscz'), [bit()])).rejects.toThrow(
+      /Unknown music file/,
+    );
+    await expect(
+      repo.putFileHardBits(piece.id, a.file, [bit({ from: 5, to: 2 })]),
+    ).rejects.toThrow();
+  });
+
+  it('drops a music file’s hard bits when the file is removed', async () => {
+    const piece = await repo.createPiece({ title: 'Y' });
+    const a = await repo.addMusic(piece.id, 'a.mscz', new Blob([zip]));
+    await repo.putFileHardBits(piece.id, a.file, [bit()]);
+    await repo.removeFile(piece.id, a.file);
+    expect((await repo.getHardBits(piece.id)).files).toEqual({});
+  });
+});

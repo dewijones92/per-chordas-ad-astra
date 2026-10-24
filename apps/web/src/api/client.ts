@@ -3,6 +3,8 @@ import {
   type PdfImportRequest,
   Health,
   Loops,
+  HardBits,
+  type HardBit,
   MusicRef,
   type Loop,
   Piece,
@@ -125,6 +127,12 @@ export const api = {
       'metronome',
       request('/api/settings/metronome', SettingsFile.nullable(), jsonInit('PUT', save, keepalive)),
     ),
+  getHardBits: (id: string) => request(`/api/pieces/${enc(id)}/hard-bits`, HardBits),
+  putHardBits: (id: string, file: string, bits: readonly HardBit[]) =>
+    tracked(
+      'hard bits',
+      request(`/api/pieces/${enc(id)}/hard-bits/${enc(file)}`, HardBits, jsonInit('PUT', bits)),
+    ),
   getSetlists: () => request('/api/setlists', Setlists),
   putSetlists: (setlists: Setlists) =>
     tracked('setlists', request('/api/setlists', Setlists, jsonInit('PUT', setlists))),
@@ -133,8 +141,11 @@ export const api = {
       pieceId ? `/api/sessions?pieceId=${enc(pieceId)}` : '/api/sessions',
       z.array(PracticeSession),
     ),
-  addSession: (session: NewPracticeSession) =>
-    tracked('practice log', request('/api/sessions', PracticeSession, jsonInit('POST', session))),
+  addSession: (session: NewPracticeSession, keepalive = false) =>
+    tracked(
+      'practice log',
+      request('/api/sessions', PracticeSession, jsonInit('POST', session, keepalive)),
+    ),
   syncStatus: () => request('/api/sync', SyncStatus),
   flush: (reason: string, keepalive = false) =>
     request(`/api/sync/flush?reason=${enc(reason)}`, SyncStatus, { method: 'POST', keepalive }),

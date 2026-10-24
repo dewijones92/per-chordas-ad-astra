@@ -36,6 +36,7 @@ export interface Performance {
   highest: number;
   keyFifths: number;
   keyMinor: boolean;
+  baseBpm: number | null;
   warnings: string[];
 }
 
@@ -201,6 +202,7 @@ export function buildPerformance(score: ScoreModel): Performance {
     highest: Number.isFinite(highest) ? highest : 72,
     keyFifths: score.keys[0]?.fifths ?? 0,
     keyMinor: score.keys[0]?.minor ?? false,
+    baseBpm: score.tempos[0]?.bpm ?? null,
     warnings: [...score.warnings, ...warnings],
   };
 }

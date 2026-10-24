@@ -84,6 +84,8 @@ export class PianoPlayer {
   private fallbackLogged = false;
   private lastPosition = 0;
   private startRequest = 0;
+  private passListener: (speed: number) => void = () => undefined;
+  private lastSpeed = 1;
   private startingNow = false;
 
   constructor(
@@ -230,6 +232,10 @@ export class PianoPlayer {
     if (changed && this.transport.playing) this.silence();
   }
 
+  setPassListener(listener: (speed: number) => void): void {
+    this.passListener = listener;
+  }
+
   setClick(on: boolean): void {
     this.clickOn = on;
   }
@@ -277,9 +283,11 @@ export class PianoPlayer {
           from: this.lastPosition.toFixed(2),
           to: position.toFixed(2),
         });
+        this.passListener(this.lastSpeed);
         this.onEvent({ kind: 'loop', position, speed: this.transport.speedAt(ctx.currentTime) });
       }
       this.lastPosition = position;
+      this.lastSpeed = this.transport.speedAt(ctx.currentTime);
       if (this.clickOn) {
         for (const c of this.clicks.pump(ctx.currentTime, HORIZON_SECONDS, () => true)) {
           if (this.master) playClick(ctx, this.master, c.when, c.note.kind, 0.8);

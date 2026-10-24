@@ -16,8 +16,8 @@ export function remoteFile(path: string): string | null {
   }
 }
 
-export function remoteLog(): string[] {
-  return execFileSync('git', ['--git-dir', remote, 'log', '--format=%s', 'main'], {
+export function remoteLog(format = '%s'): string[] {
+  return execFileSync('git', ['--git-dir', remote, 'log', `--format=${format}`, 'main'], {
     encoding: 'utf8',
   })
     .trim()

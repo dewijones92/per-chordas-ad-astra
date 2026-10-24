@@ -215,6 +215,24 @@ export const Loops = z.object({
 });
 export type Loops = z.infer<typeof Loops>;
 
+export const HardBit = z
+  .object({
+    id: z.string().min(1).max(40),
+    name: z.string().trim().min(1).max(120),
+    from: z.int().min(0),
+    to: z.int().min(0),
+    fromBar: z.int().min(0),
+    toBar: z.int().min(0),
+    bestSpeed: z.number().min(0).max(2),
+  })
+  .refine((b) => b.to >= b.from, 'A hard bit must end at or after its start');
+export type HardBit = z.infer<typeof HardBit>;
+
+export const HardBits = z.object({
+  files: z.record(z.string(), z.array(HardBit)),
+});
+export type HardBits = z.infer<typeof HardBits>;
+
 export const Setlist = z.object({
   id: z.string().min(1).max(40),
   name: z.string().trim().min(1).max(120),

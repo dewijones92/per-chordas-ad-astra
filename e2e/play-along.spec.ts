@@ -74,20 +74,39 @@ test('a MuseScore file plays as falling notes, transposes, loops, and remembers 
   await expect(page.getByTestId('playalong-names')).toBeChecked();
 });
 
-test('speed up each loop plays the looped bar faster every time round', async ({ page }) => {
-  await createPiece(page, 'Ramp Study', { pdf: false });
+test('speed up each loop plays the looped bar faster every time round, and a hard bit keeps its best', async ({
+  page,
+}) => {
+  const id = await createPiece(page, 'Ramp Study', { pdf: false });
   await page.getByTestId('upload-music').setInputFiles(waltzMscz());
   await expect(page.getByTestId('playalong-canvas')).toBeVisible();
   await page.getByLabel('Play-along speed').fill('50');
   await page.getByRole('button', { name: 'From here' }).click();
   await page.getByRole('button', { name: 'To here' }).click();
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
+  page.once('dialog', (d) => void d.accept('Opening'));
+  await page.getByTestId('save-hard-bit').click();
+  await expect(page.getByTestId('hard-bit')).toHaveCount(1);
+  await expect(page.getByTestId('hard-bit')).toContainText('Opening');
   await page.getByTestId('playalong-ramp').check();
   await page.getByTestId('playalong-countin').uncheck();
   await page.getByTestId('playalong-play').click();
   await expect(page.getByTestId('playalong-speed')).toHaveText('55%', { timeout: 10_000 });
   await expect(page.getByTestId('playalong-speed')).toHaveText('60%', { timeout: 10_000 });
   await page.getByTestId('playalong-play').click();
+  await expect(page.getByTestId('hard-bit-best')).toHaveText(/best 5[05]%/);
+  const json = await eventuallyInRemote(`pieces/${id}/hard-bits.json`, (t) =>
+    t.includes('"bestSpeed": 0.55'),
+  );
+  expect(JSON.parse(json)).toMatchObject({
+    files: { 'fixture-waltz.mscz': [{ name: 'Opening', fromBar: 1, toBar: 1 }] },
+  });
+  expect(remoteLog('%B').join('\n')).toContain("Mark hard bit 'Opening' in 'Ramp Study'");
+
+  await page.getByRole('button', { name: 'Clear the loop' }).click();
+  await page.reload();
+  await page.getByTestId('hard-bit').getByRole('button', { name: 'Opening', exact: true }).click();
+  await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
 });
 
 test('the score and the falling notes show side by side, or one at a time', async ({ page }) => {
@@ -181,6 +200,28 @@ test('pausing while the piano is still loading stops it from starting', async ({
   await page.waitForTimeout(2500);
   expect(await position(page)).toBeLessThan(0.05);
   await expect(page.getByTestId('playalong-play')).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('a minute of play-along is logged to the practice log when you leave the piece', async ({
+  page,
+}) => {
+  const past = new Date(Date.now() - 10 * 60_000);
+  await page.clock.install({ time: past });
+  const id = await createPiece(page, 'Logged Waltz', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await page.getByTestId('playalong-play').click();
+  await expect(page.getByTestId('playalong-play')).toHaveAttribute('aria-pressed', 'true');
+  await page.clock.fastForward('01:05');
+  await page.getByTestId('playalong-play').click();
+  await expect(page.getByTestId('playalong-play')).toHaveAttribute('aria-pressed', 'false');
+  await page.locator('.nav').getByRole('link', { name: 'Practice log', exact: true }).click();
+  const month = past.toISOString().slice(0, 7).replace('-', '/');
+  const log = await eventuallyInRemote(`log/${month}.jsonl`, (t) =>
+    t.includes(`"pieceId":"${id}"`),
+  );
+  expect(log).toContain('Play-along: Fixture Waltz, up to 100% speed');
+  await expect(page.getByTestId('session-list')).toContainText('Play-along: Fixture Waltz');
 });
 
 test('a file that is not music says why', async ({ page }) => {

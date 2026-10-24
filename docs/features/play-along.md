@@ -42,6 +42,12 @@ keyboard from above, like the bird's-eye piano videos.
   before the music starts (after a pickup, the next full bar's beats); Click puts a metronome click on
   every beat while it plays, accented on the first. Compound time counts dotted beats (6/8 in two). The
   click is the metronome's own sound (`metronome/click.ts`).
+- **Hard bits** (📌): with a loop set, **Save loop as hard bit** names it (default "Bars 12–16"). Saved
+  hard bits are chips: click one to loop it, ✕ to forget it. Each remembers the **best speed** a whole pass
+  has been played at; with "speed up each loop" it climbs pass by pass. Stored per music file in
+  `hard-bits.json` in the data repo, saved one file at a time; commits read "Mark hard bit 'The run'" and
+  "Hard bit 'The run' up to 75%".
+- **Practice log**: play-along time logs itself (see the practice log feature).
 - **Keys**: K play/pause, `[` `]` slower/faster, `,` `.` previous/next bar. Space plays in the Notes view;
   where the PDF is showing, Space stays with the metronome.
 

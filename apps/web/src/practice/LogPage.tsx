@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Link } from 'wouter';
 import { api } from '../api/client.ts';
+import { saves } from '../sync/saves.ts';
 import { useAsync } from '../ui/use-async.ts';
 import { localDay, streakDays, totalMinutesSince, totalsByDay, weekStart } from './stats.ts';
 import { formatMinutes } from './timer.ts';
@@ -10,6 +12,17 @@ const DAYS_SHOWN = 28;
 export function LogPage() {
   const sessions = useAsync(() => api.listSessions(), 'sessions');
   const pieces = useAsync(() => api.listPieces(), 'pieces');
+  const { reload } = sessions;
+  useEffect(
+    () =>
+      saves.subscribe(() => {
+        if (saves.getSnapshot().inFlight === 0) {
+          console.info('dewidebug log page: saves settled, reloading sessions');
+          reload();
+        }
+      }),
+    [reload],
+  );
   if (sessions.error) return <p className="error log-page">{sessions.error}</p>;
   if (!sessions.data || !pieces.data) return <p className="muted log-page">Loading…</p>;
 

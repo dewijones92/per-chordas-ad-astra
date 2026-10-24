@@ -13,6 +13,8 @@ import {
   extensionOf,
   isZip,
   Loop,
+  HardBit,
+  HardBits,
   type FileName,
   Loops,
   MAX_SCORE_BYTES,
@@ -72,6 +74,23 @@ export function kindOf(file: FileName): FileKind {
 }
 
 const LoopList = Loop.array();
+const HardBitList = HardBit.array().max(100);
+
+export function describeHardBits(before: readonly HardBit[], after: readonly HardBit[]): string {
+  const old = new Map(before.map((b) => [b.id, b]));
+  const added = after.filter((b) => !old.has(b.id));
+  const removed = before.filter((b) => !after.some((a) => a.id === b.id));
+  const faster = after.filter((b) => (old.get(b.id)?.bestSpeed ?? b.bestSpeed) < b.bestSpeed);
+  const percent = (s: number) => `${String(Math.round(s * 100))}%`;
+  if (added.length === 1 && removed.length === 0 && added[0])
+    return `Mark hard bit '${added[0].name}'`;
+  if (removed.length === 1 && added.length === 0 && removed[0])
+    return `Remove hard bit '${removed[0].name}'`;
+  if (faster.length === 1 && added.length === 0 && removed.length === 0 && faster[0]) {
+    return `Hard bit '${faster[0].name}' up to ${percent(faster[0].bestSpeed)}`;
+  }
+  return 'Update hard bits';
+}
 const audioList = AUDIO_EXTENSIONS.join(', ');
 
 function quote(title: string): string {
@@ -333,7 +352,13 @@ export class DataRepo {
       await rm(this.path('pieces', id, kind, file), { force: true });
       if (kind === 'scores') {
         await rm(this.path('pieces', id, 'annotations', `${file}.json`), { force: true });
-      } else if (kind === 'tracks') {
+      } else if (kind === 'music') {
+        const bits = await this.getHardBits(id);
+        if (bits.files[file]) {
+          const { [file]: _removed, ...rest } = bits.files;
+          await this.writeJson(this.path('pieces', id, 'hard-bits.json'), { files: rest });
+        }
+      } else {
         const loops = await this.getLoops(id);
         const { [file]: _removed, ...rest } = loops.tracks;
         await this.writeJson(this.path('pieces', id, 'loops.json'), { tracks: rest });
@@ -456,6 +481,29 @@ export class DataRepo {
       await this.writeJson(this.path('pieces', id, 'loops.json'), next);
       await this.touch(piece, 'loops');
       this.changes.markDirty(`Save loops for ${quote(piece.title)} (${track})`);
+      return next;
+    });
+  }
+
+  async getHardBits(id: Slug): Promise<HardBits> {
+    await this.getPiece(id);
+    return readJson(this.path('pieces', id, 'hard-bits.json'), HardBits, () => ({ files: {} }));
+  }
+
+  async putFileHardBits(id: Slug, file: FileName, input: unknown): Promise<HardBits> {
+    const bits = HardBitList.parse(input);
+    return this.locked(`piece:${id}`, async () => {
+      const piece = await this.getPiece(id);
+      if (!piece.music.some((m) => m.file === file)) {
+        throw new RejectedError(`Unknown music file: ${file}`);
+      }
+      const current = await this.getHardBits(id);
+      const { [file]: previous = [], ...others } = current.files;
+      const next: HardBits = { files: bits.length > 0 ? { ...others, [file]: bits } : others };
+      await this.writeJson(this.path('pieces', id, 'hard-bits.json'), next);
+      this.changes.markDirty(
+        `${describeHardBits(previous, bits)} in ${quote(piece.title)} (${file})`,
+      );
       return next;
     });
   }

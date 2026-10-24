@@ -2,7 +2,7 @@
 title: Store practice data as files in a private GitHub repo, via a clone on the Pi
 status: accepted
 date: 2026-10-07
-updated: 2026-10-07
+updated: 2026-10-24
 ---
 
 # 0001 · Data lives in a private GitHub repo, written through a clone on the Pi
@@ -20,7 +20,7 @@ is undervolted and its root disk is USB; it has already had one silent half-outa
 - The server keeps a **git working copy** on the Pi (`/var/lib/per-chordas-ad-astra/data`) and pushes
   with a **per-repo deploy key** (write access to that repo only).
 - Files are plain and readable: `pieces/<slug>/piece.json`, `scores/*.pdf`, `annotations/*.json`,
-  `tracks/*`, `loops.json`, `setlists.json`, `log/YYYY/MM.jsonl`, `schema-version`. JSON keeps number
+  `tracks/*`, `loops.json`, `music/*`, `hard-bits.json`, `settings.json`, `setlists.json`, `log/YYYY/MM.jsonl`, `schema-version`. JSON keeps number
   arrays on one line so a stroke diff is one line per point.
 
 ## Alternatives
