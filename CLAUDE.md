@@ -45,6 +45,11 @@ reversal).
   `console.info('dewidebug …')`.
 - **No new code comments.** The why goes in commit messages, ADRs and docs.
 - CI must stay green. Commit at each green state.
+- **Independent review after a big batch, not after every change.** When a batch of work is done (a whole
+  feature, or several related changes, before pushing), spawn one fresh Opus reviewer (the `reviewer` agent,
+  high effort) on the whole batch's diff with the request and decisions it implements. It attacks the change
+  for regressions, missing tests and docs that overclaim, and runs the gate and the e2e flows end to end. Fix
+  what it confirms, re-run the gate, then push. Skip it for small single changes. (Dewi, 24 Oct 2026.)
 
 ## Architecture (short; see docs/architecture.md)
 
