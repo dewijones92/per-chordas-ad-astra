@@ -84,6 +84,7 @@ test('a loop switched off plays straight through, keeps its bars, and comes back
   await expect(page.getByTestId('playalong-canvas')).toBeVisible();
   const loopOn = page.getByTestId('playalong-loop-on');
   await expect(loopOn).toBeDisabled();
+  await expect(loopOn).not.toBeChecked();
   await page.getByRole('button', { name: 'From here' }).click();
   await page.getByRole('button', { name: 'To here' }).click();
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
@@ -190,7 +191,10 @@ test('hard bits that failed to load cannot be overwritten by saving a new one', 
   await expect(page.getByTestId('save-hard-bit')).toHaveCount(0);
 
   failing = false;
-  await page.getByTestId('hard-bits-error').getByRole('button', { name: 'Try again' }).click();
+  await page
+    .getByTestId('hard-bits-error')
+    .getByRole('button', { name: strings.common.retry })
+    .click();
   await expect(page.getByTestId('hard-bit')).toContainText('Opening');
   await expect(page.getByTestId('save-hard-bit')).toBeVisible();
 });
@@ -273,6 +277,60 @@ test('drawing on the notation is saved per bar, follows a transposition, and und
   await page.keyboard.press('Control+z');
   await expect(page.getByTestId('notation-layer-2')).toHaveAttribute('data-items', '1');
   await expect(page.getByTestId('annotation-layer-1')).toHaveAttribute('data-items', '2');
+});
+
+test('notation marks keep their text when clicked, and a mark on bar 1 stays on its note across a key change', async ({
+  page,
+}) => {
+  const id = await createPiece(page, 'Bar One Marks', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await page.getByTestId('notation-draw').click();
+  const bar1 = page.getByTestId('notation-layer-1');
+  await expect(bar1).toBeVisible();
+  const firstNote = page
+    .getByTestId('notation-svg')
+    .locator('g.measure')
+    .first()
+    .locator('g.note')
+    .first();
+  const noteX = async () => {
+    const b = await firstNote.boundingBox();
+    if (!b) throw new Error('no note');
+    return b.x + b.width / 2;
+  };
+  const stampX = async () => {
+    const b = await bar1.locator('text').first().boundingBox();
+    if (!b) throw new Error('no stamp');
+    return b.x + b.width / 2;
+  };
+  const before = await noteX();
+  const layer = await bar1.boundingBox();
+  if (!layer) throw new Error('no layer');
+  await page.locator('.playalong [data-tool="stamp"]').click();
+  await bar1.click({ position: { x: before - layer.x, y: layer.height * 0.3 } });
+  await expect(bar1).toHaveAttribute('data-items', '1');
+  const offset = (await stampX()) - before;
+
+  await page.locator('.playalong [data-tool="text"]').click();
+  const bar2 = page.getByTestId('notation-layer-2');
+  const bar2Box = await bar2.boundingBox();
+  if (!bar2Box) throw new Error('no bar 2');
+  await bar2.click({ position: { x: 10, y: bar2Box.height * 0.8 } });
+  const editor = page.getByTestId('text-editor');
+  await editor.fill('hello');
+  await editor.click({ position: { x: 5, y: 5 } });
+  await expect(editor).toHaveValue('hello');
+  await page.keyboard.press('Control+Enter');
+  await eventuallyInRemote(`pieces/${id}/annotations/fixture-waltz.mscz.json`, (t) =>
+    t.includes('hello'),
+  );
+
+  await page.getByTestId('notation-draw-done').click();
+  await page.getByRole('button', { name: 'Transpose up a semitone' }).click();
+  await expect(page.getByTestId('playalong-key')).toContainText('A♭ major');
+  await expect(async () => {
+    expect(Math.abs((await stampX()) - (await noteX()) - offset)).toBeLessThan(3);
+  }).toPass();
 });
 
 test('the score and the falling notes show side by side, or one at a time', async ({ page }) => {
@@ -381,7 +439,10 @@ test('a minute of play-along is logged to the practice log when you leave the pi
   await page.clock.fastForward('01:05');
   await page.getByTestId('playalong-play').click();
   await expect(page.getByTestId('playalong-play')).toHaveAttribute('aria-pressed', 'false');
-  await page.locator('.nav').getByRole('link', { name: strings.nav.log, exact: true }).click();
+  await page
+    .locator('.nav')
+    .getByRole('link', { name: strings.common.practiceLog, exact: true })
+    .click();
   const month = past.toISOString().slice(0, 7).replace('-', '/');
   const log = await eventuallyInRemote(`log/${month}.jsonl`, (t) =>
     t.includes(`"pieceId":"${id}"`),

@@ -78,7 +78,14 @@ function measureBars(box: HTMLElement, result: NotationResult, key: string): Box
     const el = box.querySelector(`#${CSS.escape(m.id)}`);
     if (!el) return;
     const r = el.getBoundingClientRect();
-    bars.push({ page: index + 1, left: r.left - origin.left, width: r.width });
+    const content = el.querySelector('g.note, g.rest, g.mRest, g.chord');
+    const contentLeft = content ? content.getBoundingClientRect().left : r.right;
+    let start = r.left;
+    for (const sign of Array.from(el.querySelectorAll('g.clef, g.keySig, g.meterSig'))) {
+      const b = sign.getBoundingClientRect();
+      if (b.right <= contentLeft + 0.5) start = Math.max(start, b.right);
+    }
+    bars.push({ page: index + 1, left: start - origin.left, width: r.right - start });
   });
   const line = box.querySelector('g.staff > path');
   const staffTop = line ? line.getBoundingClientRect().top - origin.top : 0;

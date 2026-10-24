@@ -1,5 +1,5 @@
 import type { LibrarySort, Piece, PracticeSession } from '@pcaa/shared';
-import { strings } from '../strings.ts';
+import { strings, units } from '../strings.ts';
 
 export type SortKey = LibrarySort | 'setlist';
 
@@ -134,14 +134,14 @@ export function pickForMe(
 export function ago(at: number, now: number): string {
   const ms = Math.max(0, now - at);
   const minutes = Math.floor(ms / 60_000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${String(minutes)} min ago`;
+  if (minutes < 1) return units.ago.justNow;
+  if (minutes < 60) return units.ago.minutes(minutes);
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${String(hours)} h ago`;
+  if (hours < 24) return units.ago.hours(hours);
   const days = Math.floor(ms / DAY_MS);
-  if (days < 2) return 'yesterday';
-  if (days < 14) return `${String(days)} days ago`;
-  if (days < 60) return `${String(Math.floor(days / 7))} weeks ago`;
-  if (days < 730) return `${String(Math.floor(days / 30))} months ago`;
-  return `${String(Math.floor(days / 365))} years ago`;
+  if (days < 2) return units.ago.yesterday;
+  if (days < 14) return units.ago.days(days);
+  if (days < 60) return units.ago.weeks(Math.floor(days / 7));
+  if (days < 730) return units.ago.months(Math.floor(days / 30));
+  return units.ago.years(Math.floor(days / 365));
 }

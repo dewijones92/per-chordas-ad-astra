@@ -119,7 +119,7 @@ export function Toolbar(props: Props) {
               onClick={props.onDeleteSelected}
               title={tips.drawings.delete}
             >
-              {strings.drawings.delete}
+              {strings.common.delete}
             </button>
           )}
           <span className="divider" />

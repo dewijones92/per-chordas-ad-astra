@@ -606,7 +606,7 @@ export function PiecePage({ id }: { id: string }) {
         </div>
 
         <aside className="dock" aria-label={tips.piece.dock}>
-          <Section title={strings.piece.sections.metronome} testId="dock-metronome">
+          <Section title={strings.common.metronome} testId="dock-metronome">
             <MetronomePanel compact />
             {current.targetBpm !== null && (
               <button

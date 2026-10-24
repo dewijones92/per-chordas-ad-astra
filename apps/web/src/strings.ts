@@ -5,6 +5,10 @@ export const strings = {
     retry: '🔄 Retry',
     speed: '🐢 Speed',
     loading: '⏳ Loading…',
+    done: '✅ Done',
+    delete: '🗑️ Delete',
+    metronome: '⏱️ Metronome',
+    practiceLog: '📝 Practice log',
   },
   newPiece: {
     title: '✨ New piece',
@@ -35,6 +39,10 @@ export const strings = {
     setlistEmpty: '📭 This setlist is empty. Open a piece and tick this setlist to add it.',
     noMatch: '🔍 No pieces match.',
     notPractised: '🌱 Not practised yet',
+    added: (ago: string) => `🆕 Added ${ago}`,
+    edited: (ago: string) => `✏️ Edited ${ago}`,
+    opened: (ago: string) => `👀 Opened ${ago}`,
+    notOpened: '👀 Not opened yet',
     practised: (ago: string, total: string) => `🕘 Practised ${ago} · ⏱ ${total}`,
     removeFromSetlist: '➖ Remove from setlist',
     continue: '▶️ Continue',
@@ -42,7 +50,6 @@ export const strings = {
     allPieces: '🎼 All pieces',
     newSetlist: '➕ New setlist',
     rename: '✏️ Rename',
-    delete: '🗑️ Delete',
     setlistNamePrompt: '🗂️ Setlist name',
     renamePrompt: '✏️ Rename setlist',
     deleteConfirm: (name: string) => `🗑️ Delete the setlist “${name}”? Pieces are kept.`,
@@ -74,7 +81,6 @@ export const strings = {
     bookmarkPrompt: '🔖 Name this spot (e.g. "Bars 17–32")',
     jumpTo: '🎯 Jump to',
     sections: {
-      metronome: '⏱️ Metronome',
       practise: '🎯 Practise',
       looper: '🔁 Slow-down looper',
       playAlong: '🎹 Play-along',
@@ -120,13 +126,15 @@ export const strings = {
     noteNames: '🔤 Note names',
     hardBits: '📌 Hard bits',
     hardBitsFailed: '❌ Saved hard bits could not be loaded:',
-    tryAgain: '🔄 Try again',
     hardBitsEmpty: '💡 Loop a passage, then save it here to come back to it.',
     best: (percent: number) => `🏆 best ${String(percent)}%`,
     saveHardBit: '📌 Save loop as hard bit',
     hardBitPrompt: '📌 Name this hard bit',
     forgetConfirm: (name: string) => `🗑️ Forget the hard bit “${name}”?`,
     warning: (first: string) => `⚠️ ${first}`,
+    samplesFailed: '⚠️ Piano sound unavailable; using a simple synth',
+    samplesLoading: (loaded: number, total: number) =>
+      `⏳ Piano ${String(loaded)}/${String(total)}`,
     position: (bar: number, now: string, total: string) =>
       `📍 Bar ${String(bar)} · ${now} / ${total}`,
   },
@@ -163,7 +171,6 @@ export const strings = {
   timer: {
     practise: '▶️ Practise',
     resume: '▶️ Resume',
-    done: '✅ Done',
     topTempo: '🎯 Top clean tempo (bpm, optional)',
     note: '📝 Note',
     log: '💾 Log',
@@ -171,7 +178,6 @@ export const strings = {
     discard: '🗑️ Discard',
   },
   log: {
-    title: '📝 Practice log',
     streak: '🔥 Day streak',
     week: '⏱️ Minutes this week',
     sessions: '📚 Sessions logged',
@@ -182,7 +188,6 @@ export const strings = {
   },
   nav: {
     library: '📚 Library',
-    log: '📝 Practice log',
     tools: '⏱️ Metronome & tuner',
     metronomeRunning: (bpm: number) => `⏱️ ${String(bpm)} bpm ■`,
     finding: '⏳ Finding your place…',
@@ -191,7 +196,6 @@ export const strings = {
   },
   tools: {
     title: '🧰 Tools',
-    metronome: '⏱️ Metronome',
     tuner: '🎤 Tuner',
     metronomeHint: '💡 Space starts and stops it on a score page; + and − nudge the tempo.',
   },
@@ -203,6 +207,15 @@ export const strings = {
     playString: '🎸 Play a string',
     notListening: '🔇 Not listening',
     tuning: '🎼 Tuning',
+    micUnavailable: (error: string) => `❌ Microphone unavailable: ${error}`,
+    tunings: {
+      standard: '🎸 Standard (E A D G B E)',
+      'drop-d': '🎸 Drop D (D A D G B E)',
+      'half-down': '🎸 Half step down (E♭ A♭ D♭ G♭ B♭ E♭)',
+      dadgad: '🎸 DADGAD',
+      'open-g': '🎸 Open G (D G D G B D)',
+      'open-d': '🎸 Open D (D A D F♯ A D)',
+    },
   },
   drawings: {
     loadFailed: '❌ Could not load the drawings, so drawing is paused to protect them:',
@@ -210,7 +223,6 @@ export const strings = {
     loading: '⏳ Loading drawings…',
     undo: '↩️ Undo',
     redo: '↪️ Redo',
-    delete: '🗑️ Delete',
   },
   score: {
     openFailed: '❌ Could not open this PDF:',
@@ -225,7 +237,6 @@ export const strings = {
   },
   notation: {
     draw: '✏️ Draw',
-    done: '✅ Done',
     drawFailed: '❌ Could not draw the notation:',
     drawing: '⏳ Drawing the notation…',
     barsDiffer:
@@ -419,6 +430,17 @@ export const names = {
 } as const;
 
 export const units = {
+  loopBars: (from: number, to: number) => `bars ${String(from)}–${String(to)}`,
+  ago: {
+    justNow: 'just now',
+    minutes: (n: number) => `${String(n)} min ago`,
+    hours: (n: number) => `${String(n)} h ago`,
+    yesterday: 'yesterday',
+    days: (n: number) => `${String(n)} days ago`,
+    weeks: (n: number) => `${String(n)} weeks ago`,
+    months: (n: number) => `${String(n)} months ago`,
+    years: (n: number) => `${String(n)} years ago`,
+  },
   writtenIn: 'written in',
   now: 'now',
   writtenKey: 'written key',

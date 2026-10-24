@@ -32,8 +32,9 @@ typed strings file with checks, and tooltips, placeholders and screen-reader lab
   emoji (✦ ▯ ★ ☆ plain arrows) was replaced.
 - **Checked, not reviewed** (`apps/web/test/strings.test.ts`): every `strings` leaf starts with an emoji and no
   `tips`/`units` leaf does; and, parsing every component with TypeScript's own parser, no text is typed inline in
-  JSX, in a ternary or `&&` inside JSX, in `title`/`aria-label`/`placeholder`/`alt`/`label` props, or in
-  `label`/`title`/`text`/`placeholder` fields of constant tables. Text built in plain `.ts` files (sort names,
+  JSX, in a ternary or `&&` inside JSX, in `title`/`aria-label`/`placeholder`/`alt`/`label` props, in
+  `label`/`title`/`text`/`placeholder`/`name`/`detail` fields of constant tables, in literals passed to `set…()`
+  calls, or in literals returned from functions (the batch review found text hiding in those last three). Text built in plain `.ts` files (sort names,
   tool and stamp names, sync pill states) is moved by hand, since the check cannot see it.
 - **e2e tests read labels from the same file** wherever they match words exactly.
 

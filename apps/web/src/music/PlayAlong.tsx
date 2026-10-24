@@ -53,7 +53,7 @@ function loopRangeText(
   if (!perf || !loop) return null;
   const from = perf.bars[loop.from]?.number;
   const to = perf.bars[loop.to]?.number;
-  return from === undefined || to === undefined ? null : `bars ${String(from)}–${String(to)}`;
+  return from === undefined || to === undefined ? null : units.loopBars(from, to);
 }
 
 function usePerformance(pieceId: string, file: string) {
@@ -290,9 +290,9 @@ export function PlayAlong({
       if (event.kind === 'samples') {
         setSamples(
           event.error
-            ? 'Piano sound unavailable; using a simple synth'
+            ? strings.playAlong.samplesFailed
             : event.loaded < event.total
-              ? `Piano ${String(event.loaded)}/${String(event.total)}`
+              ? strings.playAlong.samplesLoading(event.loaded, event.total)
               : null,
         );
       }
@@ -703,7 +703,7 @@ export function PlayAlong({
         </span>
         <span className="playalong-field" data-testid="playalong-loop">
           <LoopSwitch
-            on={prefs.loopOn}
+            on={prefs.loopOn && prefs.loop !== null}
             disabled={!prefs.loop}
             onChange={(loopOn) => {
               updatePrefs((p) => ({ ...p, loopOn }));
@@ -862,7 +862,7 @@ export function PlayAlong({
           <span className="error small-print" data-testid="hard-bits-error">
             {strings.playAlong.hardBitsFailed} {hardBits.error}{' '}
             <button type="button" className="btn small ghost" onClick={reloadHardBits}>
-              {strings.playAlong.tryAgain}
+              {strings.common.retry}
             </button>
           </span>
         )}
@@ -1007,7 +1007,7 @@ export function PlayAlong({
                   setDrawMode(false);
                 }}
               >
-                {strings.notation.done}
+                {strings.common.done}
               </button>
             }
           />
@@ -1034,7 +1034,7 @@ export function PlayAlong({
             history: notationMarks.history,
             dispatch: notationMarks.dispatch,
             tools: drawing.tools,
-            selected: drawing.selected,
+            selected: drawMode ? drawing.selected : null,
             onSelect: drawing.setSelected,
             editable: notationMarks.load === 'ready',
           }}

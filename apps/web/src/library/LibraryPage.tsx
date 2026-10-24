@@ -213,13 +213,13 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
 function sortContext(sort: SortKey, piece: Piece, stats: PieceStats, now: number): string | null {
   switch (sort) {
     case 'added':
-      return `Added ${ago(Date.parse(piece.createdAt), now)}`;
+      return strings.library.added(ago(Date.parse(piece.createdAt), now));
     case 'edited':
-      return `Edited ${ago(Date.parse(piece.updatedAt), now)}`;
+      return strings.library.edited(ago(Date.parse(piece.updatedAt), now));
     case 'opened':
       return stats.lastOpenedAt === null
-        ? 'Not opened yet'
-        : `Opened ${ago(stats.lastOpenedAt, now)}`;
+        ? strings.library.notOpened
+        : strings.library.opened(ago(stats.lastOpenedAt, now));
     case 'setlist':
     case 'title':
     case 'artist':
@@ -529,7 +529,7 @@ export function LibraryPage() {
                 selectSetlist(null);
               }}
             >
-              {strings.library.delete}
+              {strings.common.delete}
             </button>
           </div>
         )}

@@ -284,6 +284,10 @@ describe('title and composer', () => {
       );
     const score = parseScoreText(framed);
     expect([score.title, score.composer]).toEqual(['Gran Vals', 'Francisco Tárrega']);
+    const twoLineTitle = parseScoreText(
+      framed.replace('<text>Gran Vals</text>', '<text>Gran\nVals</text>'),
+    );
+    expect(twoLineTitle.title).toBe('Gran Vals');
   });
 });
 

@@ -67,7 +67,9 @@ test('sorts are remembered, drawing counts as an edit, and pins stay on top', as
   const sort = page.getByLabel('Sort pieces');
   await sort.selectOption({ label: strings.library.sorts.added });
   await expect.poll(() => cardTitles(page)).toEqual(['Mango Rag', 'Apple Etude', 'Zebra Waltz']);
-  await expect(page.getByTestId('piece-when').first()).toHaveText(/^Added (just now|\d+ min ago)$/);
+  await expect(page.getByTestId('piece-when').first()).toHaveText(
+    /^🆕 Added (just now|\d+ min ago)$/,
+  );
   await page.getByRole('button', { name: 'Reverse order' }).click();
   await expect.poll(() => cardTitles(page)).toEqual(['Zebra Waltz', 'Apple Etude', 'Mango Rag']);
 

@@ -8,7 +8,7 @@ export function ToolsPage() {
     <div className="tools-page">
       <h1>{strings.tools.title}</h1>
       <section className="card panel stack">
-        <h2>{strings.tools.metronome}</h2>
+        <h2>{strings.common.metronome}</h2>
         <MetronomePanel />
         <p className="muted">{strings.tools.metronomeHint}</p>
       </section>

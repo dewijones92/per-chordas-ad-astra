@@ -59,7 +59,7 @@ test('a backing track slows down, loops, and its saved loop reaches GitHub', asy
 
 test('a note typed just before leaving the piece is still saved', async ({ page }) => {
   await createPiece(page, 'Quick Note', { pdf: false });
-  await page.getByText('📝 Notes').click();
+  await page.getByText(strings.piece.sections.notes).click();
   await page.getByTestId('piece-notes').fill('use the thumb on bar 12');
   await page.locator('.nav').getByRole('link', { name: strings.nav.library, exact: true }).click();
   await eventuallyInRemote('pieces/quick-note/piece.json', (t) =>

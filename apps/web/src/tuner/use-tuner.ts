@@ -1,6 +1,7 @@
 import { PitchDetector } from 'pitchy';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { median } from './notes.ts';
+import { strings } from '../strings.ts';
 
 const FFT_SIZE = 4096;
 const MIN_CLARITY = 0.9;
@@ -104,7 +105,7 @@ export function useTuner(): TunerState {
         starting.current = false;
         const message = e instanceof Error ? e.message : String(e);
         console.warn('dewidebug tuner microphone refused', { message });
-        setError(`Microphone unavailable: ${message}`);
+        setError(strings.tuner.micUnavailable(message));
       });
   }, []);
 

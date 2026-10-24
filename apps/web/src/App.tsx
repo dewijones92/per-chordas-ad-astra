@@ -99,7 +99,7 @@ export function App() {
           </Link>
           <nav className="nav">
             <NavLink href="/">{strings.nav.library}</NavLink>
-            <NavLink href="/log">{strings.nav.log}</NavLink>
+            <NavLink href="/log">{strings.common.practiceLog}</NavLink>
             <NavLink href="/tools">{strings.nav.tools}</NavLink>
           </nav>
           <span className="spacer" />

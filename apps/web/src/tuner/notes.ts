@@ -1,3 +1,4 @@
+import { strings } from '../strings.ts';
 export const NOTE_NAMES = [
   'C',
   'C♯',
@@ -46,16 +47,16 @@ export interface Tuning {
 }
 
 export const TUNINGS: readonly Tuning[] = [
-  { id: 'standard', name: 'Standard (E A D G B E)', strings: [40, 45, 50, 55, 59, 64] },
-  { id: 'drop-d', name: 'Drop D (D A D G B E)', strings: [38, 45, 50, 55, 59, 64] },
+  { id: 'standard', name: strings.tuner.tunings.standard, strings: [40, 45, 50, 55, 59, 64] },
+  { id: 'drop-d', name: strings.tuner.tunings['drop-d'], strings: [38, 45, 50, 55, 59, 64] },
   {
     id: 'half-down',
-    name: 'Half step down (E♭ A♭ D♭ G♭ B♭ E♭)',
+    name: strings.tuner.tunings['half-down'],
     strings: [39, 44, 49, 54, 58, 63],
   },
-  { id: 'dadgad', name: 'DADGAD', strings: [38, 45, 50, 55, 57, 62] },
-  { id: 'open-g', name: 'Open G (D G D G B D)', strings: [38, 43, 50, 55, 59, 62] },
-  { id: 'open-d', name: 'Open D (D A D F♯ A D)', strings: [38, 45, 50, 54, 57, 62] },
+  { id: 'dadgad', name: strings.tuner.tunings.dadgad, strings: [38, 45, 50, 55, 57, 62] },
+  { id: 'open-g', name: strings.tuner.tunings['open-g'], strings: [38, 43, 50, 55, 59, 62] },
+  { id: 'open-d', name: strings.tuner.tunings['open-d'], strings: [38, 45, 50, 54, 57, 62] },
 ];
 
 export function noteLabel(midi: number): string {

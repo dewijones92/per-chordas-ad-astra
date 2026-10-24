@@ -23,8 +23,10 @@ notation** to see about four bigger bars.
   `useWheelZoom`, `useRememberedZoom`.
 - **A bar is a page.** Drawings are saved per music file in `annotations/<file>.json`, the same file and
   format as a PDF's, with the written bar's position (1-based, in the file's order, not the play order) as
-  the page key. Each bar gets its own layer over the engraved bar; a mark's x is measured from the bar's left
-  edge and its y from the top staff line, in Verovio units at 100% scale. Transposing, zooming or a new
+  the page key. Each bar gets its own layer over the engraved bar; a mark's x is measured from where the bar's
+  music starts (after any clef, key or time signature in front of its first note, so a wider key signature after
+  transposing does not move bar 1's marks off their notes; the batch review measured a 31 px drift before this)
+  and its y from the top staff line, in Verovio units at 100% scale. Transposing, zooming or a new
   engraving moves the marks with their bars. Commits read `Annotate 'Gran Vals' (gran-vals.mscz bar 12)`, and
   removing the music file removes its drawings.
 - **Which surface owns the keys.** With a PDF and the notation both on screen, ✏️ Draw mode claims the
@@ -41,3 +43,5 @@ notation** to see about four bigger bars.
 - If Verovio and our reader disagree on the number of bars, drawing is switched off for that file with a
   message, rather than pinning marks to the wrong bars.
 - The eraser and select hit only marks belonging to the bar under the pointer.
+- Inside a bar, x is an absolute distance, not a proportion: if transposing adds accidentals that push the
+  bar's later notes along, marks on those notes can drift by an accidental's width.

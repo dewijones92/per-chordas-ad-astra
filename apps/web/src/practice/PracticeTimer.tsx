@@ -148,7 +148,7 @@ export function PracticeTimer({ pieceId, onLogged }: Props) {
             onClick={finish}
             data-testid="practice-finish"
           >
-            {strings.timer.done}
+            {strings.common.done}
           </button>
         )}
       </div>

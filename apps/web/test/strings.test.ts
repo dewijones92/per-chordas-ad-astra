@@ -45,10 +45,16 @@ function isTextLiteral(node: ts.Expression): boolean {
   );
 }
 
-const TEXT_PROPERTIES = new Set(['label', 'title', 'text', 'placeholder']);
+const TEXT_PROPERTIES = new Set(['label', 'title', 'text', 'placeholder', 'name', 'detail']);
+
+function literalText(node: ts.Expression): string {
+  if (ts.isTemplateExpression(node))
+    return [node.head.text, ...node.templateSpans.map((span) => span.literal.text)].join(' ');
+  return node.getText();
+}
 
 function textLeaves(node: ts.Expression): ts.Expression[] {
-  if (isTextLiteral(node)) return hasWords(node.getText()) ? [node] : [];
+  if (isTextLiteral(node)) return hasWords(literalText(node)) ? [node] : [];
   if (ts.isParenthesizedExpression(node)) return textLeaves(node.expression);
   if (ts.isConditionalExpression(node))
     return [...textLeaves(node.whenTrue), ...textLeaves(node.whenFalse)];
@@ -94,6 +100,15 @@ function inlineText(file: string): string[] {
       if (value)
         for (const leaf of textLeaves(value))
           report(leaf, `${node.name.getText()}=${leaf.getText()}`);
+    } else if (
+      ts.isCallExpression(node) &&
+      /^set[A-Z]/.test(node.expression.getText()) &&
+      node.arguments[0]
+    ) {
+      for (const leaf of textLeaves(node.arguments[0]))
+        report(leaf, `${node.expression.getText()}(${leaf.getText()})`);
+    } else if (ts.isReturnStatement(node) && node.expression) {
+      for (const leaf of textLeaves(node.expression)) report(leaf, `return ${leaf.getText()}`);
     } else if (
       ts.isPropertyAssignment(node) &&
       TEXT_PROPERTIES.has(node.name.getText()) &&

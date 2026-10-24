@@ -45,7 +45,7 @@ export function LogPage() {
 
   return (
     <div className="log-page">
-      <h1>{strings.log.title}</h1>
+      <h1>{strings.common.practiceLog}</h1>
       <div className="stat-row">
         <div className="card stat sun">
           <b data-testid="streak">{streakDays(all, today)}</b> {strings.log.streak}
