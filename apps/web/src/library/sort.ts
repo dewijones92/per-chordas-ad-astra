@@ -1,19 +1,9 @@
 import type { LibrarySort, Piece, PracticeSession } from '@pcaa/shared';
+import { strings } from '../strings.ts';
 
 export type SortKey = LibrarySort | 'setlist';
 
-export const SORT_LABELS: Record<SortKey, string> = {
-  setlist: 'Setlist order',
-  title: 'Title A–Z',
-  artist: 'Artist A–Z',
-  added: 'Recently added',
-  edited: 'Recently edited',
-  opened: 'Recently opened',
-  practised: 'Recently practised',
-  neglected: 'Needs practice',
-  'most-practised': 'Most practised',
-  tempo: 'Target tempo, slowest first',
-};
+export const SORT_LABELS: Record<SortKey, string> = strings.library.sorts;
 
 export interface PieceStats {
   lastOpenedAt: number | null;

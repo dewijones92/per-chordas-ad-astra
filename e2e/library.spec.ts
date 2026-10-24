@@ -65,7 +65,7 @@ test('sorts are remembered, drawing counts as an edit, and pins stay on top', as
   expect(await cardTitles(page)).toEqual(['Apple Etude', 'Mango Rag', 'Zebra Waltz']);
 
   const sort = page.getByLabel('Sort pieces');
-  await sort.selectOption({ label: 'Recently added' });
+  await sort.selectOption({ label: strings.library.sorts.added });
   await expect.poll(() => cardTitles(page)).toEqual(['Mango Rag', 'Apple Etude', 'Zebra Waltz']);
   await expect(page.getByTestId('piece-when').first()).toHaveText(/^Added (just now|\d+ min ago)$/);
   await page.getByRole('button', { name: 'Reverse order' }).click();
@@ -92,10 +92,10 @@ test('sorts are remembered, drawing counts as an edit, and pins stay on top', as
   expect(res.ok()).toBe(true);
   await openLibrary(page);
   await page.getByRole('button', { name: 'sortcheck' }).click();
-  await sort.selectOption({ label: 'Recently edited' });
+  await sort.selectOption({ label: strings.library.sorts.edited });
   await expect.poll(() => cardTitles(page)).toEqual(['Apple Etude', 'Mango Rag', 'Zebra Waltz']);
 
-  await sort.selectOption({ label: 'Title A–Z' });
+  await sort.selectOption({ label: strings.library.sorts.title });
   await page.getByRole('button', { name: 'Pin Zebra Waltz' }).click();
   await expect.poll(() => cardTitles(page)).toEqual(['Zebra Waltz', 'Apple Etude', 'Mango Rag']);
   await expect(page.getByRole('button', { name: 'Unpin Zebra Waltz' })).toHaveAttribute(
@@ -133,7 +133,7 @@ test('the Continue row and Recently opened follow the pieces you open', async ({
 
   await page.getByRole('button', { name: 'opencheck' }).click();
   await expect(continueRow).toHaveCount(0);
-  await page.getByLabel('Sort pieces').selectOption({ label: 'Recently opened' });
+  await page.getByLabel('Sort pieces').selectOption({ label: strings.library.sorts.opened });
   await expect.poll(() => cardTitles(page)).toEqual(['Opened First', 'Opened Second']);
 });
 
@@ -159,10 +159,10 @@ test('practice badges, Needs practice, and Pick for me favour neglected pieces',
 
   await openLibrary(page);
   await page.getByRole('button', { name: 'practicecheck' }).click();
-  await page.getByLabel('Sort pieces').selectOption({ label: 'Needs practice' });
+  await page.getByLabel('Sort pieces').selectOption({ label: strings.library.sorts.neglected });
   await expect.poll(() => cardTitles(page)).toEqual(['Never Reel', 'Old Tango', 'Fresh Jig']);
   const practice = page.getByTestId('piece-practice');
-  await expect(practice.nth(0)).toHaveText('🌱 Not practised yet');
+  await expect(practice.nth(0)).toHaveText(strings.library.notPractised);
   await expect(practice.nth(1)).toHaveText('🕘 Practised 4 weeks ago · ⏱ 10 min');
   await expect(practice.nth(2)).toContainText('· ⏱ 10 min');
 

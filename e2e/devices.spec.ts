@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createPiece, eventuallyInRemote, openLibrary, remoteLog } from './support/helpers.ts';
+import { strings } from '../apps/web/src/strings.ts';
 
 interface ServerResume {
   zoom: Record<string, { value: number }>;
@@ -50,7 +51,7 @@ test('zoom per score, the page layout and the library sort follow you to another
   await expect(page.getByTestId('zoom-level')).toHaveText('120%');
   await page.locator('[data-view="width"]').click();
   await openLibrary(page);
-  await page.getByLabel('Sort pieces').selectOption({ label: 'Recently added' });
+  await page.getByLabel('Sort pieces').selectOption({ label: strings.library.sorts.added });
 
   const key = `${id}/${id}.pdf`;
   await expect
@@ -71,7 +72,7 @@ test('zoom per score, the page layout and the library sort follow you to another
   await openLibrary(other);
   await expect(other.getByLabel('Sort pieces')).toHaveValue('added');
 
-  await other.getByLabel('Sort pieces').selectOption({ label: 'Title A–Z' });
+  await other.getByLabel('Sort pieces').selectOption({ label: strings.library.sorts.title });
   await other.goto(`/piece/${id}`);
   await other.locator('[data-view="page"]').click();
   await expect

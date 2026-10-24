@@ -34,6 +34,7 @@ import {
   type SortKey,
 } from './sort.ts';
 import './library.css';
+import { strings, tips } from '../strings.ts';
 
 function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -71,7 +72,7 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
       const message = e instanceof Error ? e.message : String(e);
       console.warn('dewidebug new piece music unreadable', { file: chosen.name, error: message });
       setTitle((t) => (t.trim() ? t : fallback));
-      setMusicNote(`This file could not be read for its title: ${message}`);
+      setMusicNote(strings.newPiece.unreadable(message));
     }
   };
 
@@ -118,9 +119,9 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
           void submit();
         }}
       >
-        <h2>New piece ✦</h2>
+        <h2>{strings.newPiece.title}</h2>
         <label className="field">
-          Title
+          {strings.newPiece.pieceTitle}
           <input
             className="input"
             required
@@ -134,7 +135,7 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
           />
         </label>
         <label className="field">
-          Artist / composer
+          {strings.newPiece.artist}
           <input
             className="input"
             value={artist}
@@ -145,11 +146,11 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
           />
         </label>
         <label className="field">
-          Tags (comma separated)
+          {strings.newPiece.tags}
           <input
             className="input"
             value={tags}
-            placeholder="fingerstyle, learning"
+            placeholder={tips.library.tagsPlaceholder}
             onChange={(e) => {
               setTags(e.target.value);
             }}
@@ -157,7 +158,7 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
           />
         </label>
         <label className="field">
-          Score PDF (optional)
+          {strings.newPiece.pdf}
           <input
             className="input"
             type="file"
@@ -169,7 +170,7 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
           />
         </label>
         <label className="field">
-          MuseScore / MusicXML for Play-along (optional)
+          {strings.newPiece.music}
           <input
             className="input"
             type="file"
@@ -184,7 +185,7 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
         {error && <p className="error">{error}</p>}
         {error && createdId && (
           <p className="muted">
-            The piece was created. Pick another file and press Create again, or{' '}
+            {strings.newPiece.createdButFailed}{' '}
             <button
               type="button"
               className="btn small ghost"
@@ -192,16 +193,16 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
                 navigate(`/piece/${createdId}`);
               }}
             >
-              open it as it is
+              {strings.newPiece.openAsIs}
             </button>
           </p>
         )}
         <div className="row">
           <button type="submit" className="btn primary" disabled={busy || title.trim() === ''}>
-            {busy ? 'Creating…' : 'Create'}
+            {busy ? strings.newPiece.creating : strings.newPiece.create}
           </button>
           <button type="button" className="btn ghost" onClick={onClose}>
-            Cancel
+            {strings.newPiece.cancel}
           </button>
         </div>
       </form>
@@ -258,8 +259,8 @@ function PieceCard({
         type="button"
         className="card-pin"
         aria-pressed={piece.pinned}
-        aria-label={`${piece.pinned ? 'Unpin' : 'Pin'} ${piece.title}`}
-        title={piece.pinned ? 'Unpin' : 'Pin to the top'}
+        aria-label={piece.pinned ? tips.library.unpin(piece.title) : tips.library.pin(piece.title)}
+        title={piece.pinned ? tips.library.unpinTitle : tips.library.pinTitle}
         onClick={onPin}
       >
         {piece.pinned ? '★' : '☆'}
@@ -268,15 +269,24 @@ function PieceCard({
         <h3>{piece.title}</h3>
         {piece.artist && <p className="muted">{piece.artist}</p>}
         <div className="row piece-meta">
-          {piece.scores.length > 0 && <span title="Scores">📄 {piece.scores.length}</span>}
-          {piece.tracks.length > 0 && <span title="Backing tracks">🎧 {piece.tracks.length}</span>}
-          {piece.targetBpm !== null && <span title="Target tempo">🎯 {piece.targetBpm}</span>}
+          {piece.scores.length > 0 && (
+            <span title={tips.library.scores}>📄 {piece.scores.length}</span>
+          )}
+          {piece.tracks.length > 0 && (
+            <span title={tips.library.tracks}>🎧 {piece.tracks.length}</span>
+          )}
+          {piece.targetBpm !== null && (
+            <span title={tips.library.target}>🎯 {piece.targetBpm}</span>
+          )}
         </div>
         {practiceKnown && (
           <p className="piece-practice" data-testid="piece-practice">
             {stats.lastPractisedAt === null
-              ? '🌱 Not practised yet'
-              : `🕘 Practised ${ago(stats.lastPractisedAt, now)} · ⏱ ${formatMinutes(stats.practisedSec)}`}
+              ? strings.library.notPractised
+              : strings.library.practised(
+                  ago(stats.lastPractisedAt, now),
+                  formatMinutes(stats.practisedSec),
+                )}
           </p>
         )}
         {context && (
@@ -301,7 +311,7 @@ function PieceCard({
               <button
                 type="button"
                 className="btn small icon"
-                aria-label="Move up"
+                aria-label={tips.library.moveUp}
                 onClick={() => {
                   onMove(-1);
                 }}
@@ -311,7 +321,7 @@ function PieceCard({
               <button
                 type="button"
                 className="btn small icon"
-                aria-label="Move down"
+                aria-label={tips.library.moveDown}
                 onClick={() => {
                   onMove(1);
                 }}
@@ -322,7 +332,7 @@ function PieceCard({
           )}
           <span className="spacer" />
           <button type="button" className="btn small ghost" onClick={onRemove}>
-            Remove from setlist
+            {strings.library.removeFromSetlist}
           </button>
         </div>
       )}
@@ -333,8 +343,8 @@ function PieceCard({
 function ContinueRow({ items, now }: { items: { piece: Piece; at: number }[]; now: number }) {
   if (items.length === 0) return null;
   return (
-    <section className="library-continue" aria-label="Continue where you left off">
-      <h2>Continue</h2>
+    <section className="library-continue" aria-label={tips.library.continue}>
+      <h2>{strings.library.continue}</h2>
       <ul className="library-continue-list">
         {items.map(({ piece, at }) => (
           <li key={piece.id}>
@@ -461,8 +471,8 @@ export function LibraryPage() {
 
   return (
     <div className="library">
-      <aside className="setlists" aria-label="Setlists">
-        <h2>Setlists</h2>
+      <aside className="setlists" aria-label={tips.library.setlists}>
+        <h2>{strings.library.setlists}</h2>
         <button
           type="button"
           className={`setlist-btn${setlistId === null ? ' on' : ''}`}
@@ -470,7 +480,7 @@ export function LibraryPage() {
             selectSetlist(null);
           }}
         >
-          ✦ All pieces
+          {strings.library.allPieces}
         </button>
         {lists.map((s) => (
           <button
@@ -489,14 +499,14 @@ export function LibraryPage() {
           className="btn small sun"
           data-testid="new-setlist"
           onClick={() => {
-            const name = window.prompt('Setlist name', 'Warm-ups');
+            const name = window.prompt(strings.library.setlistNamePrompt, 'Warm-ups');
             if (!name?.trim()) return;
             const id = newId();
             saveSetlists({ setlists: [...lists, { id, name: name.trim(), pieceIds: [] }] });
             selectSetlist(id);
           }}
         >
-          + New setlist
+          {strings.library.newSetlist}
         </button>
         {active && (
           <div className="row">
@@ -504,23 +514,22 @@ export function LibraryPage() {
               type="button"
               className="btn small ghost"
               onClick={() => {
-                const name = window.prompt('Rename setlist', active.name);
+                const name = window.prompt(strings.library.renamePrompt, active.name);
                 if (name?.trim()) updateActive((s) => ({ ...s, name: name.trim() }));
               }}
             >
-              Rename
+              {strings.library.rename}
             </button>
             <button
               type="button"
               className="btn small ghost"
               onClick={() => {
-                if (!window.confirm(`Delete the setlist “${active.name}”? Pieces are kept.`))
-                  return;
+                if (!window.confirm(strings.library.deleteConfirm(active.name))) return;
                 saveSetlists({ setlists: lists.filter((s) => s.id !== active.id) });
                 selectSetlist(null);
               }}
             >
-              Delete
+              {strings.library.delete}
             </button>
           </div>
         )}
@@ -528,14 +537,14 @@ export function LibraryPage() {
 
       <main className="library-main">
         <div className="row library-head">
-          <h1>{active ? active.name : 'Your library'}</h1>
+          <h1>{active ? active.name : strings.library.title}</h1>
           <span className="spacer" />
           <input
             ref={searchRef}
             className="input search"
             type="search"
-            placeholder="Search…  ( / )"
-            aria-label="Search pieces"
+            placeholder={tips.library.search}
+            aria-label={tips.library.searchLabel}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -549,16 +558,16 @@ export function LibraryPage() {
             }}
             data-testid="new-piece"
           >
-            + New piece
+            {strings.library.newPiece}
           </button>
         </div>
         <ContinueRow items={continueItems} now={now} />
         <div className="row library-sort">
           <label className="row sort-field">
-            <span>Sort</span>
+            <span>{strings.library.sort}</span>
             <select
               className="input"
-              aria-label="Sort pieces"
+              aria-label={tips.library.sortLabel}
               value={choice.sort}
               disabled={searching}
               onChange={(e) => {
@@ -576,30 +585,30 @@ export function LibraryPage() {
           <button
             type="button"
             className="btn small ghost"
-            aria-label="Reverse order"
+            aria-label={tips.library.reverse}
             aria-pressed={choice.reversed}
             disabled={searching}
             onClick={() => {
               chooseSort({ sort: choice.sort, reversed: !choice.reversed });
             }}
           >
-            {choice.reversed ? '↑ Reversed' : '↓ Reverse'}
+            {choice.reversed ? strings.library.reversed : strings.library.reverse}
           </button>
-          {searching && <span className="muted">Best match first while searching</span>}
+          {searching && <span className="muted">{strings.library.bestMatch}</span>}
           <span className="spacer" />
           <button
             type="button"
             className="btn small sun"
             data-testid="pick-for-me"
             disabled={shown.length === 0}
-            title="Open a piece at random, favouring ones you have not practised lately"
+            title={tips.library.pickForMe}
             onClick={pick}
           >
-            🎲 Pick for me
+            {strings.library.pickForMe}
           </button>
         </div>
         {tagList.length > 0 && (
-          <div className="row tag-filter" aria-label="Filter by tag">
+          <div className="row tag-filter" aria-label={tips.library.tagFilter}>
             {tagList.map((t) => (
               <button
                 key={t}
@@ -618,13 +627,11 @@ export function LibraryPage() {
           </div>
         )}
         {pieces.error && <p className="error">{pieces.error}</p>}
-        {pieces.loading && !pieces.data && <p className="muted">Loading your library…</p>}
+        {pieces.loading && !pieces.data && <p className="muted">{strings.library.loading}</p>}
         {pieces.data?.length === 0 && (
           <div className="empty-state card">
-            <h2>Nothing here yet 🎸</h2>
-            <p>
-              Add your first piece: give it a title and drop in a PDF score or a MuseScore file.
-            </p>
+            <h2>{strings.library.emptyTitle}</h2>
+            <p>{strings.library.emptyHint}</p>
             <button
               type="button"
               className="btn primary"
@@ -632,15 +639,11 @@ export function LibraryPage() {
                 setCreating(true);
               }}
             >
-              + New piece
+              {strings.library.newPiece}
             </button>
           </div>
         )}
-        {active?.pieceIds.length === 0 && (
-          <p className="muted">
-            This setlist is empty. Open a piece and tick this setlist to add it.
-          </p>
-        )}
+        {active?.pieceIds.length === 0 && <p className="muted">{strings.library.setlistEmpty}</p>}
         <ul className="piece-grid">
           {shown.map((piece) => (
             <PieceCard
@@ -678,7 +681,7 @@ export function LibraryPage() {
           ))}
         </ul>
         {pieces.data && pieces.data.length > 0 && shown.length === 0 && !active && (
-          <p className="muted">No pieces match.</p>
+          <p className="muted">{strings.library.noMatch}</p>
         )}
       </main>
       <NewPieceDialog
