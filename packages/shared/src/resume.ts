@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SortChoice, ViewMode } from './prefs.ts';
+import { PieceView, PlayAlongPrefs, SortChoice, ViewMode } from './prefs.ts';
 
 const at = z.number().int().nonnegative();
 const key = z.string().min(1).max(200);
@@ -30,6 +30,10 @@ export const ResumeState = z.object({
   zoom: z.record(key, z.object({ value: z.number().positive().max(100), at })).default({}),
   viewMode: z.object({ mode: ViewMode, at }).nullable().default(null),
   librarySort: SortChoice.extend({ at }).nullable().default(null),
+  playAlong: z.record(key, PlayAlongPrefs.extend({ at })).default({}),
+  pieceView: z
+    .record(key, z.object({ mode: PieceView, file: z.string().max(100).nullable(), at }))
+    .default({}),
 });
 export type ResumeState = z.output<typeof ResumeState>;
 
@@ -43,6 +47,8 @@ export const emptyResume = (): ResumeState => ({
   zoom: {},
   viewMode: null,
   librarySort: null,
+  playAlong: {},
+  pieceView: {},
 });
 
 function newest<T extends { at: number }>(
@@ -74,5 +80,7 @@ export function mergeResume(a: ResumeState, b: ResumeState): ResumeState {
     zoom: newest(a.zoom, b.zoom),
     viewMode: newerOf(a.viewMode, b.viewMode),
     librarySort: newerOf(a.librarySort, b.librarySort),
+    playAlong: newest(a.playAlong, b.playAlong),
+    pieceView: newest(a.pieceView, b.pieceView),
   };
 }

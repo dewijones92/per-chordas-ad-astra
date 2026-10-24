@@ -1,6 +1,6 @@
 ---
 title: Architecture
-updated: 2026-10-09
+updated: 2026-10-24
 ---
 
 # Architecture
@@ -18,17 +18,21 @@ browser (React SPA) ──/api──▶ nginx_dewi (Google gate) ──▶ app c
 
 ## Where each fact lives (DRY)
 
-| Fact                                  | Only place                                                              |
-| ------------------------------------- | ----------------------------------------------------------------------- |
-| Shape of every data file and API body | `packages/shared/src/schemas.ts`                                        |
-| Sync status shape                     | `packages/shared/src/sync.ts`                                           |
-| Slug and file-name rules              | `packages/shared/src/slug.ts`                                           |
-| Upload size caps                      | `packages/shared/src/schemas.ts` (`MAX_SCORE_BYTES`, `MAX_TRACK_BYTES`) |
-| Server configuration and defaults     | `apps/server/src/config.ts`                                             |
-| Node major version                    | `.nvmrc` (preflight checks the Dockerfile)                              |
-| Test PDFs and tones                   | `packages/fixtures`                                                     |
-| Annotation tool sizes, colours, keys  | `apps/web/src/annotate/tools.ts`                                        |
-| Design tokens                         | `apps/web/src/styles/global.css` `:root`                                |
+| Fact                                    | Only place                                                                      |
+| --------------------------------------- | ------------------------------------------------------------------------------- |
+| Shape of every data file and API body   | `packages/shared/src/schemas.ts`                                                |
+| Sync status shape                       | `packages/shared/src/sync.ts`                                                   |
+| Slug and file-name rules                | `packages/shared/src/slug.ts`                                                   |
+| Upload size caps                        | `packages/shared/src/schemas.ts` (`MAX_SCORE_BYTES`, `MAX_TRACK_BYTES`)         |
+| Server configuration and defaults       | `apps/server/src/config.ts`                                                     |
+| Node major version                      | `.nvmrc` (preflight checks the Dockerfile)                                      |
+| Test PDFs and tones                     | `packages/fixtures`                                                             |
+| Test scores (MuseScore 2/3/4, MusicXML) | `packages/fixtures/src/music.ts` (one spec, every encoding)                     |
+| Score model (measures, notes, repeats)  | `apps/web/src/music/model.ts`                                                   |
+| Play-along prefs, speed limits, views   | `packages/shared/src/prefs.ts`                                                  |
+| Piano samples and their licence         | `apps/web/public/piano/manifest.json` (built by `tools/build-piano-samples.sh`) |
+| Annotation tool sizes, colours, keys    | `apps/web/src/annotate/tools.ts`                                                |
+| Design tokens                           | `apps/web/src/styles/global.css` `:root`                                        |
 
 ## Server
 
@@ -50,4 +54,9 @@ pushing → clean | push-failed`.
   groups), `geometry.ts` (hit-testing, paths), `use-annotations.ts` (load and autosave),
   `use-pdf-marks.ts` (one-time import of a PDF's marks on first open).
 - `metronome/`: `scheduler.ts` (pure), `engine.ts` (Web Audio), `MetronomeProvider` (app-wide).
+- `music/`: Play-along (ADR 0014). `load.ts` unzips and picks the reader; `mscx.ts` (MuseScore 2–4) and
+  `musicxml.ts` fill one `ScoreModel`; `unroll.ts` decides the bar order; `performance.ts` turns it into
+  notes in seconds; `transport.ts` (pure) schedules against the audio clock; `player.ts` plays the
+  Salamander samples; `falling.ts` draws the notes and keyboard; `PlayAlong.tsx` and `BarStrip.tsx` are
+  the panel.
 - `tuner/`, `looper/`, `practice/`, `library/`, `sync/`.

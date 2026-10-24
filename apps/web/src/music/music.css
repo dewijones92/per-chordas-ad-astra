@@ -1,0 +1,110 @@
+.playalong {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.playalong-bar,
+.playalong-parts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 2px solid var(--line);
+}
+
+.playalong-parts {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.playalong-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.playalong-field input[type='range'] {
+  width: 110px;
+}
+
+.playalong-readout {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  min-width: 150px;
+}
+
+.playalong-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 8px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+  font-size: 13.5px;
+}
+
+.playalong-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  border: 2px solid var(--ink);
+}
+
+.playalong-stage {
+  flex: 1;
+  min-height: 160px;
+  position: relative;
+  overflow: hidden;
+}
+
+.playalong-canvas {
+  display: block;
+  touch-action: none;
+  cursor: ns-resize;
+}
+
+.playalong-loading {
+  padding: 16px;
+}
+
+.playalong-key {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.playalong-capo {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--sun-wash);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.barstrip {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 2px solid var(--ink);
+  background: var(--bg);
+  flex: 0 0 auto;
+}
+
+.barstrip-canvas {
+  display: block;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.playalong-part .part-toggle {
+  padding: 0 4px;
+  box-shadow: none;
+}

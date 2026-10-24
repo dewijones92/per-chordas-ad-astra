@@ -1,9 +1,12 @@
 import {
   AUDIO_ACCEPT,
   kindOfFile,
+  MUSIC_ACCEPT,
   newId,
   parseTags,
   SCORE_ACCEPT,
+  type FileKind,
+  type PieceView,
   type Piece,
   type PiecePatch,
   type PracticeSession,
@@ -17,6 +20,7 @@ import { useAnnotations } from '../annotate/use-annotations.ts';
 import { usePdfMarks } from '../annotate/use-pdf-marks.ts';
 import { Looper } from '../looper/Looper.tsx';
 import { MetronomePanel } from '../metronome/MetronomePanel.tsx';
+import { PlayAlong } from '../music/PlayAlong.tsx';
 import { useMetronome } from '../metronome/MetronomeProvider.tsx';
 import { BpmChart } from '../practice/BpmChart.tsx';
 import { PracticeTimer } from '../practice/PracticeTimer.tsx';
@@ -29,7 +33,9 @@ import {
   pullResume,
   readResume,
   rememberOpened,
+  rememberPieceView,
   rememberPieceScore,
+  savedPieceView,
   rememberScore,
   rememberViewMode,
   rememberZoom,
@@ -67,6 +73,14 @@ const VIEW_MODES: { mode: ViewMode; label: string; title: string }[] = [
   { mode: 'spread', label: '▯▯ Two', title: 'Two pages side by side' },
   { mode: 'width', label: '↔ Width', title: 'Fit the page width' },
 ];
+const FILE_ICON: Record<FileKind, string> = { scores: '📄', tracks: '🎧', music: '🎹' };
+
+const VIEW_CHOICES: { mode: PieceView; label: string; title: string }[] = [
+  { mode: 'score', label: '📄 Score', title: 'The PDF score only' },
+  { mode: 'split', label: '📄🎹 Both', title: 'The PDF beside the falling notes' },
+  { mode: 'notes', label: '🎹 Notes', title: 'Falling notes and keyboard only (Space plays)' },
+];
+
 function ScoreArea({
   piece,
   file,
@@ -488,6 +502,9 @@ export function PiecePage({ id }: { id: string }) {
   const sessions = useAsync(() => api.listSessions(id), `sessions:${id}`);
   const setlists = useAsync(() => api.getSetlists(), 'setlists');
   const [chosenScore, setChosenScore] = useState<string | null>(null);
+  const [chosenView, setChosenView] = useState<{ mode: PieceView; file: string | null } | null>(
+    null,
+  );
   const setScoreFile = useCallback(
     (file: string) => {
       setChosenScore(file);
@@ -539,6 +556,24 @@ export function PiecePage({ id }: { id: string }) {
   const lists = setlists.data?.setlists ?? [];
   const pieceSessions = sessions.data ?? [];
   const totalSec = pieceSessions.reduce((sum, s) => sum + s.durationSec, 0);
+  const wantedView = chosenView ?? savedPieceView(id);
+  const musicRef =
+    current.music.find((m) => m.file === wantedView?.file) ?? current.music[0] ?? null;
+  const viewMode: PieceView = !musicRef
+    ? 'score'
+    : !scoreFile
+      ? 'notes'
+      : (wantedView?.mode ?? 'split');
+  const chooseView = (mode: PieceView, file: string | null) => {
+    console.info('dewidebug piece view chosen', { id, mode, file });
+    setChosenView({ mode, file });
+    rememberPieceView(id, mode, file);
+  };
+  const transposeMusic = (file: string, semitones: number) => {
+    stablePatch({
+      music: current.music.map((m) => (m.file === file ? { ...m, transpose: semitones } : m)),
+    });
+  };
 
   return (
     <div className="piece-page">
@@ -592,28 +627,75 @@ export function PiecePage({ id }: { id: string }) {
             ))}
           </div>
         )}
+        {musicRef && (
+          <div className="row piece-views" role="group" aria-label="View">
+            {VIEW_CHOICES.filter((v) => scoreFile !== null || v.mode === 'notes').map((v) => (
+              <button
+                key={v.mode}
+                type="button"
+                className="btn small"
+                aria-pressed={viewMode === v.mode}
+                data-piece-view={v.mode}
+                title={v.title}
+                onClick={() => {
+                  chooseView(v.mode, musicRef.file);
+                }}
+              >
+                {v.label}
+              </button>
+            ))}
+            {current.music.length > 1 && (
+              <select
+                className="input mini"
+                aria-label="Music file"
+                value={musicRef.file}
+                onChange={(e) => {
+                  chooseView(viewMode === 'score' ? 'split' : viewMode, e.target.value);
+                }}
+              >
+                {current.music.map((m) => (
+                  <option key={m.file} value={m.file}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
       </header>
 
       <div className="piece-body">
-        <div className="piece-main">
-          {scoreFile ? (
-            <ScoreArea key={scoreFile} piece={current} file={scoreFile} onPatch={stablePatch} />
-          ) : (
-            <div className="no-score">
-              <div className="card empty-state">
-                <h2>Add a score 📄</h2>
-                <p>Upload a PDF and draw fingerings, strum arrows and notes straight onto it.</p>
-                <UploadButton
-                  label="Upload PDF"
-                  accept={SCORE_ACCEPT}
-                  testId="upload-score-empty"
-                  onFile={async (f) => {
-                    await api.uploadScore(current.id, f);
-                    piece.reload();
-                  }}
-                />
+        <div className={`piece-main view-${viewMode}`}>
+          {viewMode !== 'notes' &&
+            (scoreFile ? (
+              <ScoreArea key={scoreFile} piece={current} file={scoreFile} onPatch={stablePatch} />
+            ) : (
+              <div className="no-score">
+                <div className="card empty-state">
+                  <h2>Add a score 📄</h2>
+                  <p>Upload a PDF and draw fingerings, strum arrows and notes straight onto it.</p>
+                  <UploadButton
+                    label="Upload PDF"
+                    accept={SCORE_ACCEPT}
+                    testId="upload-score-empty"
+                    onFile={async (f) => {
+                      await api.uploadScore(current.id, f);
+                      piece.reload();
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            ))}
+          {viewMode !== 'score' && musicRef && (
+            <PlayAlong
+              key={musicRef.file}
+              pieceId={current.id}
+              music={musicRef}
+              spaceToggles={viewMode === 'notes'}
+              onTranspose={(semitones) => {
+                transposeMusic(musicRef.file, semitones);
+              }}
+            />
           )}
         </div>
 
@@ -665,6 +747,62 @@ export function PiecePage({ id }: { id: string }) {
             </div>
           </Section>
 
+          <Section title="🎹 Play-along" testId="dock-playalong" open={current.music.length > 0}>
+            {current.music.length === 0 && (
+              <p className="muted">
+                Add a MuseScore (.mscz, .mscx) or MusicXML (.mxl, .musicxml) file to watch its notes
+                fall onto a keyboard, transpose it and play along.
+              </p>
+            )}
+            {current.music.length > 0 && (
+              <ul className="file-list">
+                {current.music.map((m) => (
+                  <li key={m.file} className="row">
+                    <span>🎹</span>
+                    <button
+                      type="button"
+                      className="btn small ghost"
+                      onClick={() => {
+                        chooseView(scoreFile ? 'split' : 'notes', m.file);
+                      }}
+                    >
+                      {m.name}
+                    </button>
+                    {m.transpose !== 0 && (
+                      <span className="muted">
+                        {m.transpose > 0 ? '+' : '−'}
+                        {Math.abs(m.transpose)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="row">
+              <UploadButton
+                label="+ Add MuseScore / MusicXML"
+                accept={MUSIC_ACCEPT}
+                testId="upload-music"
+                onFile={async (f) => {
+                  const ref = await api.uploadMusic(current.id, f);
+                  piece.reload();
+                  chooseView(scoreFile ? 'split' : 'notes', ref.file);
+                }}
+              />
+            </div>
+            <p className="muted small-print">
+              Piano sound: Salamander Grand Piano by Alexander Holm,{' '}
+              <a
+                href="https://creativecommons.org/licenses/by/3.0/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                CC BY 3.0
+              </a>
+              . Keys: K play/pause, [ ] speed, , . bars; Space too in the Notes view.
+            </p>
+          </Section>
+
           <Section title="📝 Notes" open={current.notes !== ''}>
             <NotesEditor piece={current} onPatch={stablePatch} />
           </Section>
@@ -704,9 +842,9 @@ export function PiecePage({ id }: { id: string }) {
 
           <Section title="📁 Files" open={false}>
             <ul className="file-list">
-              {[...current.scores, ...current.tracks].map((f) => (
+              {[...current.scores, ...current.tracks, ...current.music].map((f) => (
                 <li key={f.file} className="row">
-                  <span>{kindOfFile(f.file) === 'scores' ? '📄' : '🎧'}</span>
+                  <span>{FILE_ICON[kindOfFile(f.file) ?? 'tracks']}</span>
                   <a href={api.fileUrl(current.id, f.file)} target="_blank" rel="noreferrer">
                     {f.name}
                   </a>

@@ -22,6 +22,7 @@ reversal).
 | Slow-down               | The browser's pitch-preserving `playbackRate`, not SoundTouch (a deviation from the first plan)                                                        | [0007](docs/adr/0007-native-pitch-preserving-playback.md) |
 | PDF rendering           | pdf.js **legacy** build, loaded lazily                                                                                                                 | [0008](docs/adr/0008-pdfjs-legacy-build.md)               |
 | Resume                  | Reopen at the last piece, page, looper spot and a paused timer, on any device; kept on the Pi outside git                                              | [0010](docs/adr/0010-resume-state-on-the-server.md)       |
+| Play-along              | Our own MuseScore 2–4 and MusicXML reader, MuseScore's repeat tests as the oracle, Salamander piano samples, canvas falling notes                      | [0014](docs/adr/0014-play-along-own-parser.md)            |
 | Preferences             | Metronome settings in the data repo (`settings.json`); zoom per score, page layout and library sort in the resume state                                | [0013](docs/adr/0013-where-preferences-live.md)           |
 | Look                    | Bold and playful, light theme only: white background, indigo/coral/sun/teal, sticker-style buttons                                                     | Dewi's choice                                             |
 | Devices                 | Laptop/desktop first (mouse and trackpad drawing, keyboard shortcuts)                                                                                  | Dewi's choice                                             |
@@ -66,6 +67,8 @@ reversal).
   - `score/`: pdf.js viewer with page / two-page / width layouts and page turning (`turn.ts`).
   - `annotate/`: an SVG layer in PDF points, a pure history reducer and geometry.
   - `metronome/`: a pure `TickScheduler` (anchor-based, drift-free), an app-wide Web Audio engine.
+  - `music/`: Play-along: readers for MuseScore and MusicXML, repeat unrolling, a pure transport, the
+    sampled piano and the falling-notes canvas (ADR 0014).
   - `tuner/`, `looper/`, `practice/`, `library/`, `sync/` (status pill).
 
 ## Build, test, run

@@ -1,5 +1,8 @@
 import {
+  DEFAULT_PLAY_ALONG,
   DEFAULT_SORT,
+  type PieceView,
+  type PlayAlongPrefs,
   emptyResume,
   mergeResume,
   ResumeState,
@@ -155,6 +158,29 @@ export function rememberZoom(key: string, value: number): void {
 
 export function savedZoom(key: string): number | null {
   return readResume().zoom[key]?.value ?? null;
+}
+
+export function rememberPlayAlong(key: string, prefs: PlayAlongPrefs): void {
+  updateResume((s) => ({ ...s, playAlong: { ...s.playAlong, [key]: { ...prefs, at: now() } } }));
+}
+
+export function savedPlayAlong(key: string): PlayAlongPrefs {
+  const saved = readResume().playAlong[key];
+  if (!saved) return DEFAULT_PLAY_ALONG;
+  const { at: _at, ...prefs } = saved;
+  return prefs;
+}
+
+export function rememberPieceView(pieceId: string, mode: PieceView, file: string | null): void {
+  updateResume((s) => ({
+    ...s,
+    pieceView: { ...s.pieceView, [pieceId]: { mode, file, at: now() } },
+  }));
+}
+
+export function savedPieceView(pieceId: string): { mode: PieceView; file: string | null } | null {
+  const saved = readResume().pieceView[pieceId];
+  return saved ? { mode: saved.mode, file: saved.file } : null;
 }
 
 export function rememberViewMode(mode: ViewMode): void {

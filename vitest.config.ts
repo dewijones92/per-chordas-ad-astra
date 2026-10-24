@@ -31,6 +31,7 @@ export default defineConfig({
         'apps/server/src/log.ts',
         'apps/web/src/**/*.tsx',
         'apps/web/src/metronome/engine.ts',
+        'apps/web/src/music/player.ts',
         'apps/web/src/tuner/use-tuner.ts',
         'apps/web/src/annotate/use-annotations.ts',
         'apps/web/src/score/pdf.ts',

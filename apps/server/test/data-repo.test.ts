@@ -581,3 +581,68 @@ describe('DataRepo metronome settings', () => {
     ).rejects.toThrow();
   });
 });
+
+describe('DataRepo music files', () => {
+  let cleanup: () => Promise<void>;
+  let changes: RecordingChanges;
+  let repo: DataRepo;
+  let dir: string;
+  const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]);
+  const xml = new TextEncoder().encode('﻿  <?xml version="1.0"?><museScore version="4.50"/>');
+
+  beforeEach(async () => {
+    ({ path: dir, cleanup } = await tempDir());
+    changes = new RecordingChanges();
+    repo = new DataRepo({ dir, changes, log: silentLog });
+  });
+  afterEach(async () => cleanup());
+
+  it('stores MuseScore and MusicXML files untransposed, under music/', async () => {
+    const piece = await repo.createPiece({ title: 'Gran Vals' });
+    const ref = await repo.addMusic(piece.id, 'Gran Vals.mscz', new Blob([zip]));
+    expect(ref).toEqual({ file: 'gran-vals.mscz', name: 'Gran Vals', transpose: 0 });
+    await repo.addMusic(piece.id, 'gran vals.mscx', new Blob([xml]));
+    const stored = await repo.getPiece(piece.id);
+    expect(stored.music.map((m) => m.file)).toEqual(['gran-vals.mscz', 'gran-vals.mscx']);
+    expect(await repo.filePath(piece.id, file('gran-vals.mscz'))).toBe(
+      join(dir, 'pieces', 'gran-vals', 'music', 'gran-vals.mscz'),
+    );
+    expect(changes.descriptions.at(-1)).toBe("Add music gran-vals.mscx to 'Gran Vals'");
+  });
+
+  it('refuses a zip that is not a zip, XML that is not XML, and other file types', async () => {
+    const piece = await repo.createPiece({ title: 'X' });
+    await expect(repo.addMusic(piece.id, 'a.mscz', new Blob([xml]))).rejects.toThrow(/not a zip/);
+    await expect(repo.addMusic(piece.id, 'a.musicxml', new Blob([zip]))).rejects.toThrow(/not XML/);
+    await expect(repo.addMusic(piece.id, 'a.pdf', new Blob([zip]))).rejects.toThrow(
+      /Music must be one of/,
+    );
+    await expect(repo.addScore(piece.id, 'a.mscz', new Blob([zip]))).rejects.toThrow();
+  });
+
+  it('saves a transposition and says so in the commit message', async () => {
+    const piece = await repo.createPiece({ title: 'Gran Vals' });
+    const ref = await repo.addMusic(piece.id, 'vals.mxl', new Blob([zip]));
+    const up = await repo.updatePiece(piece.id, { music: [{ ...ref, transpose: 2 }] });
+    expect(up.music[0]?.transpose).toBe(2);
+    expect(changes.descriptions.at(-1)).toBe("Transpose vals.mxl to +2 in 'Gran Vals'");
+    await repo.updatePiece(piece.id, { music: [{ ...ref, transpose: 0 }] });
+    expect(changes.descriptions.at(-1)).toBe(
+      "Transpose vals.mxl to the written key in 'Gran Vals'",
+    );
+    await expect(
+      repo.updatePiece(piece.id, { music: [{ ...ref, transpose: 30 }] }),
+    ).rejects.toThrow();
+    await expect(
+      repo.updatePiece(piece.id, { music: [{ file: 'ghost.mscz', name: 'G', transpose: 0 }] }),
+    ).rejects.toThrow(/only be renamed or reordered/);
+  });
+
+  it('removes a music file', async () => {
+    const piece = await repo.createPiece({ title: 'Y' });
+    const ref = await repo.addMusic(piece.id, 'y.mscz', new Blob([zip]));
+    const next = await repo.removeFile(piece.id, ref.file);
+    expect(next.music).toEqual([]);
+    await expect(repo.filePath(piece.id, ref.file)).rejects.toThrow(NotFoundError);
+  });
+});

@@ -35,6 +35,35 @@ export const MetronomeSave = z.object({
 });
 export type MetronomeSave = z.infer<typeof MetronomeSave>;
 
+export const PIECE_VIEWS = ['score', 'split', 'notes'] as const;
+export const PieceView = z.enum(PIECE_VIEWS);
+export type PieceView = z.infer<typeof PieceView>;
+
+export const PLAY_ALONG_MIN_SPEED = 0.25;
+export const PLAY_ALONG_MAX_SPEED = 2;
+
+export const PlayAlongPrefs = z.object({
+  speed: z.number().min(PLAY_ALONG_MIN_SPEED).max(PLAY_ALONG_MAX_SPEED),
+  loop: z.object({ from: z.int().min(0), to: z.int().min(0) }).nullable(),
+  hidden: z.array(z.int().min(0)).max(64),
+  muted: z.array(z.int().min(0)).max(64),
+  full: z.boolean(),
+  position: z.number().min(0),
+  ramp: z.boolean().default(false),
+});
+export type PlayAlongPrefs = z.output<typeof PlayAlongPrefs>;
+export const RAMP_STEP = 0.05;
+export const RAMP_TARGET = 1;
+export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
+  speed: 1,
+  loop: null,
+  hidden: [],
+  muted: [],
+  full: false,
+  position: 0,
+  ramp: false,
+};
+
 export const VIEW_MODES = ['page', 'spread', 'width'] as const;
 export const ViewMode = z.enum(VIEW_MODES);
 export type ViewMode = z.infer<typeof ViewMode>;

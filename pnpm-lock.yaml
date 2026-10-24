@@ -84,6 +84,9 @@ importers:
       '@pcaa/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
       minisearch:
         specifier: ^7.2.0
         version: 7.2.0
@@ -137,7 +140,11 @@ importers:
         specifier: ^8.3.3
         version: 8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(tsx@4.23.15)
 
-  packages/fixtures: {}
+  packages/fixtures:
+    dependencies:
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
 
   packages/shared:
     dependencies:
@@ -1122,6 +1129,9 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fflate@0.8.2:
+    resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
 
   fft.js@4.0.4:
     resolution: {integrity: sha512-f9c00hphOgeQTlDyavwTtu6RiK8AIFjD6+jvXkNkpeQ7rirK3uFWVpalkoS4LAwbdX7mfZ8aoBfFVQX1Re/8aw==}
@@ -2671,6 +2681,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
+
+  fflate@0.8.2: {}
 
   fft.js@4.0.4: {}
 

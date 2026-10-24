@@ -1,10 +1,12 @@
 import { z } from 'zod';
-import { AUDIO_EXTENSIONS, SCORE_EXTENSIONS } from './files.ts';
+import { AUDIO_EXTENSIONS, MUSIC_EXTENSIONS, SCORE_EXTENSIONS } from './files.ts';
 
 export const SCHEMA_VERSION = 1;
 
 export const MAX_SCORE_BYTES = 50 * 1024 * 1024;
 export const MAX_TRACK_BYTES = 50 * 1024 * 1024;
+export const MAX_MUSIC_BYTES = 20 * 1024 * 1024;
+export const MAX_TRANSPOSE = 24;
 
 const isoTimestamp = z.iso.datetime();
 
@@ -19,7 +21,7 @@ export const FileName = z
   .string()
   .regex(
     new RegExp(
-      `^[a-z0-9]+(?:-[a-z0-9]+)*\\.(${[...SCORE_EXTENSIONS, ...AUDIO_EXTENSIONS].join('|')})$`,
+      `^[a-z0-9]+(?:-[a-z0-9]+)*\\.(${[...SCORE_EXTENSIONS, ...AUDIO_EXTENSIONS, ...MUSIC_EXTENSIONS].join('|')})$`,
     ),
     'safe file name',
   )
@@ -41,6 +43,13 @@ export const TrackRef = z.object({
 });
 export type TrackRef = z.infer<typeof TrackRef>;
 
+export const MusicRef = z.object({
+  file: FileName,
+  name: z.string().min(1).max(200),
+  transpose: z.int().min(-MAX_TRANSPOSE).max(MAX_TRANSPOSE).default(0),
+});
+export type MusicRef = z.infer<typeof MusicRef>;
+
 export const Bookmark = z.object({
   id: z.string().min(1).max(40),
   name: z.string().min(1).max(120),
@@ -59,6 +68,7 @@ export const Piece = z.object({
   targetBpm: z.int().min(20).max(400).nullable().default(null),
   scores: z.array(ScoreRef).default([]),
   tracks: z.array(TrackRef).default([]),
+  music: z.array(MusicRef).default([]),
   bookmarks: z.array(Bookmark).default([]),
   pinned: z.boolean().default(false),
   createdAt: isoTimestamp,
@@ -84,6 +94,7 @@ export const PiecePatch = z
     targetBpm: z.int().min(20).max(400).nullable(),
     scores: z.array(ScoreRef),
     tracks: z.array(TrackRef),
+    music: z.array(MusicRef),
     bookmarks: z.array(Bookmark),
     pinned: z.boolean(),
   })

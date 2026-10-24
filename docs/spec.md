@@ -1,6 +1,6 @@
 ---
 title: What per-chordas-ad-astra is
-updated: 2026-10-07
+updated: 2026-10-24
 ---
 
 # Spec
@@ -13,7 +13,7 @@ Google gate. It replaces a folder of PDFs, a phone metronome, a notebook and a s
 1. **No practice data is lost.** Every change reaches the Pi's disk at once and GitHub within about
    20 s (or on leaving a piece, hiding the page, or shutdown). If GitHub is unreachable, commits wait
    and retry, and the pill says so.
-2. **The original PDF is never modified.** Drawings live beside it.
+2. **The original PDF and music files are never modified.** Drawings and transpositions live beside them.
 3. **Drawings stay where they were drawn** at any zoom, layout or screen size.
 4. **The metronome keeps time.** Sample-accurate scheduling, no drift over an hour (unit tested).
 5. **The data repo stays readable by a human**: plain JSON with one point per line, JSONL logs,

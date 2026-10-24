@@ -3,6 +3,7 @@ import {
   type PdfImportRequest,
   Health,
   Loops,
+  MusicRef,
   type Loop,
   Piece,
   PracticeSession,
@@ -84,6 +85,8 @@ export const api = {
     tracked('upload', request(`/api/pieces/${enc(id)}/scores`, ScoreRef, upload(file))),
   uploadTrack: (id: string, file: File) =>
     tracked('upload', request(`/api/pieces/${enc(id)}/tracks`, TrackRef, upload(file))),
+  uploadMusic: (id: string, file: File) =>
+    tracked('upload', request(`/api/pieces/${enc(id)}/music`, MusicRef, upload(file))),
   removeFile: (id: string, file: string) =>
     tracked(
       'remove file',

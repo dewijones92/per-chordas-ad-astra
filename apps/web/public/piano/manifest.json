@@ -1,0 +1,17 @@
+{
+  "name": "Salamander Grand Piano V3 (Yamaha C5), 3 velocity layers, minor thirds",
+  "author": "Alexander Holm",
+  "licence": "CC BY 3.0 https://creativecommons.org/licenses/by/3.0/",
+  "source": "https://freepats.zenvoid.org/Piano/SalamanderGrandPiano/SalamanderGrandPianoV3+20161209_44khz16bit.tar.xz",
+  "sha256": "58750eb1366761e187f71ddb9b932355ea894d28ec4331e74ab8acb44c819936",
+  "pitches": [
+    21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90,
+    93, 96, 99, 102, 105, 108
+  ],
+  "layers": [
+    { "name": "p", "velocity": 40 },
+    { "name": "mf", "velocity": 80 },
+    { "name": "f", "velocity": 115 }
+  ],
+  "file": "{pitch}-{layer}.ogg"
+}

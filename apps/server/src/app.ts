@@ -138,6 +138,10 @@ export function createApp(deps: AppDeps): Hono {
     const { name, body } = uploadFrom(c);
     return c.json(await repo.addTrack(slug(c), name, body), 201);
   });
+  api.post('/pieces/:id/music', async (c) => {
+    const { name, body } = uploadFrom(c);
+    return c.json(await repo.addMusic(slug(c), name, body), 201);
+  });
   api.get('/pieces/:id/files/:file', async (c) => {
     const id = slug(c);
     const name = file(c);

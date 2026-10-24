@@ -146,3 +146,22 @@
 .tools-page h1 {
   grid-column: 1 / -1;
 }
+
+.piece-main.view-split {
+  flex-direction: row;
+}
+
+.piece-main.view-split > .score-area,
+.piece-main.view-split > .no-score,
+.piece-main.view-split > .playalong {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.piece-main.view-split > .playalong {
+  border-left: 2px solid var(--ink);
+}
+
+.piece-views {
+  gap: 4px;
+}

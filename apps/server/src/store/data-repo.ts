@@ -5,6 +5,12 @@ import {
   AUDIO_EXTENSIONS,
   emptyAnnotations,
   kindOfFile,
+  type FileKind,
+  MAX_MUSIC_BYTES,
+  MUSIC_EXTENSIONS,
+  type MusicRef,
+  ZIPPED_MUSIC_EXTENSIONS,
+  extensionOf,
   Loop,
   type FileName,
   Loops,
@@ -60,7 +66,7 @@ export interface DataRepoOptions {
   gate?: RepoGate;
 }
 
-export function kindOf(file: FileName): 'scores' | 'tracks' {
+export function kindOf(file: FileName): FileKind {
   return kindOfFile(file) ?? 'tracks';
 }
 
@@ -105,6 +111,30 @@ export function describeMetronomeChange(
     .filter(([path, text]) => old.get(path) !== text)
     .map(([path, text]) => `${path} ${old.get(path) ?? '?'} → ${text}`);
   return changes.length > 0 ? changes.join(', ') : null;
+}
+
+const KIND_NOUN: Record<FileKind, string> = { scores: 'score', tracks: 'track', music: 'music' };
+const KIND_RULES: Record<FileKind, string> = {
+  scores: 'A score must be a .pdf file',
+  tracks: `Audio must be one of: ${audioList}`,
+  music: `Music must be one of: ${MUSIC_EXTENSIONS.join(', ')}`,
+};
+
+function signed(n: number): string {
+  return n > 0 ? `+${String(n)}` : String(n);
+}
+
+export function describeTransposition(
+  before: readonly MusicRef[],
+  patch: { music?: readonly { file: string; transpose?: number | undefined }[] | undefined },
+): string | null {
+  if (!patch.music || Object.keys(patch).length !== 1) return null;
+  const old = new Map(before.map((m) => [m.file as string, m.transpose]));
+  const changed = patch.music.filter((m) => (m.transpose ?? 0) !== (old.get(m.file) ?? 0));
+  if (changed.length === 0) return null;
+  return changed
+    .map((m) => `Transpose ${m.file} to ${m.transpose ? signed(m.transpose) : 'the written key'}`)
+    .join('; ');
 }
 
 export class DataRepo {
@@ -184,6 +214,7 @@ export class DataRepo {
       for (const [key, list] of [
         ['scores', patch.scores],
         ['tracks', patch.tracks],
+        ['music', patch.music],
       ] as const) {
         if (list === undefined) continue;
         const before = new Set(current[key].map((r) => r.file));
@@ -193,6 +224,7 @@ export class DataRepo {
         }
       }
       const pinOnly = patch.pinned !== undefined && Object.keys(patch).length === 1;
+      const transposed = describeTransposition(current.music, patch);
       const next = Piece.parse({
         ...current,
         ...patch,
@@ -206,7 +238,9 @@ export class DataRepo {
       this.changes.markDirty(
         pinOnly
           ? `${next.pinned ? 'Pin' : 'Unpin'} ${quote(next.title)}`
-          : `Edit ${quote(next.title)}`,
+          : transposed
+            ? `${transposed} in ${quote(next.title)}`
+            : `Edit ${quote(next.title)}`,
       );
       return next;
     });
@@ -266,6 +300,32 @@ export class DataRepo {
     });
   }
 
+  async addMusic(id: Slug, originalName: string, source: Upload): Promise<MusicRef> {
+    const tooLarge = () =>
+      new RejectedError(`Music file is over ${String(MAX_MUSIC_BYTES / 1024 / 1024)} MB`);
+    if (source instanceof Blob && source.size > MAX_MUSIC_BYTES) throw tooLarge();
+    const ext = extensionOf(originalName);
+    if (kindOfFile(originalName) !== 'music') throw new RejectedError(KIND_RULES.music);
+    const zipped = (ZIPPED_MUSIC_EXTENSIONS as readonly string[]).includes(ext);
+    const ref = await this.addFile(id, originalName, source, 'music', {
+      maxBytes: MAX_MUSIC_BYTES,
+      tooLarge,
+      checkHead: (head) => {
+        if (zipped) {
+          return head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04
+            ? null
+            : new RejectedError(`That .${ext} file is not a zip archive`);
+        }
+        const text = new TextDecoder()
+          .decode(head.subarray(0, 64))
+          .replace(/^\uFEFF/, '')
+          .trimStart();
+        return text.startsWith('<') ? null : new RejectedError(`That .${ext} file is not XML`);
+      },
+    });
+    return { ...ref, transpose: 0 };
+  }
+
   async removeFile(id: Slug, file: FileName): Promise<Piece> {
     return this.locked(`piece:${id}`, async () => {
       const piece = await this.getPiece(id);
@@ -274,7 +334,7 @@ export class DataRepo {
       await rm(this.path('pieces', id, kind, file), { force: true });
       if (kind === 'scores') {
         await rm(this.path('pieces', id, 'annotations', `${file}.json`), { force: true });
-      } else {
+      } else if (kind === 'tracks') {
         const loops = await this.getLoops(id);
         const { [file]: _removed, ...rest } = loops.tracks;
         await this.writeJson(this.path('pieces', id, 'loops.json'), { tracks: rest });
@@ -283,6 +343,7 @@ export class DataRepo {
         ...piece,
         scores: piece.scores.filter((r) => r.file !== file),
         tracks: piece.tracks.filter((r) => r.file !== file),
+        music: piece.music.filter((r) => r.file !== file),
         bookmarks: piece.bookmarks.filter((b) => b.score !== file),
         updatedAt: this.now().toISOString(),
       });
@@ -518,12 +579,14 @@ export class DataRepo {
     id: Slug,
     originalName: string,
     source: Upload,
-    kind: 'scores' | 'tracks',
+    kind: FileKind,
     rules: UploadRules,
   ): Promise<ScoreRef> {
     return this.locked(`piece:${id}`, async () => {
       const piece = await this.getPiece(id);
-      const taken = new Set([...piece.scores, ...piece.tracks].map((r) => r.file as string));
+      const taken = new Set(
+        [...piece.scores, ...piece.tracks, ...piece.music].map((r) => r.file as string),
+      );
       let file: FileName;
       try {
         file = safeFileName(originalName, taken);
@@ -531,9 +594,7 @@ export class DataRepo {
         throw new RejectedError(`Unsupported file name: ${originalName}`);
       }
       if (kindOfFile(file) !== kind) {
-        throw new RejectedError(
-          kind === 'scores' ? 'A score must be a .pdf file' : `Audio must be one of: ${audioList}`,
-        );
+        throw new RejectedError(KIND_RULES[kind]);
       }
       const size = await writeUpload(this.path('pieces', id, kind, file), source, rules, this.tmp);
       const ref = { file, name: originalName.replace(/\.[^.]+$/, '') || file };
@@ -544,9 +605,7 @@ export class DataRepo {
       });
       await this.writeJson(this.path('pieces', id, 'piece.json'), next);
       this.log.info({ id, file, kind, bytes: size }, 'dewidebug repo file stored');
-      this.changes.markDirty(
-        `Add ${kind === 'scores' ? 'score' : 'track'} ${file} to ${quote(piece.title)}`,
-      );
+      this.changes.markDirty(`Add ${KIND_NOUN[kind]} ${file} to ${quote(piece.title)}`);
       return ref;
     });
   }
