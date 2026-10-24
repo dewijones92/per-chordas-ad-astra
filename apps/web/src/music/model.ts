@@ -32,6 +32,7 @@ export interface ScoreMeasure {
   markers: string[];
   jump: Jump | null;
   sectionEnd: boolean;
+  beat: number;
 }
 
 export interface Volta {

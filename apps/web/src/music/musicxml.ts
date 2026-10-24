@@ -1,3 +1,4 @@
+import { beatTicks } from '../metronome/click.ts';
 import {
   firstPerTick,
   GRACE_TICKS,
@@ -22,6 +23,7 @@ const STEP: Readonly<Record<string, number>> = { C: 0, D: 2, E: 4, F: 5, G: 7, A
 
 interface MeasureFacts {
   nominal: number;
+  beat: number;
   extent: number;
   implicit: boolean;
   numberAttr: string;
@@ -58,6 +60,7 @@ function parseEndingNumbers(raw: string): number[] {
 function emptyFacts(): MeasureFacts {
   return {
     nominal: 0,
+    beat: TPQ,
     extent: 0,
     implicit: false,
     numberAttr: '',
@@ -136,6 +139,7 @@ export function parseMusicXml(doc: Document): ScoreModel {
 
     let divisions = 1;
     let nominal = 4 * TPQ;
+    let beat = TPQ;
     let transpose = 0;
     let pendingGrace: PendingNote[] = [];
 
@@ -186,7 +190,10 @@ export function parseMusicXml(doc: Document): ScoreModel {
                 .split('+')
                 .reduce((sum, b) => sum + (Number(b) || 0), 0);
               const beatType = childNumber(time, 'beat-type') ?? 4;
-              if (beats > 0) nominal = (beats * 4 * TPQ) / beatType;
+              if (beats > 0) {
+                nominal = (beats * 4 * TPQ) / beatType;
+                beat = beatTicks(beats, beatType, TPQ);
+              }
             }
             const key = child(el, 'key');
             const fifths = key ? childNumber(key, 'fifths') : null;
@@ -305,6 +312,7 @@ export function parseMusicXml(doc: Document): ScoreModel {
         }
       }
       f.nominal = Math.max(f.nominal, nominal);
+      if (partIndex === 0) f.beat = beat;
       f.extent = Math.max(f.extent, extent);
     });
   });
@@ -329,6 +337,7 @@ export function parseMusicXml(doc: Document): ScoreModel {
       markers: [...new Set(f.markers)],
       jump: null,
       sectionEnd: false,
+      beat: f.beat,
     });
     tick += ticks;
   });

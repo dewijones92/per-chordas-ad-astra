@@ -1,11 +1,9 @@
+import { playClick } from './click.ts';
 import { TickScheduler, type MetronomeSettings, type Tick } from './scheduler.ts';
 
 const LOOKAHEAD_SEC = 0.12;
 const PUMP_MS = 25;
 const START_DELAY_SEC = 0.06;
-
-const PITCH: Record<Tick['kind'], number> = { bar: 1760, beat: 1175, sub: 784 };
-const LEVEL: Record<Tick['kind'], number> = { bar: 0.9, beat: 0.6, sub: 0.3 };
 
 export class MetronomeEngine {
   private ctx: AudioContext | null = null;
@@ -82,19 +80,6 @@ export class MetronomeEngine {
 
   private click(tick: Tick): void {
     if (!this.ctx) return;
-    const t = Math.max(tick.time, this.ctx.currentTime);
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.value = PITCH[tick.kind];
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(
-      Math.max(0.0002, LEVEL[tick.kind] * this.volume),
-      t + 0.002,
-    );
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
-    osc.connect(gain).connect(this.ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.07);
+    playClick(this.ctx, this.ctx.destination, tick.time, tick.kind, this.volume);
   }
 }

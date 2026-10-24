@@ -1,7 +1,7 @@
 import { makeMscx, makeMusicXml, PIANO_WALTZ, zipScore, type FixtureScore } from '@pcaa/fixtures';
 import { describe, expect, it } from 'vitest';
 import { loadScore, parseScoreText, unpackScore } from '../src/music/load.ts';
-import { buildPerformance } from '../src/music/performance.ts';
+import { buildPerformance, countInFor } from '../src/music/performance.ts';
 import { spell, toMusicXml } from '../src/music/to-musicxml.ts';
 
 const enc = (s: string) => new TextEncoder().encode(s);
@@ -339,5 +339,49 @@ describe('local time signatures', () => {
       [76, 3, 5],
       [77, 5, 6],
     ]);
+  });
+});
+
+describe('clicks and count-in', () => {
+  it('clicks every beat, accenting the first of each bar, and counts compound time in dotted beats', () => {
+    const waltz = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
+    expect(waltz.clicks.slice(0, 4).map((c) => [round(c.start), c.kind])).toEqual([
+      [0, 'bar'],
+      [0.5, 'beat'],
+      [1, 'beat'],
+      [1.5, 'bar'],
+    ]);
+    expect(waltz.clicks).toHaveLength(12);
+    const jig = buildPerformance(
+      parseScoreText(
+        makeMscx(
+          {
+            ...PIANO_WALTZ,
+            time: [6, 8],
+            measures: [{ staves: [[{ pitches: [67], dur: 'half', dots: 1 }], []] }],
+          },
+          '3.02',
+        ),
+      ),
+    );
+    expect(jig.clicks.map((c) => [round(c.start), c.kind])).toEqual([
+      [0, 'bar'],
+      [0.75, 'beat'],
+    ]);
+  });
+
+  it('counts in one bar at the playing speed, using the next full bar after a pickup', () => {
+    const waltz = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
+    expect(countInFor(waltz, 0, 1)).toEqual({ beats: 3, seconds: 0.5 });
+    expect(countInFor(waltz, 0, 0.5)).toEqual({ beats: 3, seconds: 1 });
+    const pickup = buildPerformance(
+      parseScoreText(
+        makeMscx(PIANO_WALTZ, '3.02').replace(
+          '<Measure>',
+          '<Measure len="1/4"><irregular>1</irregular>',
+        ),
+      ),
+    );
+    expect(countInFor(pickup, 0, 1)).toEqual({ beats: 3, seconds: 0.5 });
   });
 });

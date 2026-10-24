@@ -16,12 +16,20 @@ export interface PerfBar {
   number: number;
   start: number;
   end: number;
+  beats: number;
+}
+
+export interface PerfClick {
+  start: number;
+  end: number;
+  kind: 'bar' | 'beat';
 }
 
 export interface Performance {
   title: string;
   notes: PerfNote[];
   bars: PerfBar[];
+  clicks: PerfClick[];
   staves: ScoreStaff[];
   duration: number;
   lowest: number;
@@ -70,7 +78,8 @@ export function buildPerformance(score: ScoreModel): Performance {
     endTick: number;
     tie: boolean;
   })[] = [];
-  const barTicks: { measure: number; number: number; start: number; end: number }[] = [];
+  const barTicks: { measure: number; number: number; start: number; end: number; beat: number }[] =
+    [];
 
   let played = 0;
   order.forEach((index, occurrence) => {
@@ -105,6 +114,7 @@ export function buildPerformance(score: ScoreModel): Performance {
       number: measure.number,
       start: played,
       end: played + measure.ticks,
+      beat: measure.beat,
     });
     played += measure.ticks;
   });
@@ -163,7 +173,15 @@ export function buildPerformance(score: ScoreModel): Performance {
     number: b.number,
     start: toSeconds(b.start),
     end: toSeconds(b.end),
+    beats: (b.end - b.start) / Math.max(1, b.beat),
   }));
+  const clicks: PerfClick[] = [];
+  for (const b of barTicks) {
+    for (let t = b.start, k = 0; t < b.end - 1; t += Math.max(1, b.beat), k++) {
+      const start = toSeconds(t);
+      clicks.push({ start, end: start + 0.05, kind: k === 0 ? 'bar' : 'beat' });
+    }
+  }
   let lowest = Infinity;
   let highest = -Infinity;
   let lastEnd = bars.at(-1)?.end ?? 0;
@@ -176,6 +194,7 @@ export function buildPerformance(score: ScoreModel): Performance {
     title: score.title,
     notes,
     bars,
+    clicks,
     staves: score.staves,
     duration: lastEnd,
     lowest: Number.isFinite(lowest) ? lowest : 60,
@@ -195,4 +214,17 @@ export function barAt(perf: Performance, seconds: number): number {
     else hi = mid - 1;
   }
   return Math.max(0, lo);
+}
+
+export function countInFor(
+  perf: Performance,
+  from: number,
+  speed: number,
+): { beats: number; seconds: number } | null {
+  const index = barAt(perf, from + 1e-6);
+  const here = perf.bars[index];
+  const bar = here && here.beats >= 2 - 1e-6 ? here : (perf.bars[index + 1] ?? here);
+  if (!bar || bar.beats <= 0) return null;
+  const beats = Math.max(2, Math.round(bar.beats));
+  return { beats, seconds: (bar.end - bar.start) / bar.beats / Math.max(0.01, speed) };
 }

@@ -1,6 +1,7 @@
-import type { PerfNote, Performance } from './performance.ts';
+import { countInFor, type PerfClick, type PerfNote, type Performance } from './performance.ts';
 import { chooseSample, gainFor, SampleManifest, sampleFile } from './samples.ts';
-import { Transport, type Loop, type Ramp } from './transport.ts';
+import { playClick } from '../metronome/click.ts';
+import { START_LEAD_SECONDS, Transport, type Loop, type Ramp } from './transport.ts';
 
 const SAMPLE_BASE = '/piano/';
 const PUMP_MS = 25;
@@ -72,23 +73,39 @@ export class PianoPlayer {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private manifest: SampleManifest | null = null;
-  private readonly transport: Transport;
+  private readonly transport: Transport<PerfNote>;
+  private readonly clicks: Transport<PerfClick>;
+  private clickOn = false;
+  private readonly perf: Performance;
   private timer: number | undefined;
   private voices = new Set<Voice>();
   private include: (note: PerfNote) => boolean = () => true;
   private transpose = 0;
   private fallbackLogged = false;
   private lastPosition = 0;
+  private startRequest = 0;
+  private startingNow = false;
 
   constructor(
     perf: Performance,
     private readonly onEvent: (event: PlayerEvent) => void,
   ) {
+    this.perf = perf;
     this.transport = new Transport(perf.notes, perf.duration);
+    this.clicks = new Transport(perf.clicks, perf.duration);
+  }
+
+  private both(apply: (t: Transport<PerfNote> | Transport<PerfClick>) => void): void {
+    apply(this.transport);
+    apply(this.clicks);
   }
 
   get playing(): boolean {
     return this.transport.playing;
+  }
+
+  get starting(): boolean {
+    return this.startingNow;
   }
 
   get speed(): number {
@@ -138,24 +155,59 @@ export class PianoPlayer {
     }
   }
 
-  async play(): Promise<void> {
-    await this.prepare();
+  async play(countIn = false): Promise<void> {
+    const request = ++this.startRequest;
+    this.startingNow = true;
+    try {
+      await this.prepare();
+    } finally {
+      if (request === this.startRequest) this.startingNow = false;
+    }
+    if (request !== this.startRequest) {
+      console.info('dewidebug play-along start cancelled while getting ready', { request });
+      return;
+    }
     const ctx = this.ctx;
-    if (!ctx) return;
-    this.transport.play(ctx.currentTime);
+    const master = this.master;
+    if (!ctx || !master) return;
+    const now = ctx.currentTime;
+    const count = countIn
+      ? countInFor(this.perf, this.transport.startPoint(), this.transport.speed)
+      : null;
+    if (count) {
+      for (let k = 0; k < count.beats; k++) {
+        playClick(
+          ctx,
+          master,
+          now + START_LEAD_SECONDS + k * count.seconds,
+          k === 0 ? 'bar' : 'beat',
+        );
+      }
+    }
+    const delay = count ? count.beats * count.seconds : 0;
+    this.both((t) => {
+      t.play(now + delay);
+    });
     this.startPump();
     console.info('dewidebug play-along play', {
       from: this.position().toFixed(2),
       speed: this.transport.speed,
       loop: this.transport.loop,
       transpose: this.transpose,
+      countIn: count,
+      click: this.clickOn,
     });
     this.onEvent({ kind: 'state', playing: true });
   }
 
   pause(): void {
+    this.startRequest += 1;
+    this.startingNow = false;
     if (!this.ctx || !this.transport.playing) return;
-    this.transport.pause(this.ctx.currentTime);
+    const at = this.ctx.currentTime;
+    this.both((t) => {
+      t.pause(at);
+    });
     this.stopPump();
     this.silence();
     console.info('dewidebug play-along pause', { at: this.position().toFixed(2) });
@@ -163,22 +215,35 @@ export class PianoPlayer {
   }
 
   seek(song: number): void {
-    this.transport.seek(song, this.ctx?.currentTime ?? 0);
+    const at = this.ctx?.currentTime ?? 0;
+    this.both((t) => {
+      t.seek(song, at);
+    });
     this.lastPosition = Math.min(this.lastPosition, song);
     if (this.transport.playing) this.silence();
   }
 
   setSpeed(speed: number): void {
-    const changed = this.transport.setSpeed(speed, this.ctx?.currentTime ?? 0);
+    const at = this.ctx?.currentTime ?? 0;
+    const changed = this.transport.setSpeed(speed, at);
+    this.clicks.setSpeed(speed, at);
     if (changed && this.transport.playing) this.silence();
+  }
+
+  setClick(on: boolean): void {
+    this.clickOn = on;
   }
 
   setRamp(ramp: Ramp | null): void {
     this.transport.ramp = ramp;
+    this.clicks.ramp = ramp;
   }
 
   setLoop(loop: Loop | null): void {
-    this.transport.setLoop(loop, this.ctx?.currentTime ?? 0);
+    const at = this.ctx?.currentTime ?? 0;
+    this.both((t) => {
+      t.setLoop(loop, at);
+    });
     this.lastPosition = this.position();
     if (this.transport.playing) this.silence();
   }
@@ -215,11 +280,21 @@ export class PianoPlayer {
         this.onEvent({ kind: 'loop', position, speed: this.transport.speedAt(ctx.currentTime) });
       }
       this.lastPosition = position;
+      if (this.clickOn) {
+        for (const c of this.clicks.pump(ctx.currentTime, HORIZON_SECONDS, () => true)) {
+          if (this.master) playClick(ctx, this.master, c.when, c.note.kind, 0.8);
+        }
+      } else {
+        this.clicks.pump(ctx.currentTime, HORIZON_SECONDS, () => false);
+      }
       for (const s of this.transport.pump(ctx.currentTime, HORIZON_SECONDS, this.include)) {
         this.voice(s.note, s.when, s.duration);
       }
       if (this.transport.finished(ctx.currentTime)) {
-        this.transport.pause(ctx.currentTime);
+        const at = ctx.currentTime;
+        this.both((t) => {
+          t.pause(at);
+        });
         this.stopPump();
         console.info('dewidebug play-along reached the end');
         this.onEvent({ kind: 'state', playing: false });

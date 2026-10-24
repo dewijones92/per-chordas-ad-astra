@@ -38,6 +38,10 @@ keyboard from above, like the bird's-eye piano videos.
 - **Loop**: drag across bars on the **bar strip** above the notes, or use From here / To here. Click a bar
   to jump to it, Shift+click to stretch the loop. **Speed up each loop** adds 5% every time round until
   full speed; the change happens exactly at the loop point, so no note is cut. Speed (25–200%) and the loop are remembered per file, on every device.
+- **Count-in and click**: 🥁 Count-in (on by default) plays one bar of clicks at the playing speed
+  before the music starts (after a pickup, the next full bar's beats); Click puts a metronome click on
+  every beat while it plays, accented on the first. Compound time counts dotted beats (6/8 in two). The
+  click is the metronome's own sound (`metronome/click.ts`).
 - **Keys**: K play/pause, `[` `]` slower/faster, `,` `.` previous/next bar. Space plays in the Notes view;
   where the PDF is showing, Space stays with the metronome.
 

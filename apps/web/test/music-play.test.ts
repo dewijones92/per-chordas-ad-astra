@@ -33,6 +33,7 @@ function bars(spec: string, jumps: Record<number, Jump> = {}): ScoreMeasure[] {
     markers: [...token.matchAll(/\[(\w+)\]/g)].map((m) => m[1] ?? ''),
     jump: jumps[index] ?? null,
     sectionEnd: token.endsWith('//'),
+    beat: 480,
   }));
 }
 
@@ -378,6 +379,7 @@ describe('notation follow-along', () => {
       markers: [],
       jump: null,
       sectionEnd: false,
+      beat: 480,
     }));
     const perf = {
       bars: [

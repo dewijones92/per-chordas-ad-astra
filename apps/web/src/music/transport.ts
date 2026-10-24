@@ -1,5 +1,8 @@
 import { PLAY_ALONG_MAX_SPEED, PLAY_ALONG_MIN_SPEED } from '@pcaa/shared';
-import type { PerfNote } from './performance.ts';
+export interface Timed {
+  start: number;
+  end: number;
+}
 
 export interface Loop {
   start: number;
@@ -17,8 +20,8 @@ export interface Ramp {
   target: number;
 }
 
-export interface Scheduled {
-  note: PerfNote;
+export interface Scheduled<T extends Timed = Timed> {
+  note: T;
   when: number;
   duration: number;
 }
@@ -28,7 +31,7 @@ export function clampSpeed(speed: number): number {
   return Math.min(PLAY_ALONG_MAX_SPEED, Math.max(PLAY_ALONG_MIN_SPEED, speed));
 }
 
-function firstAtOrAfter(notes: readonly PerfNote[], song: number): number {
+function firstAtOrAfter(notes: readonly Timed[], song: number): number {
   let lo = 0;
   let hi = notes.length;
   while (lo < hi) {
@@ -39,7 +42,7 @@ function firstAtOrAfter(notes: readonly PerfNote[], song: number): number {
   return lo;
 }
 
-export class Transport {
+export class Transport<T extends Timed = Timed> {
   private anchors: Anchor[] = [];
   private paused = 0;
   private cursor = 0;
@@ -50,7 +53,7 @@ export class Transport {
   ramp: Ramp | null = null;
 
   constructor(
-    private readonly notes: readonly PerfNote[],
+    private readonly notes: readonly T[],
     private readonly duration: number,
   ) {}
 
@@ -63,10 +66,15 @@ export class Transport {
     return this.loop ? song : Math.min(song, this.duration);
   }
 
-  play(ctx: number): void {
-    if (this.playing) return;
+  startPoint(): number {
     let from = this.paused >= this.duration - 1e-3 ? 0 : this.paused;
     if (this.loop && (from < this.loop.start || from >= this.loop.end)) from = this.loop.start;
+    return from;
+  }
+
+  play(ctx: number): void {
+    if (this.playing) return;
+    const from = this.startPoint();
     this.playing = true;
     this.restartAt(from, ctx + START_LEAD_SECONDS);
   }
@@ -119,9 +127,9 @@ export class Transport {
     return this.playing && !this.loop && this.songAt(ctx) >= this.duration;
   }
 
-  pump(ctx: number, horizon: number, include: (note: PerfNote) => boolean): Scheduled[] {
+  pump(ctx: number, horizon: number, include: (note: T) => boolean): Scheduled<T>[] {
     if (!this.playing) return [];
-    const out: Scheduled[] = [];
+    const out: Scheduled<T>[] = [];
     const until = ctx + horizon;
     let guard = 0;
     while (this.scheduledUntil < until && guard++ < 64) {

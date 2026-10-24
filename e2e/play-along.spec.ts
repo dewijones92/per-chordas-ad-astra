@@ -83,6 +83,7 @@ test('speed up each loop plays the looped bar faster every time round', async ({
   await page.getByRole('button', { name: 'To here' }).click();
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
   await page.getByTestId('playalong-ramp').check();
+  await page.getByTestId('playalong-countin').uncheck();
   await page.getByTestId('playalong-play').click();
   await expect(page.getByTestId('playalong-speed')).toHaveText('55%', { timeout: 10_000 });
   await expect(page.getByTestId('playalong-speed')).toHaveText('60%', { timeout: 10_000 });
@@ -129,8 +130,10 @@ test('the notation shows above the falling notes, follows playback and transpose
   await expect(svg.locator('g.keySig g.keyAccid')).toHaveCount(2);
 
   await page.getByTestId('playalong-play').click();
+  await expect.poll(() => position(page), { timeout: 8000 }).toBeGreaterThan(0.3);
   await expect.poll(() => svg.locator('.pa-playing').count(), { timeout: 8000 }).toBeGreaterThan(0);
   await page.getByTestId('playalong-play').click();
+  await expect(page.getByTestId('playalong-play')).toHaveAttribute('aria-pressed', 'false');
 
   await svg.locator('g.measure').nth(2).locator('g.note').first().click();
   await expect.poll(() => position(page)).toBeCloseTo(4.5, 1);
@@ -146,6 +149,38 @@ test('the notation shows above the falling notes, follows playback and transpose
   await expect(page.getByTestId('playalong-canvas')).toBeVisible();
   await expect(page.getByTestId('playalong-notation')).not.toBeChecked();
   await expect(page.getByTestId('notation')).toHaveCount(0);
+});
+
+test('a count-in bar plays before the music starts, and the click is remembered', async ({
+  page,
+}) => {
+  await createPiece(page, 'Count In Waltz', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-countin')).toBeChecked();
+  await page.getByTestId('playalong-click').check();
+  await page.getByTestId('playalong-play').click();
+  await expect(page.getByTestId('playalong-play')).toHaveAttribute('aria-pressed', 'true');
+  await page.waitForTimeout(900);
+  expect(await position(page)).toBeLessThan(0.05);
+  await expect.poll(() => position(page), { timeout: 8000 }).toBeGreaterThan(0.3);
+  await page.getByTestId('playalong-play').click();
+
+  await page.getByTestId('playalong-countin').uncheck();
+  await page.reload();
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await expect(page.getByTestId('playalong-countin')).not.toBeChecked();
+  await expect(page.getByTestId('playalong-click')).toBeChecked();
+});
+
+test('pausing while the piano is still loading stops it from starting', async ({ page }) => {
+  await createPiece(page, 'Quick Pause', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await page.getByTestId('playalong-play').click();
+  await page.getByTestId('playalong-play').click();
+  await page.waitForTimeout(2500);
+  expect(await position(page)).toBeLessThan(0.05);
+  await expect(page.getByTestId('playalong-play')).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('a file that is not music says why', async ({ page }) => {

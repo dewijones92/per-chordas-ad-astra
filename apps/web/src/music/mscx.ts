@@ -1,3 +1,4 @@
+import { beatTicks } from '../metronome/click.ts';
 import {
   firstPerTick,
   GRACE_TICKS,
@@ -267,6 +268,7 @@ export function parseMscx(doc: Document): ScoreModel {
   if (!first) throw new Error('This MuseScore file has no staves');
   const measures: ScoreMeasure[] = [];
   let sig = 1;
+  let beat = TPQ;
   let tick = 0;
   let number = 0;
   let restartNumbers = false;
@@ -287,6 +289,7 @@ export function parseMscx(doc: Document): ScoreModel {
       if (n && d) {
         const stretch = stretchOf(timeSig);
         sig = (n / d) * stretch;
+        beat = stretch === 1 ? beatTicks(n, d, TPQ) : TPQ;
         if (stretch === 1) times.push({ tick, n, d });
       }
     }
@@ -309,6 +312,7 @@ export function parseMscx(doc: Document): ScoreModel {
       markers: [],
       jump: null,
       sectionEnd,
+      beat,
     });
     tick += ticks;
   }

@@ -289,6 +289,10 @@ export function PlayAlong({
   }, [player, prefs.ramp]);
 
   useEffect(() => {
+    player?.setClick(prefs.click);
+  }, [player, prefs.click]);
+
+  useEffect(() => {
     if (!player || !perf) return;
     let frame = 0;
     let shownBar = -1;
@@ -313,15 +317,15 @@ export function PlayAlong({
 
   const toggle = useCallback(() => {
     if (!player) return;
-    if (player.playing) {
+    if (player.playing || player.starting) {
       player.pause();
       updatePrefs((p) => ({ ...p, position: player.position() }));
     } else {
-      player.play().catch((error: unknown) => {
+      player.play(prefs.countIn).catch((error: unknown) => {
         console.warn('dewidebug play-along could not start audio', { error: String(error) });
       });
     }
-  }, [player, updatePrefs]);
+  }, [player, updatePrefs, prefs.countIn]);
 
   const seekTo = useCallback(
     (seconds: number) => {
@@ -597,6 +601,30 @@ export function PlayAlong({
             }}
           />
           All 88 keys
+        </label>
+        <label className="playalong-field" title="One bar of clicks before the music starts">
+          <input
+            type="checkbox"
+            checked={prefs.countIn}
+            data-testid="playalong-countin"
+            onChange={(e) => {
+              const countIn = e.target.checked;
+              updatePrefs((p) => ({ ...p, countIn }));
+            }}
+          />
+          🥁 Count-in
+        </label>
+        <label className="playalong-field" title="A metronome click on every beat while it plays">
+          <input
+            type="checkbox"
+            checked={prefs.click}
+            data-testid="playalong-click"
+            onChange={(e) => {
+              const click = e.target.checked;
+              updatePrefs((p) => ({ ...p, click }));
+            }}
+          />
+          Click
         </label>
         <label className="playalong-field">
           <input
