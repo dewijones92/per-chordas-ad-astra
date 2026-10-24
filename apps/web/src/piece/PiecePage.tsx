@@ -48,6 +48,7 @@ import {
 import { useAsync } from '../ui/use-async.ts';
 import { useDraft } from '../ui/use-draft.ts';
 import './piece.css';
+import { names, strings, tips } from '../strings.ts';
 
 function Section({
   title,
@@ -71,16 +72,16 @@ function Section({
 }
 
 const VIEW_MODES: { mode: ViewMode; label: string; title: string }[] = [
-  { mode: 'page', label: '▯ Page', title: 'Fit one whole page' },
-  { mode: 'spread', label: '▯▯ Two', title: 'Two pages side by side' },
-  { mode: 'width', label: '↔ Width', title: 'Fit the page width' },
+  { mode: 'page', label: strings.piece.layouts.page, title: tips.piece.layouts.page },
+  { mode: 'spread', label: strings.piece.layouts.spread, title: tips.piece.layouts.spread },
+  { mode: 'width', label: strings.piece.layouts.width, title: tips.piece.layouts.width },
 ];
 const FILE_ICON: Record<FileKind, string> = { scores: '📄', tracks: '🎧', music: '🎹' };
 
 const VIEW_CHOICES: { mode: PieceView; label: string; title: string }[] = [
-  { mode: 'score', label: '📄 Score', title: 'The PDF score only' },
-  { mode: 'split', label: '📄🎹 Both', title: 'The PDF beside the falling notes' },
-  { mode: 'notes', label: '🎹 Notes', title: 'Falling notes and keyboard only (Space plays)' },
+  { mode: 'score', label: strings.piece.views.score, title: tips.piece.views.score },
+  { mode: 'split', label: strings.piece.views.split, title: tips.piece.views.split },
+  { mode: 'notes', label: strings.piece.views.notes, title: tips.piece.views.notes },
 ];
 
 function ScoreArea({
@@ -155,7 +156,7 @@ function ScoreArea({
         zoom={zoom}
         onZoom={setZoom}
         extra={
-          <span className="view-modes" role="group" aria-label="Page layout">
+          <span className="view-modes" role="group" aria-label={tips.piece.layoutGroup}>
             {VIEW_MODES.map((m) => (
               <button
                 key={m.mode}
@@ -223,14 +224,11 @@ function BookmarkButton({
       type="button"
       className="btn small sun"
       data-testid="add-bookmark"
-      title="Bookmark the current position"
+      title={tips.piece.bookmark}
       onClick={() => {
         const position = getPosition();
         if (!position) return;
-        const name = window.prompt(
-          'Name this spot (e.g. "Bars 17–32")',
-          `Page ${String(position.page)}`,
-        );
+        const name = window.prompt(strings.piece.bookmarkPrompt, `Page ${String(position.page)}`);
         if (!name?.trim()) return;
         const bookmarks = [
           ...piece.bookmarks,
@@ -244,7 +242,7 @@ function BookmarkButton({
         onPatch({ bookmarks });
       }}
     >
-      🔖 Bookmark
+      {strings.piece.bookmark}
     </button>
   );
 }
@@ -264,9 +262,9 @@ function JumpTargets({
 }) {
   const marks = piece.bookmarks.filter((b) => b.score === file);
   return (
-    <div className="jump-bar row" aria-label="Bookmarks" data-testid="jump-bar">
+    <div className="jump-bar row" aria-label={tips.piece.bookmarks} data-testid="jump-bar">
       <BookmarkButton piece={piece} file={file} onPatch={onPatch} getPosition={getPosition} />
-      {marks.length > 0 && <span className="muted">Jump to</span>}
+      {marks.length > 0 && <span className="muted">{strings.piece.jumpTo}</span>}
       {marks.map((b) => (
         <span key={b.id} className="jump">
           <button
@@ -281,7 +279,7 @@ function JumpTargets({
           <button
             type="button"
             className="btn small ghost"
-            aria-label={`Delete bookmark ${b.name}`}
+            aria-label={tips.piece.deleteBookmark(b.name)}
             onClick={() => {
               onPatch({ bookmarks: piece.bookmarks.filter((x) => x.id !== b.id) });
             }}
@@ -337,7 +335,7 @@ function UploadButton({
         disabled={busy}
         onClick={() => input.current?.click()}
       >
-        {busy ? 'Uploading…' : label}
+        {busy ? strings.piece.uploading : label}
       </button>
       {error && <span className="error">{error}</span>}
     </>
@@ -355,7 +353,7 @@ function NotesEditor({ piece, onPatch }: { piece: Piece; onPatch: Patcher }) {
       className="input"
       rows={5}
       value={notes}
-      placeholder="Practice notes, chord shapes, what to focus on…"
+      placeholder={tips.piece.notesPlaceholder}
       onChange={(e) => {
         setNotes(e.target.value);
       }}
@@ -451,11 +449,12 @@ export function PiecePage({ id }: { id: string }) {
     return (
       <div className="piece-missing">
         <p className="error">{piece.error}</p>
-        <Link href="/">← Back to the library</Link>
+        <Link href="/">{strings.nav.backToLibrary}</Link>
       </div>
     );
   }
-  if (!current || freshResume.loading) return <p className="muted piece-missing">Loading…</p>;
+  if (!current || freshResume.loading)
+    return <p className="muted piece-missing">{strings.common.loading}</p>;
 
   const preferredScore = chosenScore ?? readResume().pieceScore[id]?.file ?? null;
   const scoreFile = current.scores.some((s) => s.file === preferredScore)
@@ -488,14 +487,14 @@ export function PiecePage({ id }: { id: string }) {
     <div className="piece-page">
       <header className="piece-head">
         <Link href="/" className="btn small ghost">
-          ← Library
+          {strings.piece.library}
         </Link>
         <div className="piece-title">
           <h1
             data-testid="piece-title"
-            title="Click to rename"
+            title={tips.piece.rename}
             onClick={() => {
-              const title = window.prompt('Title', current.title);
+              const title = window.prompt(strings.piece.renamePrompt, current.title);
               if (title?.trim()) stablePatch({ title: title.trim() });
             }}
           >
@@ -507,14 +506,12 @@ export function PiecePage({ id }: { id: string }) {
             className="btn small ghost pin-toggle"
             aria-pressed={current.pinned}
             data-testid="piece-pin"
-            title={
-              current.pinned ? 'Unpin from the top of the library' : 'Pin to the top of the library'
-            }
+            title={current.pinned ? tips.piece.unpin : tips.piece.pin}
             onClick={() => {
               stablePatch({ pinned: !current.pinned });
             }}
           >
-            {current.pinned ? '★ Pinned' : '☆ Pin'}
+            {current.pinned ? strings.piece.pinned : strings.piece.pin}
           </button>
         </div>
         {current.scores.length > 1 && (
@@ -537,7 +534,7 @@ export function PiecePage({ id }: { id: string }) {
           </div>
         )}
         {musicRef && (
-          <div className="row piece-views" role="group" aria-label="View">
+          <div className="row piece-views" role="group" aria-label={tips.piece.viewGroup}>
             {VIEW_CHOICES.filter((v) => scoreFile !== null || v.mode === 'notes').map((v) => (
               <button
                 key={v.mode}
@@ -556,7 +553,7 @@ export function PiecePage({ id }: { id: string }) {
             {current.music.length > 1 && (
               <select
                 className="input mini"
-                aria-label="Music file"
+                aria-label={tips.piece.musicFile}
                 value={musicRef.file}
                 onChange={(e) => {
                   chooseView(viewMode === 'score' ? 'split' : viewMode, e.target.value);
@@ -581,10 +578,10 @@ export function PiecePage({ id }: { id: string }) {
             ) : (
               <div className="no-score">
                 <div className="card empty-state">
-                  <h2>Add a score 📄</h2>
-                  <p>Upload a PDF and draw fingerings, strum arrows and notes straight onto it.</p>
+                  <h2>{strings.piece.addScore}</h2>
+                  <p>{strings.piece.addScoreHint}</p>
                   <UploadButton
-                    label="Upload PDF"
+                    label={strings.piece.uploadPdf}
                     accept={SCORE_ACCEPT}
                     testId="upload-score-empty"
                     onFile={async (f) => {
@@ -608,8 +605,8 @@ export function PiecePage({ id }: { id: string }) {
           )}
         </div>
 
-        <aside className="dock" aria-label="Practice tools">
-          <Section title="⏱ Metronome" testId="dock-metronome">
+        <aside className="dock" aria-label={tips.piece.dock}>
+          <Section title={strings.piece.sections.metronome} testId="dock-metronome">
             <MetronomePanel compact />
             {current.targetBpm !== null && (
               <button
@@ -619,12 +616,12 @@ export function PiecePage({ id }: { id: string }) {
                   metronome.setBpm(current.targetBpm ?? metronome.settings.bpm);
                 }}
               >
-                Use target ({current.targetBpm} bpm)
+                {strings.piece.useTarget(current.targetBpm)}
               </button>
             )}
           </Section>
 
-          <Section title="🎯 Practise" testId="dock-practice">
+          <Section title={strings.piece.sections.practise} testId="dock-practice">
             <PracticeTimer
               pieceId={current.id}
               onLogged={(s: PracticeSession) => {
@@ -632,20 +629,20 @@ export function PiecePage({ id }: { id: string }) {
               }}
             />
             <p className="muted small-print">
-              {pieceSessions.length} sessions · {formatMinutes(totalSec)} in total
+              {strings.piece.sessionsTotal(pieceSessions.length, formatMinutes(totalSec))}
             </p>
             <label className="row small-field">
-              Target tempo
+              {strings.piece.targetTempo}
               <TargetTempoField piece={current} onPatch={stablePatch} />
             </label>
             <BpmChart points={bestBpmByDay(pieceSessions)} target={current.targetBpm} />
           </Section>
 
-          <Section title="🔁 Slow-down looper" testId="dock-looper">
+          <Section title={strings.piece.sections.looper} testId="dock-looper">
             <Looper pieceId={current.id} tracks={current.tracks} />
             <div className="row">
               <UploadButton
-                label="+ Add backing track"
+                label={strings.piece.addTrack}
                 accept={AUDIO_ACCEPT}
                 testId="upload-track"
                 onFile={async (f) => {
@@ -656,13 +653,12 @@ export function PiecePage({ id }: { id: string }) {
             </div>
           </Section>
 
-          <Section title="🎹 Play-along" testId="dock-playalong" open={current.music.length > 0}>
-            {current.music.length === 0 && (
-              <p className="muted">
-                Add a MuseScore (.mscz, .mscx) or MusicXML (.mxl, .musicxml) file to watch its notes
-                fall onto a keyboard, transpose it and play along.
-              </p>
-            )}
+          <Section
+            title={strings.piece.sections.playAlong}
+            testId="dock-playalong"
+            open={current.music.length > 0}
+          >
+            {current.music.length === 0 && <p className="muted">{strings.piece.playAlongEmpty}</p>}
             {current.music.length > 0 && (
               <ul className="file-list">
                 {current.music.map((m) => (
@@ -689,7 +685,7 @@ export function PiecePage({ id }: { id: string }) {
             )}
             <div className="row">
               <UploadButton
-                label="+ Add MuseScore / MusicXML"
+                label={strings.piece.addMusic}
                 accept={MUSIC_ACCEPT}
                 testId="upload-music"
                 onFile={async (f) => {
@@ -700,28 +696,28 @@ export function PiecePage({ id }: { id: string }) {
               />
             </div>
             <p className="muted small-print">
-              Piano sound: Salamander Grand Piano by Alexander Holm,{' '}
+              {names.pianoCredit}{' '}
               <a
                 href="https://creativecommons.org/licenses/by/3.0/"
                 target="_blank"
                 rel="noreferrer"
               >
-                CC BY 3.0
+                {names.pianoLicence}
               </a>
-              . Keys: K play/pause, [ ] speed, , . bars; Space too in the Notes view.
             </p>
+            <p className="muted small-print">{strings.piece.playAlongKeys}</p>
           </Section>
 
-          <Section title="📝 Notes" open={current.notes !== ''}>
+          <Section title={strings.piece.sections.notes} open={current.notes !== ''}>
             <NotesEditor piece={current} onPatch={stablePatch} />
           </Section>
 
-          <Section title="🏷 Tags & setlists" open={false}>
+          <Section title={strings.piece.sections.tags} open={false}>
             <label className="field">
-              Tags (comma separated)
+              {strings.newPiece.tags}
               <TagsField piece={current} onPatch={stablePatch} />
             </label>
-            {lists.length === 0 && <p className="muted">Create setlists from the library.</p>}
+            {lists.length === 0 && <p className="muted">{strings.piece.noSetlists}</p>}
             {lists.map((s) => (
               <label key={s.id} className="row small-field">
                 <input
@@ -749,7 +745,7 @@ export function PiecePage({ id }: { id: string }) {
             ))}
           </Section>
 
-          <Section title="📁 Files" open={false}>
+          <Section title={strings.piece.sections.files} open={false}>
             <ul className="file-list">
               {[...current.scores, ...current.tracks, ...current.music].map((f) => (
                 <li key={f.file} className="row">
@@ -761,11 +757,11 @@ export function PiecePage({ id }: { id: string }) {
                   <button
                     type="button"
                     className="btn small ghost"
-                    aria-label={`Remove ${f.name}`}
+                    aria-label={tips.piece.remove(f.name)}
                     onClick={() => {
                       if (
                         !window.confirm(
-                          `Remove “${f.name}”${kindOfFile(f.file) === 'scores' ? ' and its drawings' : ''}? It stays in the GitHub history.`,
+                          strings.piece.removeConfirm(f.name, kindOfFile(f.file) !== 'tracks'),
                         )
                       )
                         return;
@@ -781,7 +777,7 @@ export function PiecePage({ id }: { id: string }) {
             </ul>
             <div className="row">
               <UploadButton
-                label="+ Add PDF"
+                label={strings.piece.addPdf}
                 accept={SCORE_ACCEPT}
                 testId="upload-score"
                 onFile={async (f) => {
@@ -795,18 +791,13 @@ export function PiecePage({ id }: { id: string }) {
               type="button"
               className="btn small coral"
               onClick={() => {
-                if (
-                  !window.confirm(
-                    `Delete “${current.title}”? It stays in the GitHub history, but leaves your library.`,
-                  )
-                )
-                  return;
+                if (!window.confirm(strings.piece.deleteConfirm(current.title))) return;
                 void api.deletePiece(current.id).then(() => {
                   navigate('/');
                 });
               }}
             >
-              Delete piece
+              {strings.piece.deletePiece}
             </button>
           </Section>
         </aside>

@@ -6,8 +6,8 @@ import { names, strings, tips, units } from '../src/strings.ts';
 
 const SRC = join(import.meta.dirname, '..', 'src');
 const LEADING_EMOJI = /^(\p{Extended_Pictographic}|\p{Regional_Indicator}|[0-9#*]️?⃣)/u;
-const NOT_YET_MOVED = new Set(['music/PlayAlong.tsx', 'piece/PiecePage.tsx']);
-const PLAIN_ATTRIBUTES = new Set(['title', 'aria-label', 'placeholder', 'alt']);
+const NOT_YET_MOVED = new Set(['music/PlayAlong.tsx']);
+const PLAIN_ATTRIBUTES = new Set(['title', 'aria-label', 'placeholder', 'alt', 'label']);
 
 type Leaf = string | ((...args: never[]) => string);
 interface Tree {

@@ -39,7 +39,7 @@ test('a setlist collects pieces in order and is saved to GitHub', async ({ page 
   await expect(page.getByRole('heading', { name: 'Warm-ups' })).toBeVisible();
 
   await page.goto('/piece/romanza');
-  await page.getByText('🏷 Tags & setlists').click();
+  await page.getByText(strings.piece.sections.tags).click();
   await page.getByRole('checkbox', { name: 'Warm-ups' }).check();
 
   await openLibrary(page);

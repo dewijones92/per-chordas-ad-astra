@@ -59,6 +59,46 @@ export const strings = {
       tempo: '🐢 Target tempo, slowest first',
     },
   },
+  piece: {
+    library: '⬅️ Library',
+    renamePrompt: '✏️ Title',
+    pinned: '⭐ Pinned',
+    pin: '📌 Pin',
+    layouts: { page: '📃 Page', spread: '📖 Two', width: '↔️ Width' },
+    views: { score: '📄 Score', split: '📄🎹 Both', notes: '🎹 Notes' },
+    addScore: '📄 Add a score',
+    addScoreHint: '💡 Upload a PDF and draw fingerings, strum arrows and notes straight onto it.',
+    uploadPdf: '⬆️ Upload PDF',
+    uploading: '⏳ Uploading…',
+    bookmark: '🔖 Bookmark',
+    bookmarkPrompt: '🔖 Name this spot (e.g. "Bars 17–32")',
+    jumpTo: '🎯 Jump to',
+    sections: {
+      metronome: '⏱️ Metronome',
+      practise: '🎯 Practise',
+      looper: '🔁 Slow-down looper',
+      playAlong: '🎹 Play-along',
+      notes: '📝 Notes',
+      tags: '🏷 Tags & setlists',
+      files: '📁 Files',
+    },
+    useTarget: (bpm: number) => `🎯 Use target (${String(bpm)} bpm)`,
+    sessionsTotal: (count: number, total: string) =>
+      `📊 ${String(count)} sessions · ${total} in total`,
+    targetTempo: '🎯 Target tempo',
+    addTrack: '➕ Add backing track',
+    addMusic: '➕ Add MuseScore / MusicXML',
+    addPdf: '➕ Add PDF',
+    playAlongEmpty:
+      '🎹 Add a MuseScore (.mscz, .mscx) or MusicXML (.mxl, .musicxml) file to watch its notes fall onto a keyboard, transpose it and play along.',
+    playAlongKeys: '⌨️ Keys: K play/pause, [ ] speed, , . bars; Space too in the Notes view.',
+    noSetlists: '🗂️ Create setlists from the library.',
+    removeConfirm: (name: string, withDrawings: boolean) =>
+      `🗑️ Remove “${name}”${withDrawings ? ' and its drawings' : ''}? It stays in the GitHub history.`,
+    deleteConfirm: (title: string) =>
+      `🗑️ Delete “${title}”? It stays in the GitHub history, but leaves your library.`,
+    deletePiece: '🗑️ Delete piece',
+  },
   metronome: {
     start: '▶️ Start',
     stop: '⏹️ Stop',
@@ -173,6 +213,30 @@ export const tips = {
     pickForMe: 'Open a piece at random, favouring ones you have not practised lately',
     tagFilter: 'Filter by tag',
   },
+  piece: {
+    layoutGroup: 'Page layout',
+    layouts: {
+      page: 'Fit one whole page',
+      spread: 'Two pages side by side',
+      width: 'Fit the page width',
+    },
+    viewGroup: 'View',
+    views: {
+      score: 'The PDF score only',
+      split: 'The PDF beside the falling notes',
+      notes: 'Falling notes and keyboard only (Space plays)',
+    },
+    musicFile: 'Music file',
+    bookmark: 'Bookmark the current position',
+    bookmarks: 'Bookmarks',
+    deleteBookmark: (name: string) => `Delete bookmark ${name}`,
+    notesPlaceholder: 'Practice notes, chord shapes, what to focus on…',
+    rename: 'Click to rename',
+    pin: 'Pin to the top of the library',
+    unpin: 'Unpin from the top of the library',
+    dock: 'Practice tools',
+    remove: (name: string) => `Remove ${name}`,
+  },
   metronome: {
     panel: 'Metronome',
     slower: 'Slower',
@@ -252,6 +316,8 @@ export const tips = {
 
 export const names = {
   app: { first: 'per chordas', second: 'ad astra' },
+  pianoCredit: 'Piano sound: Salamander Grand Piano by Alexander Holm,',
+  pianoLicence: 'CC BY 3.0',
 } as const;
 
 export const units = {
