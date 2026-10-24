@@ -95,3 +95,28 @@ export function fitRange(lowest: number, highest: number, full: boolean): KeyRan
   }
   return { low: Math.max(low, 0), high: Math.min(high, 127) };
 }
+
+const REFERENCE = [0, 2, 4, 5, 7, 9, 11] as const;
+const PERFECT = new Set([0, 3, 4]);
+
+function quality(perfect: boolean, delta: number): string {
+  if (perfect) return delta === 0 ? 'P' : delta > 0 ? 'A'.repeat(delta) : 'd'.repeat(-delta);
+  if (delta === 0) return 'M';
+  if (delta === -1) return 'm';
+  return delta > 0 ? 'A'.repeat(delta) : 'd'.repeat(-delta - 1);
+}
+
+export function intervalFor(fromFifths: number, semitones: number): string {
+  if (semitones === 0) return '';
+  const d = transposeFifths(fromFifths, semitones) - fromFifths;
+  const upSteps = (((d * 4) % 7) + 7) % 7;
+  const steps = semitones > 0 ? upSteps : (7 - upSteps) % 7;
+  const size = Math.abs(semitones);
+  const reference = REFERENCE[steps] ?? 0;
+  let delta = (size % 12) - reference;
+  if (delta > 6) delta -= 12;
+  if (delta < -6) delta += 12;
+  const octaves = Math.round((size - reference - delta) / 12);
+  const name = `${quality(PERFECT.has(steps), delta)}${String(steps + 1 + 7 * octaves)}`;
+  return semitones > 0 ? name : `-${name}`;
+}

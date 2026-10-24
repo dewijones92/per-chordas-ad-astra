@@ -14,6 +14,10 @@ keyboard from above, like the bird's-eye piano videos.
 - **Views** (top of the piece page, only when the piece has a music file): **📄 Score** (the PDF),
   **📄🎹 Both** (PDF on the left, falling notes on the right) and **🎹 Notes** (falling notes only). A piece
   with music but no PDF opens in Notes. The view is remembered per piece, on every device.
+- **Notation** (🎼, on by default): the score drawn from the file itself, one line scrolling above the
+  falling notes, with the notes being played coloured and the current bar kept in view. Click a bar to
+  jump there. Transposing redraws it in the new key, the same key the key line shows (ADR 0015). MuseScore
+  files are converted to MusicXML for this; MusicXML files are drawn as they are.
 - **Falling notes**: notes fall onto a keyboard fitted to the piece in whole octaves (at least three), or
   all 88 keys. Sounding keys light up in their part's colour: right hand violet, left hand teal, other
   parts coral, blue, amber. Bar lines carry their numbers. Drag or scroll the notes to move through the
@@ -46,6 +50,6 @@ Tests: `apps/web/test/music-parse.test.ts` (one waltz in six encodings gives ide
 `music-play.test.ts`, `music-corpus.test.ts` (opt-in, real files and MuseScore's repeat orders),
 `apps/server/test/data-repo.test.ts`, `e2e/play-along.spec.ts`.
 
-Known gaps: notation is not drawn from the file yet (the PDF does that job; next on the backlog); ottava
+Known gaps: lyrics, fingering, articulations and dynamics marks are not in the notation yet; ottava
 lines, swing, pedal and grace-note timing are approximate; two of MuseScore's 69 repeat cases (a jump into
 an ending that has its own repeats) differ.

@@ -58,5 +58,7 @@ pushing → clean | push-failed`.
   `musicxml.ts` fill one `ScoreModel`; `unroll.ts` decides the bar order; `performance.ts` turns it into
   notes in seconds; `transport.ts` (pure) schedules against the audio clock; `player.ts` plays the
   Salamander samples; `falling.ts` draws the notes and keyboard; `PlayAlong.tsx` and `BarStrip.tsx` are
-  the panel.
+  the panel. Notation (ADR 0015): `to-musicxml.ts` converts MuseScore to MusicXML, `notation.worker.ts`
+  runs Verovio, `Notation.tsx` shows it and colours what is playing; `keys.ts` `intervalFor` keeps
+  Verovio's key the same as ours.
 - `tuner/`, `looper/`, `practice/`, `library/`, `sync/`.

@@ -16,7 +16,9 @@ import { staffColours } from './colours.ts';
 import { drawFalling, geometry } from './falling.ts';
 import { capoFor, fitRange, keyName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip } from './BarStrip.tsx';
-import { loadScore } from './load.ts';
+import { parseScoreText, unpackScore } from './load.ts';
+import { Notation } from './Notation.tsx';
+import { toMusicXml } from './to-musicxml.ts';
 import { barAt, buildPerformance, type Performance } from './performance.ts';
 import { PianoPlayer, type PlayerEvent } from './player.ts';
 import { clampSpeed } from './transport.ts';
@@ -35,7 +37,8 @@ function usePerformance(pieceId: string, file: string) {
     if (!res.ok) throw new Error(`Could not fetch ${file}: ${String(res.status)}`);
     const bytes = new Uint8Array(await res.arrayBuffer());
     const started = window.performance.now();
-    const score = loadScore(bytes);
+    const text = unpackScore(bytes);
+    const score = parseScoreText(text);
     const perf = buildPerformance(score);
     console.info('dewidebug play-along parsed', {
       file,
@@ -49,7 +52,7 @@ function usePerformance(pieceId: string, file: string) {
       ms: Math.round(window.performance.now() - started),
       warnings: perf.warnings,
     });
-    return perf;
+    return { perf, score, text };
   }, `music:${pieceId}/${file}`);
 }
 
@@ -194,7 +197,7 @@ export function PlayAlong({
   onTranspose: (semitones: number) => void;
 }) {
   const loaded = usePerformance(pieceId, music.file);
-  const perf = loaded.data;
+  const perf = loaded.data?.perf;
   const key = scoreKey(pieceId, music.file);
   const [prefs, setPrefs] = useState<PlayAlongPrefs>(() => savedPlayAlong(key));
   const [playing, setPlaying] = useState(false);
@@ -203,6 +206,12 @@ export function PlayAlong({
   const readout = useRef<HTMLSpanElement>(null);
   const transpose = music.transpose;
   const colours = useMemo(() => (perf ? staffColours(perf.staves) : []), [perf]);
+  const notationXml = useMemo(() => {
+    const data = loaded.data;
+    if (!data || !prefs.notation) return null;
+    if (data.score.format === 'musicxml') return data.text;
+    return data.score.notation ? toMusicXml(data.score, data.score.notation) : null;
+  }, [loaded.data, prefs.notation]);
 
   const updatePrefs = useCallback(
     (update: (p: PlayAlongPrefs) => PlayAlongPrefs) => {
@@ -322,6 +331,12 @@ export function PlayAlong({
       if (!player.playing) updatePrefs((p) => ({ ...p, position: target }));
     },
     [player, perf, updatePrefs],
+  );
+
+  const pausedAt = prefs.position;
+  const notationPosition = useCallback(
+    () => (player?.playing ? player.position() : (player?.position() ?? pausedAt)),
+    [player, pausedAt],
   );
 
   const stepBar = useCallback(
@@ -586,6 +601,18 @@ export function PlayAlong({
         <label className="playalong-field">
           <input
             type="checkbox"
+            checked={prefs.notation}
+            data-testid="playalong-notation"
+            onChange={(e) => {
+              const notation = e.target.checked;
+              updatePrefs((p) => ({ ...p, notation }));
+            }}
+          />
+          🎼 Notation
+        </label>
+        <label className="playalong-field">
+          <input
+            type="checkbox"
             checked={prefs.names}
             data-testid="playalong-names"
             onChange={(e) => {
@@ -644,6 +671,17 @@ export function PlayAlong({
           </span>
         )}
       </div>
+      {notationXml && loaded.data && (
+        <Notation
+          xml={notationXml}
+          transpose={transpose}
+          perf={perf}
+          measures={loaded.data.score.measures}
+          playing={playing}
+          position={notationPosition}
+          onSeek={seekTo}
+        />
+      )}
       <BarStrip
         bars={perf.bars}
         current={barIndex}

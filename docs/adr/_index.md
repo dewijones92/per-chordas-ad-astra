@@ -20,6 +20,7 @@ updated: 2026-10-24
 | [0011](0011-import-pdf-annotations-as-drawings.md) | A PDF's own marks become movable app drawings, once                             | accepted           |
 | [0013](0013-where-preferences-live.md)             | Metronome settings in git; zoom, layout and sort in resume state                | accepted           |
 | [0014](0014-play-along-own-parser.md)              | Play-along: own score reader, MuseScore's repeat tests as oracle, sampled piano | accepted           |
+| [0015](0015-notation-with-verovio.md)              | Notation with Verovio, fed MusicXML, following our own play order               | accepted           |
 | [0012](0012-library-sort-facts.md)                 | Library sorts read recorded facts (edited, opened, pinned)                      | accepted           |
 
 Format: `NNNN-title.md` with frontmatter (`status`, `date`, `updated`). Change a decision by updating

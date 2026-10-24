@@ -118,6 +118,36 @@ test('the score and the falling notes show side by side, or one at a time', asyn
   await expect(page.locator('[data-piece-view="notes"]')).toHaveAttribute('aria-pressed', 'true');
 });
 
+test('the notation shows above the falling notes, follows playback and transposes', async ({
+  page,
+}) => {
+  await createPiece(page, 'Notation Waltz', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  const svg = page.getByTestId('notation-svg');
+  await expect(svg).toBeVisible({ timeout: 20_000 });
+  await expect(svg.locator('g.measure')).toHaveCount(3);
+  await expect(svg.locator('g.keySig g.keyAccid')).toHaveCount(2);
+
+  await page.getByTestId('playalong-play').click();
+  await expect.poll(() => svg.locator('.pa-playing').count(), { timeout: 8000 }).toBeGreaterThan(0);
+  await page.getByTestId('playalong-play').click();
+
+  await svg.locator('g.measure').nth(2).locator('g.note').first().click();
+  await expect.poll(() => position(page)).toBeCloseTo(4.5, 1);
+
+  await page.getByRole('button', { name: 'Transpose up a semitone' }).click();
+  await page.getByRole('button', { name: 'Transpose up a semitone' }).click();
+  await expect(page.getByTestId('playalong-key')).toContainText('now A major');
+  await expect(svg.locator('g.keySig g.keyAccid')).toHaveCount(6, { timeout: 20_000 });
+
+  await page.getByTestId('playalong-notation').uncheck();
+  await expect(page.getByTestId('notation')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await expect(page.getByTestId('playalong-notation')).not.toBeChecked();
+  await expect(page.getByTestId('notation')).toHaveCount(0);
+});
+
 test('a file that is not music says why', async ({ page }) => {
   await createPiece(page, 'Broken Music', { pdf: false });
   await page.getByTestId('upload-music').setInputFiles({

@@ -1,9 +1,13 @@
+import { notationSpans, soundingIds } from '../src/music/notation-protocol.ts';
+import { scoreQuarter } from '../src/music/Notation.tsx';
+import type { Performance } from '../src/music/performance.ts';
 import { describe, expect, it } from 'vitest';
 import { soundingAt, visibleNotes, maxNoteLength, geometry } from '../src/music/falling.ts';
 import { keyboardLayout, keyForPitch } from '../src/music/keyboard.ts';
 import {
   capoFor,
   fitRange,
+  intervalFor,
   keyName,
   isBlackKey,
   majorKeyName,
@@ -254,6 +258,16 @@ describe('keys and names', () => {
     expect(isBlackKey(60)).toBe(false);
   });
 
+  it('names the interval that lands on the key we show', () => {
+    expect(intervalFor(1, -1)).toBe('-m2');
+    expect(intervalFor(1, 2)).toBe('M2');
+    expect(intervalFor(0, 6)).toBe('A4');
+    expect(intervalFor(0, -6)).toBe('-d5');
+    expect(intervalFor(0, 12)).toBe('P8');
+    expect(intervalFor(-3, 13)).toBe('A8');
+    expect(intervalFor(0, 0)).toBe('');
+  });
+
   it('suggests a capo only when transposing up, and only up to fret 9', () => {
     expect(capoFor(2)).toBe(2);
     expect(capoFor(9)).toBe(9);
@@ -328,5 +342,51 @@ describe('falling notes geometry', () => {
     expect(g.keyboardHeight).toBe(120);
     expect(g.notesHeight).toBe(480);
     expect(g.pxPerSecond).toBe(160);
+  });
+});
+
+describe('notation follow-along', () => {
+  it('turns a timemap into note spans and bar starts', () => {
+    const spans = notationSpans([
+      { qstamp: 0, measureOn: 'm1', on: ['a', 'b'] },
+      { qstamp: 1, off: ['a'], on: ['c'] },
+      { qstamp: 2, off: ['b', 'c'] },
+      { qstamp: 3, measureOn: 'm2', on: ['d'] },
+    ]);
+    expect(spans.measures).toEqual([
+      { id: 'm1', q: 0 },
+      { id: 'm2', q: 3 },
+    ]);
+    expect(spans.notes).toEqual([
+      { id: 'a', on: 0, off: 1 },
+      { id: 'b', on: 0, off: 2 },
+      { id: 'c', on: 1, off: 2 },
+      { id: 'd', on: 3, off: 3.25 },
+    ]);
+    expect(soundingIds(spans.notes, 1.5, 2)).toEqual(['b', 'c']);
+    expect(soundingIds(spans.notes, 2.5, 2)).toEqual([]);
+  });
+
+  it('maps a playback time to the written score through the unrolled bars', () => {
+    const measures = [0, 1].map((index) => ({
+      index,
+      number: index + 1,
+      tick: index * 1440,
+      ticks: 1440,
+      startRepeat: false,
+      endRepeat: 0,
+      markers: [],
+      jump: null,
+      sectionEnd: false,
+    }));
+    const perf = {
+      bars: [
+        { measure: 0, number: 1, start: 0, end: 3 },
+        { measure: 1, number: 2, start: 3, end: 6 },
+        { measure: 0, number: 1, start: 6, end: 9 },
+      ],
+    } as unknown as Performance;
+    expect(scoreQuarter(perf, measures, [0, 3], 4.5)).toEqual({ measure: 1, q: 4.5 });
+    expect(scoreQuarter(perf, measures, [0, 3], 7.5)).toEqual({ measure: 0, q: 1.5 });
   });
 });
