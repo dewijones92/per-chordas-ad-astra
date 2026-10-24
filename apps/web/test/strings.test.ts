@@ -2,18 +2,14 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { names, strings, tips } from '../src/strings.ts';
+import { names, strings, tips, units } from '../src/strings.ts';
 
 const SRC = join(import.meta.dirname, '..', 'src');
 const LEADING_EMOJI = /^(\p{Extended_Pictographic}|\p{Regional_Indicator}|[0-9#*]️?⃣)/u;
 const NOT_YET_MOVED = new Set([
   'library/LibraryPage.tsx',
-  'looper/Looper.tsx',
-  'metronome/MetronomePanel.tsx',
   'music/PlayAlong.tsx',
   'piece/PiecePage.tsx',
-  'practice/LogPage.tsx',
-  'practice/PracticeTimer.tsx',
 ]);
 const PLAIN_ATTRIBUTES = new Set(['title', 'aria-label', 'placeholder', 'alt']);
 
@@ -124,7 +120,9 @@ describe('UI strings', () => {
   });
 
   it('keep tooltips, placeholders and screen-reader labels plain', () => {
-    const decorated = leaves(tips).filter(([, text]) => LEADING_EMOJI.test(text));
+    const decorated = [...leaves(tips), ...leaves(units)].filter(([, text]) =>
+      LEADING_EMOJI.test(text),
+    );
     expect(decorated).toEqual([]);
     expect(leaves(names).length).toBeGreaterThan(0);
   });

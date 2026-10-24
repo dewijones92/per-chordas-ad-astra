@@ -15,7 +15,7 @@ export function DrawingStatus({
       <p className="error loading-strip" data-testid="drawings-error">
         {strings.drawings.loadFailed} {error}{' '}
         <button type="button" className="btn small" onClick={reload}>
-          {strings.drawings.retry}
+          {strings.common.retry}
         </button>
       </p>
     );

@@ -12,6 +12,7 @@ import {
   type TimerState,
 } from './timer.ts';
 import './practice.css';
+import { strings, tips } from '../strings.ts';
 
 interface Props {
   pieceId: string;
@@ -116,7 +117,7 @@ export function PracticeTimer({ pieceId, onLogged }: Props) {
   };
 
   return (
-    <section className="practice-timer" aria-label="Practice timer">
+    <section className="practice-timer" aria-label={tips.timer.panel}>
       <div className="row">
         <span className={`clock${running ? ' running' : ''}`} data-testid="practice-clock">
           {formatDuration(elapsed)}
@@ -133,7 +134,11 @@ export function PracticeTimer({ pieceId, onLogged }: Props) {
               setNow(at);
             }}
           >
-            {running ? '❚❚ Pause' : timer.startedAt === null ? '▶ Practise' : '▶ Resume'}
+            {running
+              ? strings.common.pause
+              : timer.startedAt === null
+                ? strings.timer.practise
+                : strings.timer.resume}
           </button>
         )}
         {!logging && timer.startedAt !== null && (
@@ -143,7 +148,7 @@ export function PracticeTimer({ pieceId, onLogged }: Props) {
             onClick={finish}
             data-testid="practice-finish"
           >
-            ✓ Done
+            {strings.timer.done}
           </button>
         )}
       </div>
@@ -156,7 +161,7 @@ export function PracticeTimer({ pieceId, onLogged }: Props) {
           }}
         >
           <label className="field">
-            Top clean tempo (bpm, optional)
+            {strings.timer.topTempo}
             <input
               className="input"
               inputMode="numeric"
@@ -168,11 +173,11 @@ export function PracticeTimer({ pieceId, onLogged }: Props) {
             />
           </label>
           <label className="field">
-            Note
+            {strings.timer.note}
             <input
               className="input"
               value={note}
-              placeholder="What went well? What next?"
+              placeholder={tips.timer.note}
               onChange={(e) => {
                 setNote(e.target.value);
               }}
@@ -181,7 +186,7 @@ export function PracticeTimer({ pieceId, onLogged }: Props) {
           {error && <p className="error">{error}</p>}
           <div className="row">
             <button type="submit" className="btn primary" data-testid="practice-save">
-              Log {formatDuration(elapsed)}
+              {strings.timer.log} {formatDuration(elapsed)}
             </button>
             <button
               type="button"
@@ -190,7 +195,7 @@ export function PracticeTimer({ pieceId, onLogged }: Props) {
                 setLogging(false);
               }}
             >
-              Keep going
+              {strings.timer.keepGoing}
             </button>
             <button
               type="button"
@@ -200,7 +205,7 @@ export function PracticeTimer({ pieceId, onLogged }: Props) {
                 setLogging(false);
               }}
             >
-              Discard
+              {strings.timer.discard}
             </button>
           </div>
         </form>

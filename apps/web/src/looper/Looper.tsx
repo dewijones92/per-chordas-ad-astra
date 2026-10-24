@@ -12,6 +12,7 @@ import {
   type LoopWindow,
 } from './loop-math.ts';
 import './looper.css';
+import { strings, tips } from '../strings.ts';
 
 const BUCKETS = 480;
 const RATES = [0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 1, 1.1, 1.25];
@@ -117,7 +118,7 @@ function Waveform({
         />
       )}
       <div className="playhead" style={{ left: pct(position) }} />
-      {!peaks && <span className="waveform-hint muted">Loading waveform…</span>}
+      {!peaks && <span className="waveform-hint muted">{strings.looper.loadingWaveform}</span>}
     </div>
   );
 }
@@ -200,11 +201,7 @@ export function Looper({ pieceId, tracks }: Props) {
   }, [playing, looping, loop]);
 
   if (tracks.length === 0 || !url || !trackFile) {
-    return (
-      <p className="muted">
-        Add a backing track (MP3, M4A, OGG, WAV or FLAC) to slow it down and loop sections.
-      </p>
-    );
+    return <p className="muted">{strings.looper.empty}</p>;
   }
 
   const audio = () => audioRef.current;
@@ -233,14 +230,14 @@ export function Looper({ pieceId, tracks }: Props) {
         loopsState.setData(() => saved);
       },
       (e: unknown) => {
-        setLoopError(`Loops not saved: ${e instanceof Error ? e.message : String(e)}`);
+        setLoopError(strings.looper.notSaved(e instanceof Error ? e.message : String(e)));
         loopsState.reload();
       },
     );
   };
 
   return (
-    <section className="looper" aria-label="Slow-down looper">
+    <section className="looper" aria-label={tips.looper.panel}>
       {tracks.length > 1 && (
         <select
           className="input"
@@ -316,14 +313,14 @@ export function Looper({ pieceId, tracks }: Props) {
           onClick={toggle}
           data-testid="looper-play"
         >
-          {playing ? '❚❚ Pause' : '▶ Play'}
+          {playing ? strings.common.pause : strings.common.play}
         </button>
         <span className="time" data-testid="looper-time">
           {formatTime(position)} / {formatTime(duration)}
         </span>
         <div className="spacer" />
         <label className="row small-field">
-          <span className="muted">Speed</span>
+          <span className="muted">{strings.common.speed}</span>
           <select
             className="input mini"
             value={rate}
@@ -344,7 +341,7 @@ export function Looper({ pieceId, tracks }: Props) {
         <button
           type="button"
           className="btn small sun"
-          title="Mark the loop start here, then press again at the end"
+          title={tips.looper.mark}
           onClick={() => {
             if (mark === null) setMark(position);
             else {
@@ -355,7 +352,7 @@ export function Looper({ pieceId, tracks }: Props) {
           }}
           data-testid="looper-mark"
         >
-          {mark === null ? 'A ◆ set start' : 'B ◆ set end'}
+          {mark === null ? strings.looper.markStart : strings.looper.markEnd}
         </button>
         <LoopSwitch on={looping} disabled={!loop} onChange={setLooping} testId="looper-looping" />
         {loop && (
@@ -369,7 +366,7 @@ export function Looper({ pieceId, tracks }: Props) {
               disabled={!loops}
               onClick={() => {
                 const name = window.prompt(
-                  'Name this loop',
+                  strings.looper.namePrompt,
                   `Loop ${String(savedLoops.length + 1)}`,
                 );
                 if (!name) return;
@@ -380,7 +377,7 @@ export function Looper({ pieceId, tracks }: Props) {
               }}
               data-testid="looper-save"
             >
-              Save loop
+              {strings.looper.save}
             </button>
             <button
               type="button"
@@ -389,16 +386,16 @@ export function Looper({ pieceId, tracks }: Props) {
                 setLoop(null);
               }}
             >
-              Clear
+              {strings.looper.clear}
             </button>
           </>
         )}
       </div>
       {(loopError ?? loopsState.error) && (
         <p className="error" data-testid="looper-error">
-          {loopError ?? `Saved loops could not be loaded: ${loopsState.error ?? ''}`}{' '}
+          {loopError ?? strings.looper.loadFailed(loopsState.error ?? '')}{' '}
           <button type="button" className="btn small ghost" onClick={loopsState.reload}>
-            Retry
+            {strings.common.retry}
           </button>
         </p>
       )}
@@ -416,7 +413,7 @@ export function Looper({ pieceId, tracks }: Props) {
                   seek(l.startSec);
                 }}
               >
-                ↻ {l.name}
+                {strings.looper.saved(l.name)}
               </button>
               <span className="muted">
                 {formatTime(l.startSec)}–{formatTime(l.endSec)} · {Math.round(l.rate * 100)}%
@@ -425,7 +422,7 @@ export function Looper({ pieceId, tracks }: Props) {
               <button
                 type="button"
                 className="btn small ghost"
-                aria-label={`Delete loop ${l.name}`}
+                aria-label={tips.looper.deleteLoop(l.name)}
                 onClick={() => {
                   persist(savedLoops.filter((x) => x.id !== l.id));
                 }}

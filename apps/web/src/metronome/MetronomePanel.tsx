@@ -1,12 +1,13 @@
 import { MAX_BPM, MIN_BPM, type Subdivision } from './scheduler.ts';
 import { useMetronome } from './MetronomeProvider.tsx';
 import './metronome.css';
+import { strings, tips, units } from '../strings.ts';
 
 const SUBDIVISIONS: { value: Subdivision; label: string; title: string }[] = [
-  { value: 1, label: '♩', title: 'Quarter notes' },
-  { value: 2, label: '♫', title: 'Eighth notes' },
-  { value: 3, label: '3', title: 'Triplets' },
-  { value: 4, label: '♬', title: 'Sixteenth notes' },
+  { value: 1, label: '♩', title: tips.metronome.quarter },
+  { value: 2, label: '♫', title: tips.metronome.eighth },
+  { value: 3, label: '3', title: tips.metronome.triplet },
+  { value: 4, label: '♬', title: tips.metronome.sixteenth },
 ];
 
 export function MetronomePanel({ compact = false }: { compact?: boolean }) {
@@ -17,12 +18,12 @@ export function MetronomePanel({ compact = false }: { compact?: boolean }) {
   const liveBpm = m.running && m.tick ? m.tick.bpm : settings.bpm;
 
   return (
-    <section className={`metronome${compact ? ' compact' : ''}`} aria-label="Metronome">
+    <section className={`metronome${compact ? ' compact' : ''}`} aria-label={tips.metronome.panel}>
       <div className="metro-top">
         <button
           type="button"
           className="btn icon small"
-          aria-label="Slower"
+          aria-label={tips.metronome.slower}
           onClick={() => {
             m.setBpm(settings.bpm - 1);
           }}
@@ -31,12 +32,12 @@ export function MetronomePanel({ compact = false }: { compact?: boolean }) {
         </button>
         <div className="bpm" data-testid="metronome-bpm">
           <span className="bpm-number">{liveBpm}</span>
-          <span className="bpm-unit">bpm</span>
+          <span className="bpm-unit">{units.bpm}</span>
         </div>
         <button
           type="button"
           className="btn icon small"
-          aria-label="Faster"
+          aria-label={tips.metronome.faster}
           onClick={() => {
             m.setBpm(settings.bpm + 1);
           }}
@@ -51,7 +52,7 @@ export function MetronomePanel({ compact = false }: { compact?: boolean }) {
           aria-pressed={m.running}
           data-testid="metronome-toggle"
         >
-          {m.running ? '■ Stop' : '▶ Start'}
+          {m.running ? strings.metronome.stop : strings.metronome.start}
         </button>
       </div>
 
@@ -60,7 +61,7 @@ export function MetronomePanel({ compact = false }: { compact?: boolean }) {
         min={MIN_BPM}
         max={300}
         value={settings.bpm}
-        aria-label="Tempo"
+        aria-label={tips.metronome.tempo}
         onChange={(e) => {
           m.setBpm(Number(e.target.value));
         }}
@@ -77,11 +78,11 @@ export function MetronomePanel({ compact = false }: { compact?: boolean }) {
       </div>
 
       <div className="row">
-        <button type="button" className="btn small sun" onClick={m.tap} title="Tap at least twice">
-          Tap
+        <button type="button" className="btn small sun" onClick={m.tap} title={tips.metronome.tap}>
+          {strings.metronome.tap}
         </button>
         <label className="row small-field">
-          <span className="muted">Beats</span>
+          <span className="muted">{strings.metronome.beats}</span>
           <select
             className="input mini"
             value={settings.beatsPerBar}
@@ -96,7 +97,7 @@ export function MetronomePanel({ compact = false }: { compact?: boolean }) {
             ))}
           </select>
         </label>
-        <div className="row tight" role="group" aria-label="Subdivision">
+        <div className="row tight" role="group" aria-label={tips.metronome.subdivision}>
           {SUBDIVISIONS.map((s) => (
             <button
               key={s.value}
@@ -121,7 +122,7 @@ export function MetronomePanel({ compact = false }: { compact?: boolean }) {
               m.update({ accentFirstBeat: e.target.checked });
             }}
           />
-          <span>Accent 1</span>
+          <span>{strings.metronome.accent}</span>
         </label>
       </div>
 
@@ -141,12 +142,12 @@ export function MetronomePanel({ compact = false }: { compact?: boolean }) {
                   m.update({ trainer: { ...settings.trainer, enabled: e.target.checked } });
                 }}
               />
-              <span>Speed trainer</span>
+              <span>{strings.metronome.trainer}</span>
             </label>
           </summary>
           <div className="row trainer-fields">
             <label className="field">
-              +bpm
+              {units.plusBpm}
               <input
                 className="input mini"
                 type="number"
@@ -161,7 +162,7 @@ export function MetronomePanel({ compact = false }: { compact?: boolean }) {
               />
             </label>
             <label className="field">
-              every bars
+              {units.everyBars}
               <input
                 className="input mini"
                 type="number"
@@ -176,7 +177,7 @@ export function MetronomePanel({ compact = false }: { compact?: boolean }) {
               />
             </label>
             <label className="field">
-              up to
+              {units.upTo}
               <input
                 className="input mini"
                 type="number"

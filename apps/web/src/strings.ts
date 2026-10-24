@@ -1,4 +1,51 @@
 export const strings = {
+  common: {
+    play: '▶️ Play',
+    pause: '⏸️ Pause',
+    retry: '🔄 Retry',
+    speed: '🐢 Speed',
+    loading: '⏳ Loading…',
+  },
+  metronome: {
+    start: '▶️ Start',
+    stop: '⏹️ Stop',
+    tap: '👆 Tap',
+    beats: '🥁 Beats',
+    accent: '💥 Accent 1',
+    trainer: '🏋️ Speed trainer',
+  },
+  looper: {
+    loadingWaveform: '⏳ Loading waveform…',
+    empty: '🎧 Add a backing track (MP3, M4A, OGG, WAV or FLAC) to slow it down and loop sections.',
+    markStart: '🅰️ Set loop start',
+    markEnd: '🅱️ Set loop end',
+    save: '💾 Save loop',
+    clear: '🧹 Clear',
+    loadFailed: (error: string) => `❌ Saved loops could not be loaded: ${error}`,
+    notSaved: (error: string) => `⚠️ Loops not saved: ${error}`,
+    saved: (name: string) => `🔁 ${name}`,
+    namePrompt: '🏷️ Name this loop',
+  },
+  timer: {
+    practise: '▶️ Practise',
+    resume: '▶️ Resume',
+    done: '✅ Done',
+    topTempo: '🎯 Top clean tempo (bpm, optional)',
+    note: '📝 Note',
+    log: '💾 Log',
+    keepGoing: '💪 Keep going',
+    discard: '🗑️ Discard',
+  },
+  log: {
+    title: '📝 Practice log',
+    streak: '🔥 Day streak',
+    week: '⏱️ Minutes this week',
+    sessions: '📚 Sessions logged',
+    lastFourWeeks: '📅 Last four weeks',
+    recent: '🕘 Recent sessions',
+    empty: '📭 Nothing logged yet. Open a piece and press Practise.',
+    bpm: (bpm: number) => `🎯 ${String(bpm)} bpm`,
+  },
   nav: {
     library: '📚 Library',
     log: '📝 Practice log',
@@ -25,7 +72,6 @@ export const strings = {
   },
   drawings: {
     loadFailed: '❌ Could not load the drawings, so drawing is paused to protect them:',
-    retry: '🔄 Retry',
     notSaved: '⚠️ Drawings not saved yet:',
     loading: '⏳ Loading drawings…',
     undo: '↩️ Undo',
@@ -54,6 +100,31 @@ export const strings = {
 } as const;
 
 export const tips = {
+  metronome: {
+    panel: 'Metronome',
+    slower: 'Slower',
+    faster: 'Faster',
+    tempo: 'Tempo',
+    subdivision: 'Subdivision',
+    tap: 'Tap at least twice',
+    quarter: 'Quarter notes',
+    eighth: 'Eighth notes',
+    triplet: 'Triplets',
+    sixteenth: 'Sixteenth notes',
+  },
+  looper: {
+    panel: 'Slow-down looper',
+    mark: 'Mark the loop start here, then press again at the end',
+    deleteLoop: (name: string) => `Delete loop ${name}`,
+  },
+  timer: {
+    panel: 'Practice timer',
+    note: 'What went well? What next?',
+  },
+  log: {
+    perDay: 'Minutes practised per day',
+    day: (day: string, minutes: number) => `${day}: ${String(Math.round(minutes))} min`,
+  },
   nav: {
     brand: 'Per chordas ad astra: library',
     stopMetronome: 'Stop metronome',
@@ -108,4 +179,11 @@ export const tips = {
 
 export const names = {
   app: { first: 'per chordas', second: 'ad astra' },
+} as const;
+
+export const units = {
+  bpm: 'bpm',
+  plusBpm: '+bpm',
+  everyBars: 'every bars',
+  upTo: 'up to',
 } as const;

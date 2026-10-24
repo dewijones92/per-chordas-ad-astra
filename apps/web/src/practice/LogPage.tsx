@@ -6,6 +6,7 @@ import { useAsync } from '../ui/use-async.ts';
 import { localDay, streakDays, totalMinutesSince, totalsByDay, weekStart } from './stats.ts';
 import { formatMinutes } from './timer.ts';
 import './practice.css';
+import { strings, tips } from '../strings.ts';
 
 const DAYS_SHOWN = 28;
 
@@ -24,7 +25,8 @@ export function LogPage() {
     [reload],
   );
   if (sessions.error) return <p className="error log-page">{sessions.error}</p>;
-  if (!sessions.data || !pieces.data) return <p className="muted log-page">Loading…</p>;
+  if (!sessions.data || !pieces.data)
+    return <p className="muted log-page">{strings.common.loading}</p>;
 
   const all = sessions.data;
   const titles = new Map(pieces.data.map((p) => [p.id as string, p.title]));
@@ -43,36 +45,34 @@ export function LogPage() {
 
   return (
     <div className="log-page">
-      <h1>Practice log</h1>
+      <h1>{strings.log.title}</h1>
       <div className="stat-row">
         <div className="card stat sun">
-          <b data-testid="streak">{streakDays(all, today)}</b> day streak 🔥
+          <b data-testid="streak">{streakDays(all, today)}</b> {strings.log.streak}
         </div>
         <div className="card stat teal">
-          <b>{Math.round(weekMinutes)}</b> minutes this week
+          <b>{Math.round(weekMinutes)}</b> {strings.log.week}
         </div>
         <div className="card stat violet">
-          <b>{all.length}</b> sessions logged
+          <b>{all.length}</b> {strings.log.sessions}
         </div>
       </div>
       <section className="panel">
-        <h2>Last four weeks</h2>
-        <div className="days" aria-label="Minutes practised per day">
+        <h2>{strings.log.lastFourWeeks}</h2>
+        <div className="days" aria-label={tips.log.perDay}>
           {days.map((d) => (
             <div
               key={d.day}
               className={`day-bar${d.minutes === 0 ? ' rest-day' : ''}`}
               style={{ height: `${String(Math.max(4, (d.minutes / peak) * 100))}%` }}
-              title={`${d.day}: ${String(Math.round(d.minutes))} min`}
+              title={tips.log.day(d.day, d.minutes)}
             />
           ))}
         </div>
       </section>
       <section className="stack">
-        <h2>Recent sessions</h2>
-        {recent.length === 0 && (
-          <p className="muted">Nothing logged yet. Open a piece and press Practise.</p>
-        )}
+        <h2>{strings.log.recent}</h2>
+        {recent.length === 0 && <p className="muted">{strings.log.empty}</p>}
         <ul className="session-list" data-testid="session-list">
           {recent.map((s) => (
             <li key={s.id}>
@@ -84,7 +84,7 @@ export function LogPage() {
                 })}
               </span>
               <Link href={`/piece/${s.pieceId}`}>{titles.get(s.pieceId) ?? s.pieceId}</Link>
-              <span>{s.bpm ? `${String(s.bpm)} bpm` : ''}</span>
+              <span>{s.bpm ? strings.log.bpm(s.bpm) : ''}</span>
               <b>{formatMinutes(s.durationSec)}</b>
               {s.note && (
                 <span className="muted" style={{ gridColumn: '2 / -1' }}>
