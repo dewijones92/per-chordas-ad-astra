@@ -38,6 +38,7 @@ import {
   type TrackRef,
 } from '@pcaa/shared';
 import type { Logger } from '../log.ts';
+import { hardBitsFor, mergeHardBitsFrom, SOLE_USER, type Person } from '../person.ts';
 import {
   InvalidDataError,
   NotFoundError,
@@ -489,26 +490,49 @@ export class DataRepo {
     });
   }
 
-  async getHardBits(id: Slug): Promise<HardBits> {
+  private async readHardBits(id: Slug): Promise<HardBits> {
     await this.getPiece(id);
     return readJson(this.path('pieces', id, 'hard-bits.json'), HardBits, () => ({ files: {} }));
   }
 
-  async putFileHardBits(id: Slug, file: FileName, input: unknown): Promise<HardBits> {
-    const bits = HardBitList.parse(input);
+  async getHardBits(id: Slug, person: Person = SOLE_USER): Promise<HardBits> {
+    const stored = await this.readHardBits(id);
+    return {
+      files: Object.fromEntries(
+        Object.entries(stored.files).map(([f, bits]) => [f, hardBitsFor(person, bits)]),
+      ),
+    };
+  }
+
+  async putFileHardBits(
+    id: Slug,
+    file: FileName,
+    input: unknown,
+    person: Person = SOLE_USER,
+  ): Promise<HardBits> {
+    const incoming = HardBitList.parse(input);
     return this.locked(`piece:${id}`, async () => {
       const piece = await this.getPiece(id);
       if (!piece.music.some((m) => m.file === file)) {
         throw new RejectedError(`Unknown music file: ${file}`);
       }
-      const current = await this.getHardBits(id);
+      const current = await this.readHardBits(id);
       const { [file]: previous = [], ...others } = current.files;
+      const bits = mergeHardBitsFrom(person, incoming, previous);
       const next: HardBits = { files: bits.length > 0 ? { ...others, [file]: bits } : others };
       await this.writeJson(this.path('pieces', id, 'hard-bits.json'), next);
-      this.changes.markDirty(
-        `${describeHardBits(previous, bits)} in ${quote(piece.title)} (${file})`,
+      this.log.debug(
+        { person: person.key, owner: person.owner, file, bits: bits.length },
+        'dewidebug repo hard bits saved',
       );
-      return next;
+      this.changes.markDirty(
+        `${describeHardBits(hardBitsFor(person, previous), incoming)} in ${quote(piece.title)} (${file})`,
+      );
+      return {
+        files: Object.fromEntries(
+          Object.entries(next.files).map(([f, list]) => [f, hardBitsFor(person, list)]),
+        ),
+      };
     });
   }
 
@@ -564,7 +588,10 @@ export class DataRepo {
     });
   }
 
-  async listSessions(filter: { pieceId?: Slug } = {}): Promise<PracticeSession[]> {
+  async listSessions(
+    filter: { pieceId?: Slug } = {},
+    person: Person = SOLE_USER,
+  ): Promise<PracticeSession[]> {
     const root = this.path('log');
     let years: string[];
     try {
@@ -595,7 +622,10 @@ export class DataRepo {
             );
             return;
           }
-          if (filter.pieceId === undefined || parsed.data.pieceId === filter.pieceId) {
+          if (
+            (filter.pieceId === undefined || parsed.data.pieceId === filter.pieceId) &&
+            person.owns(parsed.data.who)
+          ) {
             sessions.push(parsed.data);
           }
         });
@@ -604,10 +634,17 @@ export class DataRepo {
     return sessions.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
   }
 
-  async addSession(input: NewPracticeSession): Promise<PracticeSession> {
+  async addSession(
+    input: NewPracticeSession,
+    person: Person = SOLE_USER,
+  ): Promise<PracticeSession> {
     return this.locked('log', async () => {
       const piece = await this.getPiece(input.pieceId);
-      const session = PracticeSession.parse({ ...input, id: newId() });
+      const session = PracticeSession.parse({
+        ...input,
+        id: newId(),
+        ...(person.stamp ? { who: person.stamp } : {}),
+      });
       const at = new Date(session.startedAt);
       const file = this.path(
         'log',

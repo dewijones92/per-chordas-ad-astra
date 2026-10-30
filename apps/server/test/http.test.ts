@@ -1,6 +1,6 @@
 import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { makePdf } from '@pcaa/fixtures';
+import { makeMscx, makePdf, PIANO_WALTZ, zipScore } from '@pcaa/fixtures';
 import type { Health, Piece } from '@pcaa/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.ts';
@@ -319,5 +319,121 @@ describe('HTTP API', () => {
     const pieces = (await (await app.request('/api/pieces')).json()) as unknown[];
     expect(pieces).toHaveLength(0);
     expect((await app.request('/api/sync/flush', { method: 'POST' })).status).toBe(200);
+  });
+});
+
+describe('HTTP API with two people', () => {
+  let dir: string;
+  let cleanup: () => Promise<void>;
+  let app: ReturnType<typeof createApp>;
+
+  beforeEach(async () => {
+    ({ path: dir, cleanup } = await tempDir());
+    const data = join(dir, 'data');
+    const sync = engineFor(data, '', { idleMs: 60_000 });
+    await sync.init();
+    app = createApp({
+      repo: new DataRepo({ dir: data, changes: sync, log: silentLog }),
+      resume: new ResumeStore(data, silentLog),
+      sync,
+      log: silentLog,
+      version: 'test-1',
+      trustedCidrs: ['172.21.0.0/16'],
+      ownerPerson: 'dewi',
+      remoteAddress: () => '172.21.0.7',
+    });
+  });
+  afterEach(async () => cleanup());
+
+  const as = (email: string | null, init: RequestInit = {}): RequestInit => ({
+    ...init,
+    headers: {
+      ...(init.body && typeof init.body === 'string' ? { 'content-type': 'application/json' } : {}),
+      ...(email ? { 'x-forwarded-email': email } : {}),
+      ...(init.headers as Record<string, string> | undefined),
+    },
+  });
+  const send = (method: string, body: unknown): RequestInit => ({
+    method,
+    body: JSON.stringify(body),
+  });
+  const DEWI = 'Dewi@example.com';
+  const WIFE = 'wife.name@example.com';
+  const session = (pieceId: string, startedAt: string) => ({
+    pieceId,
+    startedAt,
+    durationSec: 120,
+    bpm: null,
+    note: '',
+  });
+
+  it("keeps each person's practice log, resume state and best speeds apart, and old data stays the owner's", async () => {
+    const piece = (await (
+      await app.request('/api/pieces', as(DEWI, send('POST', { title: 'Gran Vals' })))
+    ).json()) as Piece;
+    const music = await app.request(`/api/pieces/${piece.id}/music`, {
+      method: 'POST',
+      headers: { 'x-file-name': 'waltz.mscz' },
+      body: zipScore('waltz.mscx', makeMscx(PIANO_WALTZ, '4.50')),
+    });
+    expect(music.status).toBe(201);
+    const legacyLine = `${JSON.stringify({ ...session(piece.id, '2026-10-01T09:00:00.000Z'), id: 'old1' })}\n`;
+    await mkdir(join(dir, 'data', 'log', '2026'), { recursive: true });
+    await writeFile(join(dir, 'data', 'log', '2026', '10.jsonl'), legacyLine);
+
+    await app.request(
+      '/api/sessions',
+      as(WIFE, send('POST', session(piece.id, '2026-10-30T09:00:00.000Z'))),
+    );
+    await app.request(
+      '/api/sessions',
+      as(DEWI, send('POST', session(piece.id, '2026-10-30T10:00:00.000Z'))),
+    );
+    const list = async (email: string | null) =>
+      (
+        (await (await app.request('/api/sessions', as(email))).json()) as { startedAt: string }[]
+      ).map((s) => s.startedAt.slice(0, 13));
+    expect(await list(DEWI)).toEqual(['2026-10-01T09', '2026-10-30T10']);
+    expect(await list(null)).toEqual(['2026-10-01T09', '2026-10-30T10']);
+    expect(await list(WIFE)).toEqual(['2026-10-30T09']);
+
+    await app.request(
+      '/api/resume',
+      as(WIFE, send('PUT', { lastPath: { path: '/piece/hers', at: 5 } })),
+    );
+    await app.request(
+      '/api/resume',
+      as(DEWI, send('PUT', { lastPath: { path: '/piece/his', at: 6 } })),
+    );
+    const resume = async (email: string) =>
+      (
+        (await (await app.request('/api/resume', as(email))).json()) as {
+          lastPath: { path: string };
+        }
+      ).lastPath.path;
+    expect(await resume(WIFE)).toBe('/piece/hers');
+    expect(await resume(DEWI)).toBe('/piece/his');
+
+    const bit = { id: 'b1', name: 'Opening', from: 0, to: 1, fromBar: 1, toBar: 2, bestSpeed: 0.6 };
+    await app.request(`/api/pieces/${piece.id}/hard-bits/waltz.mscz`, as(DEWI, send('PUT', [bit])));
+    const best = async (email: string) =>
+      (
+        (await (await app.request(`/api/pieces/${piece.id}/hard-bits`, as(email))).json()) as {
+          files: Record<string, { bestSpeed: number; best?: unknown }[]>;
+        }
+      ).files['waltz.mscz']?.[0];
+    expect(await best(WIFE)).toEqual({ ...bit, bestSpeed: 0 });
+    await app.request(
+      `/api/pieces/${piece.id}/hard-bits/waltz.mscz`,
+      as(WIFE, send('PUT', [{ ...bit, bestSpeed: 0.35 }])),
+    );
+    expect(await best(WIFE)).toEqual({ ...bit, bestSpeed: 0.35 });
+    expect(await best(DEWI)).toEqual(bit);
+    await app.request(
+      `/api/pieces/${piece.id}/hard-bits/waltz.mscz`,
+      as(DEWI, send('PUT', [{ ...bit, bestSpeed: 0.7 }])),
+    );
+    expect(await best(WIFE)).toEqual({ ...bit, bestSpeed: 0.35 });
+    expect((await best(DEWI))?.bestSpeed).toBe(0.7);
   });
 });

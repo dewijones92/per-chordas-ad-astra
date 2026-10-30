@@ -21,6 +21,7 @@ const child = spawn(process.execPath, [join(root, 'apps', 'server', 'dist', 'ser
     COMMIT_IDLE_MS: '400',
     PUSH_RETRY_DELAYS_MS: '500',
     APP_VERSION: 'e2e',
+    OWNER_PERSON: 'dewi',
     LOG_LEVEL: 'info',
   },
 });

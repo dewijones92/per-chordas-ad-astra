@@ -2,12 +2,20 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { FileName, NewPracticeSession, Slug, type Health, type SyncStatus } from '@pcaa/shared';
+import {
+  FileName,
+  NewPracticeSession,
+  personFromEmail,
+  Slug,
+  type Health,
+  type SyncStatus,
+} from '@pcaa/shared';
 import { Hono, type Context } from 'hono';
 import { ZodError } from 'zod';
 import { isTrusted } from './http/ip.ts';
 import { serveFile } from './http/serve-file.ts';
 import type { Logger } from './log.ts';
+import { PERSON_HEADER, personOf, type Person } from './person.ts';
 import type { ResumeStore } from './store/resume-store.ts';
 import {
   InvalidDataError,
@@ -28,6 +36,7 @@ export interface AppDeps {
   log: Logger;
   version: string;
   trustedCidrs: readonly string[];
+  ownerPerson?: string;
   staticDir?: string;
   remoteAddress?: (c: Context) => string | undefined;
 }
@@ -63,7 +72,13 @@ export function createApp(deps: AppDeps): Hono {
     const started = performance.now();
     await next();
     const ms = Math.round(performance.now() - started);
-    const entry = { method: c.req.method, path: c.req.path, status: c.res.status, ms };
+    const entry = {
+      method: c.req.method,
+      path: c.req.path,
+      status: c.res.status,
+      ms,
+      person: personFromEmail(c.req.header(PERSON_HEADER)),
+    };
     if (c.res.status >= 500) log.error(entry, 'dewidebug http request');
     else if (c.req.path.startsWith('/api/')) log.info(entry, 'dewidebug http request');
     else log.debug(entry, 'dewidebug http request');
@@ -117,6 +132,8 @@ export function createApp(deps: AppDeps): Hono {
     return undefined;
   });
   const slug = (c: Context) => Slug.parse(c.req.param('id'));
+  const person = (c: Context): Person =>
+    personOf(c.req.header(PERSON_HEADER), deps.ownerPerson ?? '');
   const file = (c: Context) => FileName.parse(c.req.param('file'));
 
   api.get('/pieces', async (c) => c.json(await repo.listPieces()));
@@ -162,9 +179,9 @@ export function createApp(deps: AppDeps): Hono {
   );
 
   api.get('/pieces/:id/loops', async (c) => c.json(await repo.getLoops(slug(c))));
-  api.get('/pieces/:id/hard-bits', async (c) => c.json(await repo.getHardBits(slug(c))));
+  api.get('/pieces/:id/hard-bits', async (c) => c.json(await repo.getHardBits(slug(c), person(c))));
   api.put('/pieces/:id/hard-bits/:file', async (c) =>
-    c.json(await repo.putFileHardBits(slug(c), file(c), await c.req.json())),
+    c.json(await repo.putFileHardBits(slug(c), file(c), await c.req.json(), person(c))),
   );
   api.put('/pieces/:id/loops/:file', async (c) =>
     c.json(await repo.putTrackLoops(slug(c), file(c), await c.req.json())),
@@ -178,14 +195,16 @@ export function createApp(deps: AppDeps): Hono {
 
   api.get('/sessions', async (c) => {
     const pieceId = c.req.query('pieceId');
-    return c.json(await repo.listSessions(pieceId ? { pieceId: Slug.parse(pieceId) } : {}));
+    return c.json(
+      await repo.listSessions(pieceId ? { pieceId: Slug.parse(pieceId) } : {}, person(c)),
+    );
   });
   api.post('/sessions', async (c) =>
-    c.json(await repo.addSession(NewPracticeSession.parse(await c.req.json())), 201),
+    c.json(await repo.addSession(NewPracticeSession.parse(await c.req.json()), person(c)), 201),
   );
 
-  api.get('/resume', async (c) => c.json(await deps.resume.get()));
-  api.put('/resume', async (c) => c.json(await deps.resume.merge(await c.req.json())));
+  api.get('/resume', async (c) => c.json(await deps.resume.get(person(c))));
+  api.put('/resume', async (c) => c.json(await deps.resume.merge(await c.req.json(), person(c))));
 
   api.get('/sync', (c) => c.json(sync.status()));
   api.post('/sync/flush', async (c) => c.json(await sync.flush(c.req.query('reason') ?? 'client')));

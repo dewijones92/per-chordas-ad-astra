@@ -1,7 +1,7 @@
 ---
 title: Deployment to the Pi
 status: shipped
-updated: 2026-10-07
+updated: 2026-10-30
 ---
 
 # Deployment
@@ -17,7 +17,13 @@ See [ADR 0005](../adr/0005-ci-cd-to-the-pi.md) and [ADR 0006](../adr/0006-google
   signed-in Edge (a stroke drawn in the UI reached GitHub as its own commit about 22 s later).
 
 Container environment: `DATA_REMOTE`, `DATA_SSH_KEY_FILE`, `DATA_KNOWN_HOSTS_FILE`, `TRUSTED_CIDRS`,
-`COMMIT_IDLE_MS` (ms), `PUSH_RETRY_DELAYS_MS` (comma-separated ms), `GIT_AUTHOR_NAME/EMAIL`, `LOG_LEVEL`.
+`COMMIT_IDLE_MS` (ms), `PUSH_RETRY_DELAYS_MS` (comma-separated ms), `GIT_AUTHOR_NAME/EMAIL`, `LOG_LEVEL`,
+`OWNER_PERSON` (the owner's person key, e.g. `dewijones92`; unset = single user, ADR 0019).
+
+For more than one person (ADR 0019) the Pi's nginx block needs, in `location /`:
+`auth_request_set $pcaa_email $upstream_http_x_auth_request_email;` and
+`proxy_set_header X-Forwarded-Email $pcaa_email;` (oauth2-proxy already runs with `--set-xauthrequest`), and each
+person's email on the gate's allowlist.
 
 Uploads stream straight to disk with a running size cap (no multipart buffering): a 45 MB score peaked at
 107 MB container memory (was 291 MB), and git stores big files without delta compression (`core.bigFileThreshold=4m`).

@@ -216,6 +216,18 @@ export const Loops = z.object({
 });
 export type Loops = z.infer<typeof Loops>;
 
+export const PersonKey = z.string().regex(/^[a-z0-9][a-z0-9._-]{0,63}$/);
+export type PersonKey = z.infer<typeof PersonKey>;
+
+export function personFromEmail(email: string | undefined): PersonKey | null {
+  const local = (email ?? '').trim().toLowerCase().split('@')[0] ?? '';
+  const key = local
+    .replace(/[^a-z0-9._-]/g, '-')
+    .replace(/^[^a-z0-9]+/, '')
+    .slice(0, 64);
+  return key === '' ? null : key;
+}
+
 export const HardBit = z
   .object({
     id: z.string().min(1).max(40),
@@ -225,6 +237,7 @@ export const HardBit = z
     fromBar: z.int().min(0),
     toBar: z.int().min(0),
     bestSpeed: z.number().min(0).max(PLAY_ALONG_MAX_SPEED),
+    best: z.record(PersonKey, z.number().min(0).max(PLAY_ALONG_MAX_SPEED)).optional(),
   })
   .refine((b) => b.to >= b.from, 'A hard bit must end at or after its start');
 export type HardBit = z.infer<typeof HardBit>;
@@ -254,8 +267,9 @@ export const PracticeSession = z.object({
     .max(24 * 3600),
   bpm: z.int().min(20).max(400).nullable(),
   note: z.string().max(2000),
+  who: PersonKey.optional(),
 });
 export type PracticeSession = z.infer<typeof PracticeSession>;
 
-export const NewPracticeSession = PracticeSession.omit({ id: true });
+export const NewPracticeSession = PracticeSession.omit({ id: true, who: true });
 export type NewPracticeSession = z.infer<typeof NewPracticeSession>;

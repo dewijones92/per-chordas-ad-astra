@@ -39,6 +39,7 @@ log.info(
     remote: config.DATA_REMOTE || '(none)',
     idleMs: config.COMMIT_IDLE_MS,
     trusted: config.TRUSTED_CIDRS,
+    ownerPerson: config.OWNER_PERSON || '(single user)',
   },
   'dewidebug starting',
 );
@@ -54,6 +55,7 @@ const app = createApp({
   log,
   version: config.APP_VERSION,
   trustedCidrs: config.TRUSTED_CIDRS,
+  ownerPerson: config.OWNER_PERSON,
   ...(config.STATIC_DIR ? { staticDir: config.STATIC_DIR } : {}),
 });
 

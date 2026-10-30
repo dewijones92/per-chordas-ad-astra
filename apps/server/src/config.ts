@@ -25,6 +25,10 @@ const Env = z.object({
   TRUSTED_CIDRS: csv.default(['127.0.0.0/8', '::1/128']),
   STATIC_DIR: z.string().default(''),
   APP_VERSION: z.string().default('dev'),
+  OWNER_PERSON: z
+    .string()
+    .regex(/^([a-z0-9][a-z0-9._-]{0,63})?$/)
+    .default(''),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
 

@@ -2,7 +2,7 @@
 title: The Pi's Google gate is the only authentication
 status: accepted
 date: 2026-10-07
-updated: 2026-10-07
+updated: 2026-10-30
 ---
 
 # 0006 · The Google gate is the auth
@@ -18,3 +18,5 @@ the nginx network `172.21.0.0/16` on the Pi) and publishes no host port.
 
 - One Google login covers the app and every other tile.
 - The gate must be verified by the response BODY: a gated vhost returns the sign-in page with a 200.
+- Since 30 Oct 2026 the gate also says who is signed in: nginx passes oauth2-proxy's email as
+  `X-Forwarded-Email`, which the app trusts for the same reason it trusts the network (ADR 0019).

@@ -25,6 +25,8 @@ reversal).
 | Play-along              | Our own MuseScore 2–4 and MusicXML reader, MuseScore's repeat tests as the oracle, Salamander piano samples, canvas falling notes                      | [0014](docs/adr/0014-play-along-own-parser.md)            |
 | Notation                | Verovio (LGPL, in a worker, lazy) draws MusicXML; MuseScore converted by `to-musicxml.ts`; our play order drives the highlight                         | [0015](docs/adr/0015-notation-with-verovio.md)            |
 | Preferences             | Metronome settings in the data repo (`settings.json`); zoom per score, page layout and library sort in the resume state                                | [0013](docs/adr/0013-where-preferences-live.md)           |
+| Piano hands             | Guitar scores played on piano: the app splits notes between the hands (By part / By hand), ringing tails, a grand staff from the split                 | [0018](docs/adr/0018-piano-hands-for-guitar-scores.md)    |
+| People                  | The gate's email says who; resume state, play-along settings, practice log and best speeds per person; `OWNER_PERSON` keeps old data the owner's       | [0019](docs/adr/0019-people-behind-the-gate.md)           |
 | Look                    | Bold and playful, light theme only: white background, indigo/coral/sun/teal, sticker-style buttons                                                     | Dewi's choice                                             |
 | Devices                 | Laptop/desktop first (mouse and trackpad drawing, keyboard shortcuts)                                                                                  | Dewi's choice                                             |
 
