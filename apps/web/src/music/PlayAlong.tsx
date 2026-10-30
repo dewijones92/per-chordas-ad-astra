@@ -487,7 +487,7 @@ export function PlayAlong({
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [player, perf, playing]);
+  }, [player, perf, playing, prefs.position]);
 
   const toggle = useCallback(() => {
     if (!player) return;

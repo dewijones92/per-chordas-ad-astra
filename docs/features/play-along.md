@@ -45,6 +45,8 @@ keyboard from above, like the bird's-eye piano videos.
   rings, and its key lights only for the strike, so a guitar's let-ring notes no longer look like keys to hold
   down (catch them with the pedal). With tails on, the hand split counts a key as released after its strike,
   which frees the hands further. Remembered per file.
+- **Stepping while paused**: `,` / `.`, a bar click or a scrub while paused moves the 📍 Bar readout, the bar
+  strip and the notation with the notes (they used to wait until Play).
 - **Sound**: a sampled grand piano (Salamander, CC BY 3.0, credited in the section), 30 notes in minor
   thirds at three loudnesses, about 3 MB, loaded on the first Play. Dynamics in the file set the loudness.
 - **Local time signatures** (one staff showing, say, 18/16 stretched over another's 3/4, as in Goldberg

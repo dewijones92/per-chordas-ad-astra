@@ -639,6 +639,18 @@ test('by hand splits a guitar-style score so the hands never cross, and lets one
   ).toBeVisible();
 });
 
+test('stepping bars while paused moves the bar readout with the notes', async ({ page }) => {
+  await createPiece(page, 'Paused Steps', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await expect(page.getByTestId('playalong-position')).toContainText('Bar 1 ');
+  await page.keyboard.press('.');
+  await expect.poll(() => position(page)).toBeGreaterThan(1);
+  await expect(page.getByTestId('playalong-position')).toContainText('Bar 2 ');
+  await page.keyboard.press(',');
+  await expect(page.getByTestId('playalong-position')).toContainText('Bar 1 ');
+});
+
 test('ringing tails let go of the keys after the strike while the notes still ring, and are remembered', async ({
   page,
 }) => {
