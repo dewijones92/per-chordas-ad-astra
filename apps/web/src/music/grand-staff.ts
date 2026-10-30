@@ -30,39 +30,54 @@ export function scoreHands(
 export function grandStaff(score: ScoreModel, hands: ReadonlyMap<string, Hand>): ScoreModel {
   const notation = score.notation;
   if (!notation) return score;
-  const voices = new Map<string, number>();
-  const voiceFor = (staff: number, sourceStaff: number, sourceVoice: number): number => {
-    const key = `${String(staff)}:${String(sourceStaff)}:${String(sourceVoice)}`;
-    let voice = voices.get(key);
-    if (voice === undefined) {
-      voice = Math.min(
-        3,
-        [...voices.keys()].filter((k) => k.startsWith(`${String(staff)}:`)).length,
-      );
-      voices.set(key, voice);
-    }
-    return voice;
-  };
   const handOf = (e: NotationEvent, pitch: number): Hand =>
     hands.get(noteKey(e.staff, pitch, e.tick)) ?? (pitch < MIDDLE_C ? 'left' : 'right');
 
   const events: NotationEvent[] = [];
+  const groups = new Map<string, NotationEvent[]>();
   for (const e of notation.events) {
     if (e.rest) continue;
     for (const hand of ['right', 'left'] as const) {
       const notes = e.notes.filter((n) => handOf(e, n.pitch) === hand);
       if (notes.length === 0) continue;
       const staff = HAND_STAFF[hand];
-      events.push({
+      const split: NotationEvent = {
         ...e,
         staff,
-        voice: voiceFor(staff, e.staff, e.voice),
+        voice: 0,
         tuplet: e.tuplet ? { ...e.tuplet, start: false, stop: false } : null,
         tupletKey: e.tupletKey ? `${String(staff)}:${e.tupletKey}` : null,
         notes,
-      });
+      };
+      events.push(split);
+      const key = `${String(e.measure)}|${String(staff)}|${String(e.staff)}:${String(e.voice)}`;
+      groups.set(key, [...(groups.get(key) ?? []), split]);
     }
   }
+
+  const lanes = new Map<string, [number, number][][]>();
+  let crowded = 0;
+  for (const [key, group] of groups) {
+    const laneKey = key.split('|').slice(0, 2).join('|');
+    const voices = lanes.get(laneKey) ?? [];
+    const spans = group
+      .filter((e) => !e.grace)
+      .map((e): [number, number] => [e.tick, e.tick + e.ticks]);
+    const fits = (taken: [number, number][]) =>
+      spans.every(([a, b]) => taken.every(([c, d]) => b <= c || a >= d));
+    let voice = voices.findIndex(fits);
+    if (voice === -1) {
+      voice = voices.length;
+      voices.push([]);
+    }
+    if (voice > 3) crowded += 1;
+    voices[voice]?.push(...spans);
+    lanes.set(laneKey, voices);
+    for (const e of group) e.voice = voice;
+  }
+  if (crowded > 0)
+    console.warn('dewidebug grand staff: more than four voices in a bar', { crowded });
+
   for (const m of score.measures) {
     for (const staff of [0, 1]) {
       if (events.some((e) => e.staff === staff && e.measure === m.index)) continue;

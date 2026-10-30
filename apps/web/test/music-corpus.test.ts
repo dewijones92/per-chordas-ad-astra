@@ -7,9 +7,12 @@ import { buildPerformance } from '../src/music/performance.ts';
 import { toMusicXml, tpcOf } from '../src/music/to-musicxml.ts';
 import { transposeMusicXml } from '../src/music/export.ts';
 import { transposeFifths } from '../src/music/keys.ts';
+import { assignHands } from '../src/music/hands.ts';
+import { grandStaff, scoreHands } from '../src/music/grand-staff.ts';
 
 const corpus = process.env['MUSIC_CORPUS'];
 const KNOWN_DIFFERENCES = new Set(['repeat52.mscx', 'repeat53.mscx']);
+const CROSS_STAFF_TIES: Readonly<Record<string, number>> = { 'goldberg.mscz': 3 };
 
 describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
   const dir = corpus ?? '';
@@ -72,6 +75,41 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
           .sort(),
       });
       expect(shape(back)).toEqual(shape(direct));
+    },
+  );
+
+  it.each(files.filter((f) => /\.msc[zx]$/.test(f)))(
+    '%s redrawn by hand as a grand staff keeps every note, two staves, and never crosses the hands',
+    (name) => {
+      const score = loadScore(readFileSync(join(dir, 'dl', name)));
+      const direct = buildPerformance(score);
+      const hands = assignHands(direct.notes);
+      const grand = grandStaff(score, scoreHands(score.notes, hands));
+      if (!grand.notation) throw new Error('no notation');
+      const back = buildPerformance(parseScoreText(toMusicXml(grand, grand.notation)));
+      const notes = (p: typeof direct) =>
+        p.notes
+          .filter((n) => !n.grace)
+          .map((n) => `${String(n.pitch)}@${n.start.toFixed(3)}`)
+          .sort();
+      expect(back.staves).toHaveLength(2);
+      const counts = new Map<string, number>();
+      for (const k of notes(direct)) counts.set(k, (counts.get(k) ?? 0) + 1);
+      for (const k of notes(back)) counts.set(k, (counts.get(k) ?? 0) - 1);
+      const differing = [...counts]
+        .filter(([, c]) => c !== 0)
+        .reduce((a, [, c]) => a + Math.abs(c), 0);
+      expect(differing).toBe(CROSS_STAFF_TIES[name] ?? 0);
+      const byStart = new Map<string, { left: number; right: number }>();
+      for (const n of direct.notes) {
+        const at = n.start.toFixed(2);
+        const seen = byStart.get(at) ?? { left: -Infinity, right: Infinity };
+        if (hands.get(n) === 'left') seen.left = Math.max(seen.left, n.pitch);
+        else seen.right = Math.min(seen.right, n.pitch);
+        byStart.set(at, seen);
+      }
+      const crossed = [...byStart].filter(([, s]) => s.left >= s.right).map(([at]) => at);
+      expect(crossed).toEqual([]);
     },
   );
 

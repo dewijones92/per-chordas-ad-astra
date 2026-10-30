@@ -41,7 +41,7 @@ in this batch.
   choice, not a MIDI CC64 event.
 - **The notation follows the split as a grand staff.** By hand, a MuseScore file's notation is rebuilt as one
   piano part (`music/grand-staff.ts`): each chord's notes go to the treble staff (right hand) or the bass staff
-  (left hand), each source voice keeps its own voice on its new staff, rests are left to the gaps (a staff with
+  (left hand), each source voice is packed bar by bar into the first voice on its new staff that it does not overlap in time, rests are left to the gaps (a staff with
   nothing in a bar gets a bar rest), tied notes stay in the hand that struck them, and the clefs become plain
   treble and bass, so the guitar's octave clef goes. Performance notes now carry their `source` score note, which
   is how a played note's hand reaches the written note (its first playing decides, for repeats). Highlighting
