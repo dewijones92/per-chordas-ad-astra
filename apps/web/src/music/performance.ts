@@ -132,19 +132,19 @@ export function buildPerformance(score: ScoreModel): Performance {
 
   rawNotes.sort((a, b) => a.startTick - b.startTick || a.pitch - b.pitch);
   const merged: typeof rawNotes = [];
-  const openTies = new Map<string, (typeof rawNotes)[number]>();
+  const openTies = new Map<string, (typeof rawNotes)[number][]>();
   for (const n of rawNotes) {
     const key = `${String(n.staff)}:${String(n.pitch)}`;
-    const held = openTies.get(key);
-    if (held && Math.abs(held.endTick - n.startTick) < 1) {
+    const open = (openTies.get(key) ?? []).filter((h) => h.endTick >= n.startTick - 1);
+    const held = open.find((h) => Math.abs(h.endTick - n.startTick) < 1);
+    if (held) {
       held.endTick = Math.max(held.endTick, n.endTick);
       held.tie = n.tie;
-      if (!n.tie) openTies.delete(key);
+      openTies.set(key, n.tie ? open : open.filter((h) => h !== held));
       continue;
     }
-    if (held) openTies.delete(key);
     merged.push(n);
-    if (n.tie) openTies.set(key, n);
+    openTies.set(key, n.tie ? [...open, n] : open);
   }
 
   const segments: TempoSegment[] = [];

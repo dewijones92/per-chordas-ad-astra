@@ -376,6 +376,25 @@ describe('local time signatures', () => {
   });
 });
 
+describe('ties', () => {
+  it('joins a tied note across the barline even when another voice on the staff plays the same pitch', () => {
+    const d3 = (dur: number, type: string, voice: number, tie: string) =>
+      `<note><pitch><step>D</step><octave>3</octave></pitch><duration>${String(dur)}</duration>${tie}<voice>${String(voice)}</voice><type>${type}</type></note>`;
+    const rest = (dur: number, voice: number) =>
+      `<note><rest/><duration>${String(dur)}</duration><voice>${String(voice)}</voice></note>`;
+    const xml = `<?xml version="1.0"?><score-partwise version="3.1"><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1">
+<measure number="1"><attributes><divisions>1</divisions><time><beats>3</beats><beat-type>4</beat-type></time></attributes>${d3(3, 'half', 1, '<tie type="start"/>')}<backup><duration>3</duration></backup>${d3(1, 'quarter', 2, '')}${rest(2, 2)}</measure>
+<measure number="2">${d3(1, 'quarter', 1, '<tie type="stop"/>')}${rest(2, 1)}</measure></part></score-partwise>`;
+    const perf = buildPerformance(parseScoreText(xml));
+    expect(
+      perf.notes.map((n) => [n.pitch, round(n.start), round(n.end)]).sort((a, b) => a[2]! - b[2]!),
+    ).toEqual([
+      [50, 0, 0.5],
+      [50, 0, 2],
+    ]);
+  });
+});
+
 describe('instrument', () => {
   it('assumes piano unless a part is a guitar', () => {
     const waltz = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
