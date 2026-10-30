@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { assignHands, type Hand } from '../src/music/hands.ts';
 import type { PerfNote } from '../src/music/performance.ts';
+import { keyUpAt, STRIKE_SECONDS } from '../src/music/falling.ts';
 
 const note = (pitch: number, start: number, end: number, staff = 0): PerfNote => ({
   pitch,
@@ -12,10 +13,14 @@ const note = (pitch: number, start: number, end: number, staff = 0): PerfNote =>
   grace: false,
 });
 
-function crossings(notes: readonly PerfNote[], hands: Map<PerfNote, Hand>): string[] {
+function crossings(
+  notes: readonly PerfNote[],
+  hands: Map<PerfNote, Hand>,
+  keyUp: (n: PerfNote) => number = (n) => n.end,
+): string[] {
   const found: string[] = [];
   for (const at of new Set(notes.map((n) => n.start))) {
-    const sounding = notes.filter((n) => n.start <= at + 1e-6 && n.end > at + 0.01);
+    const sounding = notes.filter((n) => n.start <= at + 1e-6 && keyUp(n) > at + 0.01);
     const left = sounding.filter((n) => hands.get(n) === 'left').map((n) => n.pitch);
     const right = sounding.filter((n) => hands.get(n) === 'right').map((n) => n.pitch);
     if (left.length > 0 && right.length > 0 && Math.max(...left) >= Math.min(...right))
@@ -66,5 +71,20 @@ describe('hand split', () => {
     const hands = assignHands(notes);
     expect(hands.size).toBe(notes.length);
     expect(crossings(notes, hands)).toEqual([]);
+  });
+
+  it('with ringing tails, lets go of a key after the strike, so held notes stop boxing a hand in', () => {
+    const long = note(60, 0, 3);
+    const short = note(60, 0, 0.1);
+    expect(keyUpAt(long, false)).toBe(3);
+    expect(keyUpAt(long, true)).toBe(STRIKE_SECONDS);
+    expect(keyUpAt(short, true)).toBe(0.1);
+    const outer = [note(55, 0, 3), note(67, 0, 3)];
+    const inner = [note(60, 1, 2), note(64, 1, 2)];
+    const notes = [...outer, ...inner];
+    const keyUp = (n: PerfNote) => keyUpAt(n, true);
+    const hands = assignHands(notes, keyUp);
+    expect(crossings(notes, hands, keyUp)).toEqual([]);
+    expect(crossings(notes, assignHands(notes))).toEqual([]);
   });
 });

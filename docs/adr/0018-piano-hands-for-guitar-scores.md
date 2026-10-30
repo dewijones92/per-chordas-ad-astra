@@ -35,6 +35,10 @@ in this batch.
   Piano and the score has no two-handed staff of its own (a real piano score keeps its RH/LH staves), and off
   otherwise. I play on starts as Guitar when a part's name says guitar. Both, and the hands' own hide and mute
   lists, live in the play-along preferences, so they are remembered per file and will be per person.
+- **🔔 Ringing tails** (a switch, off to start with) draw each note as a 0.2 s strike plus a thin tail while it
+  rings, light the key only for the strike, and tell the hand split that the key is released after the strike
+  (`keyUpAt`), since the pedal holds the sound. There is no pedal data in these files, so this is a reading
+  choice, not a MIDI CC64 event.
 
 ## Consequences
 

@@ -23,7 +23,8 @@ keyboard from above, like the bird's-eye piano videos.
   files are converted to MusicXML for this; MusicXML files are drawn as they are.
 - **Notation zoom** (🔍 −/+ in the strip's corner, or `Ctrl`+scroll / pinch over it): 40–250%, about 11 bars
   across at 100% and about 4 at 250%; the strip grows taller to fit. Remembered per music file on every device.
-- **✏️ Draw** on the notation: pauses, gives the strip most of the pane, shows the same drawing toolbar and
+- **✏️ Draw** on the notation: pauses, gives the strip most of the pane (the settings rows hide until ✅ Done, so
+  the strip stays big in the narrow side-by-side view), shows the same drawing toolbar and
   keys as on PDFs (pen, highlighter, eraser, text, shapes, stamps, undo/redo) and raises the zoom to at least
   150%. Scroll sideways to any bar and draw; **✅ Done** shrinks it back, and the marks scroll with the music
   while you play. Marks are pinned to bars, so they stay on the right notes when you transpose or zoom.
@@ -40,6 +41,10 @@ keyboard from above, like the bird's-eye piano videos.
   so a guitar score played on piano never asks one hand to sit inside the other (Gran Vals bar 17). The lanes
   become 🫱 Right hand and 🫲 Left hand, each with its own hide and mute, and the switch does not stop the music.
   It starts on for a piece you play on piano that has no two-handed staff of its own, and is remembered per file.
+- **🔔 Ringing tails**: each note is drawn as a short strike (0.2 s) with a thin, paler tail for as long as it
+  rings, and its key lights only for the strike, so a guitar's let-ring notes no longer look like keys to hold
+  down (catch them with the pedal). With tails on, the hand split counts a key as released after its strike,
+  which frees the hands further. Remembered per file.
 - **Sound**: a sampled grand piano (Salamander, CC BY 3.0, credited in the section), 30 notes in minor
   thirds at three loudnesses, about 3 MB, loaded on the first Play. Dynamics in the file set the loudness.
 - **Local time signatures** (one staff showing, say, 18/16 stretched over another's 3/4, as in Goldberg

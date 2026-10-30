@@ -52,7 +52,12 @@ function mean(pitches: readonly number[]): number | null {
   return pitches.length === 0 ? null : pitches.reduce((a, b) => a + b, 0) / pitches.length;
 }
 
-function step(state: State, group: readonly PerfNote[], split: number): State {
+function step(
+  state: State,
+  group: readonly PerfNote[],
+  split: number,
+  keyUp: (n: PerfNote) => number,
+): State {
   const at = group[0]?.start ?? 0;
   const held = state.held.filter((h) => h.end > at + RELEASE_SECONDS);
   const left = group.slice(0, split).map((n) => n.pitch);
@@ -78,7 +83,7 @@ function step(state: State, group: readonly PerfNote[], split: number): State {
       ...held,
       ...group.map((n, i): Held => ({
         pitch: n.pitch,
-        end: n.end,
+        end: keyUp(n),
         hand: i < split ? 'left' : 'right',
       })),
     ],
@@ -88,7 +93,10 @@ function step(state: State, group: readonly PerfNote[], split: number): State {
   };
 }
 
-export function assignHands(notes: readonly PerfNote[]): Map<PerfNote, Hand> {
+export function assignHands(
+  notes: readonly PerfNote[],
+  keyUp: (n: PerfNote) => number = (n) => n.end,
+): Map<PerfNote, Hand> {
   const started = performance.now();
   const groups = onsetGroups(notes);
   let beam: State[] = [
@@ -97,7 +105,8 @@ export function assignHands(notes: readonly PerfNote[]): Map<PerfNote, Hand> {
   for (const group of groups) {
     const next: State[] = [];
     for (const state of beam)
-      for (let split = 0; split <= group.length; split++) next.push(step(state, group, split));
+      for (let split = 0; split <= group.length; split++)
+        next.push(step(state, group, split, keyUp));
     next.sort((a, b) => a.cost - b.cost);
     beam = next.slice(0, BEAM);
   }

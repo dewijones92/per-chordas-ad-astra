@@ -638,3 +638,32 @@ test('by hand splits a guitar-style score so the hands never cross, and lets one
     page.getByRole('button', { name: `Show ${tips.playAlong.handNames.left}` }),
   ).toBeVisible();
 });
+
+test('ringing tails let go of the keys after the strike while the notes still ring, and are remembered', async ({
+  page,
+}) => {
+  const pressed = async () =>
+    ((await page.getByTestId('playalong-canvas').getAttribute('data-pressed')) ?? '')
+      .split(' ')
+      .filter(Boolean)
+      .map((pair) => pair.split(':')[0])
+      .sort();
+  await createPiece(page, 'Tails Study', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles({
+    name: 'Guitar Style.mscz',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from(zipScore('guitar.mscx', makeMscx(GUITAR_STYLE_WALTZ, '4.50'))),
+  });
+  const canvas = page.getByTestId('playalong-canvas');
+  await expect(canvas).toBeVisible();
+  await expect.poll(pressed).toEqual(['48', '55', '67']);
+  await canvas.hover();
+  for (let i = 0; i < 40 && (await position(page)) < 0.28; i++) await page.mouse.wheel(0, -8);
+  expect(await position(page)).toBeGreaterThan(0.25);
+  expect(await position(page)).toBeLessThan(0.45);
+  await expect.poll(pressed).toEqual(['48', '55', '67']);
+  await page.getByTestId('playalong-tails').check();
+  await expect.poll(pressed).toEqual([]);
+  await page.reload();
+  await expect(page.getByTestId('playalong-tails')).toBeChecked();
+});

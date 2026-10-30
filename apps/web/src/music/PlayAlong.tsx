@@ -28,7 +28,7 @@ import { PercentInput } from '../ui/PercentInput.tsx';
 import { rememberPlayAlong, savedPlayAlong, scoreKey } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
 import { staffColours } from './colours.ts';
-import { drawFalling, geometry } from './falling.ts';
+import { drawFalling, geometry, keyUpAt } from './falling.ts';
 import { capoFor, fitRange, keyName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip } from './BarStrip.tsx';
 import { parseScoreText, unpackScore } from './load.ts';
@@ -167,6 +167,7 @@ function FallingCanvas({
         muted,
         colours,
         laneOf: lanes.laneOf,
+        tails: prefs.tails,
         loop,
         names,
         width: size.width,
@@ -192,6 +193,7 @@ function FallingCanvas({
     muted,
     colours,
     lanes,
+    prefs.tails,
     loop,
     names,
     size,
@@ -304,7 +306,12 @@ export function PlayAlong({
     (perf !== undefined &&
       (prefs.playOn ?? instrumentFor(perf.staves)) === 'piano' &&
       !perf.staves.some((s) => s.role === 'left'));
-  const hands = useMemo(() => (perf && byHand ? assignHands(perf.notes) : null), [perf, byHand]);
+  const tails = prefs.tails;
+  const hands = useMemo(
+    () =>
+      perf && byHand ? assignHands(perf.notes, tails ? (n) => keyUpAt(n, true) : undefined) : null,
+    [perf, byHand, tails],
+  );
   const lanes = useMemo(
     () =>
       hands
@@ -680,7 +687,7 @@ export function PlayAlong({
           />
         </span>
       </div>
-      <div className="playalong-bar">
+      <div className="playalong-bar playalong-settings">
         <span className="playalong-field" data-testid="playalong-transpose">
           <span>{strings.playAlong.key}</span>
           <button
@@ -978,10 +985,22 @@ export function PlayAlong({
           />
           {strings.playAlong.noteNames}
         </label>
+        <label className="playalong-field" title={tips.playAlong.tails}>
+          <input
+            type="checkbox"
+            checked={prefs.tails}
+            data-testid="playalong-tails"
+            onChange={(e) => {
+              const tails = e.target.checked;
+              updatePrefs((p) => ({ ...p, tails }));
+            }}
+          />
+          {strings.playAlong.tails}
+        </label>
         {samples && <span className="muted small-print">{samples}</span>}
       </div>
       <div
-        className="playalong-parts playalong-bits"
+        className="playalong-parts playalong-bits playalong-settings"
         aria-label={tips.playAlong.hardBits}
         data-testid="hard-bits"
       >
@@ -1072,7 +1091,7 @@ export function PlayAlong({
             </button>
           )}
       </div>
-      <div className="playalong-parts" aria-label={tips.playAlong.parts}>
+      <div className="playalong-parts playalong-settings" aria-label={tips.playAlong.parts}>
         <Choice
           label={strings.playAlong.colourBy}
           title={tips.playAlong.colourBy}

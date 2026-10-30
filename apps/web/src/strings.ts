@@ -127,6 +127,7 @@ export const strings = {
     colourBy: '🎨 Colours',
     byPart: '🎼 By part',
     byHand: '🖐️ By hand',
+    tails: '🔔 Ringing tails',
     handNames: { right: '🫱 Right hand', left: '🫲 Left hand' },
     instruments: { piano: '🎹 Piano', guitar: '🎸 Guitar' },
     notation: '🎼 Notation',
@@ -329,6 +330,8 @@ export const tips = {
     colourBy:
       'By part follows the file; by hand splits the notes between your hands so they never cross',
     handNames: { right: 'right hand', left: 'left hand' },
+    tails:
+      'Draw each note as a short strike with a thin tail while it rings, so long notes do not look like keys to hold down; catch them with the pedal',
     halfBeats: 'A softer click between the beats too (three per beat in 6/8), at the same tempo',
     hardBits: 'Hard bits',
     hardBit: (from: number, to: number) => `Loop bars ${String(from)}–${String(to)}`,

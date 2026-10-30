@@ -6,6 +6,11 @@ import type { PerfNote, Performance } from './performance.ts';
 export const LOOKAHEAD_SECONDS = 3;
 export const KEYBOARD_SHARE = 0.2;
 export const MAX_KEYBOARD_HEIGHT = 130;
+export const STRIKE_SECONDS = 0.2;
+
+export function keyUpAt(n: PerfNote, tails: boolean): number {
+  return tails ? Math.min(n.end, n.start + STRIKE_SECONDS) : n.end;
+}
 
 export interface FallingView {
   perf: Performance;
@@ -16,6 +21,7 @@ export interface FallingView {
   muted: ReadonlySet<number>;
   colours: readonly StaffColour[];
   laneOf: (n: PerfNote) => number;
+  tails: boolean;
   loop: { start: number; end: number } | null;
   names: { flats: boolean } | null;
   width: number;
@@ -161,13 +167,27 @@ export function drawFalling(
     if (!key) continue;
     const colour = view.colours[view.laneOf(n)];
     if (!colour) continue;
-    const yTop = yOf(n.end);
+    const keyUp = keyUpAt(n, view.tails);
+    const yTop = yOf(keyUp);
     const yBottom = yOf(n.start);
     const h = Math.max(4, yBottom - yTop - 1);
     const x = key.x + 1;
     const w = Math.max(3, key.width - 2);
-    const sounding = n.start <= position && n.end > position;
-    ctx.globalAlpha = view.muted.has(view.laneOf(n)) ? 0.35 : 1;
+    const sounding = n.start <= position && keyUp > position;
+    const alpha = view.muted.has(view.laneOf(n)) ? 0.35 : 1;
+    if (keyUp < n.end) {
+      const tailTop = yOf(n.end);
+      const tailWidth = Math.max(2, Math.min(4, w / 4));
+      ctx.globalAlpha = alpha * 0.55;
+      ctx.fillStyle = colour.fill;
+      ctx.fillRect(
+        x + w / 2 - tailWidth / 2,
+        tailTop,
+        tailWidth,
+        Math.max(0, yBottom - h - tailTop),
+      );
+    }
+    ctx.globalAlpha = alpha;
     roundRect(ctx, x, yBottom - h, w, h, Math.min(6, w / 3));
     ctx.fillStyle = sounding ? colour.edge : colour.fill;
     ctx.fill();
@@ -191,7 +211,7 @@ export function drawFalling(
 
   const pressed = new Map<number, string>();
   for (const n of soundingAt(perf.notes, position, longest)) {
-    if (view.hidden.has(view.laneOf(n))) continue;
+    if (view.hidden.has(view.laneOf(n)) || keyUpAt(n, view.tails) <= position) continue;
     const colour = view.colours[view.laneOf(n)];
     if (colour) pressed.set(n.pitch + transpose, colour.fill);
   }
