@@ -33,6 +33,7 @@ import { capoFor, fitRange, keyName, signedSemitones, transposeFifths } from './
 import { BarStrip } from './BarStrip.tsx';
 import { parseScoreText, unpackScore } from './load.ts';
 import { instrumentFor } from './model.ts';
+import { assignHands, handLanes, partLanes, type Lanes } from './hands.ts';
 import { DRAW_MIN_ZOOM, Notation } from './Notation.tsx';
 import { toMusicXml } from './to-musicxml.ts';
 import { download, exportName, performanceToMidi, transposeMusicXml } from './export.ts';
@@ -93,6 +94,9 @@ function FallingCanvas({
   transpose,
   prefs,
   colours,
+  lanes,
+  hiddenLanes,
+  mutedLanes,
   onScrub,
 }: {
   perf: Performance;
@@ -101,6 +105,9 @@ function FallingCanvas({
   transpose: number;
   prefs: PlayAlongPrefs;
   colours: ReturnType<typeof staffColours>;
+  lanes: Lanes;
+  hiddenLanes: readonly number[];
+  mutedLanes: readonly number[];
   onScrub: (seconds: number) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -116,12 +123,12 @@ function FallingCanvas({
     const to = perf.bars[shownLoop.to];
     return from && to ? { start: from.start, end: to.end } : null;
   }, [perf, shownLoop]);
-  const hidden = useMemo(() => new Set(prefs.hidden), [prefs.hidden]);
+  const hidden = useMemo(() => new Set(hiddenLanes), [hiddenLanes]);
   const names = useMemo(
     () => (prefs.names ? { flats: transposeFifths(perf.keyFifths, transpose) < 0 } : null),
     [prefs.names, perf.keyFifths, transpose],
   );
-  const muted = useMemo(() => new Set(prefs.muted), [prefs.muted]);
+  const muted = useMemo(() => new Set(mutedLanes), [mutedLanes]);
 
   useEffect(() => {
     const el = canvas.current?.parentElement;
@@ -151,7 +158,7 @@ function FallingCanvas({
     const draw = () => {
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       const position = player?.position() ?? prefs.position;
-      drawFalling(ctx, {
+      const pressed = drawFalling(ctx, {
         perf,
         position,
         transpose,
@@ -159,12 +166,16 @@ function FallingCanvas({
         hidden,
         muted,
         colours,
+        laneOf: lanes.laneOf,
         loop,
         names,
         width: size.width,
         height: size.height,
       });
       el.dataset['position'] = position.toFixed(3);
+      el.dataset['pressed'] = [...pressed]
+        .map(([pitch, fill]) => `${String(pitch)}:${fill}`)
+        .join(' ');
       if (playing) frame = requestAnimationFrame(draw);
     };
     draw();
@@ -180,6 +191,7 @@ function FallingCanvas({
     hidden,
     muted,
     colours,
+    lanes,
     loop,
     names,
     size,
@@ -268,7 +280,6 @@ export function PlayAlong({
   );
   const readout = useRef<HTMLSpanElement>(null);
   const transpose = music.transpose;
-  const colours = useMemo(() => (perf ? staffColours(perf.staves) : []), [perf]);
   const sourceXml = useMemo(() => {
     const data = loaded.data;
     if (!data) return null;
@@ -287,6 +298,25 @@ export function PlayAlong({
     },
     [key],
   );
+
+  const byHand =
+    prefs.byHand ??
+    (perf !== undefined &&
+      (prefs.playOn ?? instrumentFor(perf.staves)) === 'piano' &&
+      !perf.staves.some((s) => s.role === 'left'));
+  const hands = useMemo(() => (perf && byHand ? assignHands(perf.notes) : null), [perf, byHand]);
+  const lanes = useMemo(
+    () =>
+      hands
+        ? handLanes(hands, strings.playAlong.handNames, tips.playAlong.handNames)
+        : perf
+          ? partLanes(perf)
+          : null,
+    [hands, perf],
+  );
+  const colours = useMemo(() => (lanes ? staffColours(lanes.lanes) : []), [lanes]);
+  const hiddenLanes = byHand ? prefs.handHidden : prefs.hidden;
+  const mutedLanes = byHand ? prefs.handMuted : prefs.muted;
 
   const player = useMemo(() => {
     if (!perf) return null;
@@ -328,10 +358,15 @@ export function PlayAlong({
   }, [player, perf, key]);
 
   useEffect(() => {
-    if (!player || !perf) return;
-    const muted = new Set(prefs.muted);
-    player.setInclude((n) => !muted.has(n.staff));
-  }, [player, perf, prefs.muted]);
+    if (!player || !lanes) return;
+    const muted = new Set(mutedLanes);
+    console.info('dewidebug play-along lanes', {
+      byHand: lanes.byHand,
+      lanes: lanes.lanes.map((l) => l.label),
+      muted: mutedLanes,
+    });
+    player.setInclude((n) => !muted.has(lanes.laneOf(n)));
+  }, [player, lanes, mutedLanes]);
 
   const applied = activeLoop(prefs);
   const loopFrom = applied?.from ?? null;
@@ -1038,10 +1073,25 @@ export function PlayAlong({
           )}
       </div>
       <div className="playalong-parts" aria-label={tips.playAlong.parts}>
-        {perf.staves.map((s) => {
+        <Choice
+          label={strings.playAlong.colourBy}
+          title={tips.playAlong.colourBy}
+          value={byHand ? 'hands' : 'parts'}
+          options={[
+            { value: 'parts', label: strings.playAlong.byPart },
+            { value: 'hands', label: strings.playAlong.byHand },
+          ]}
+          testId="playalong-by-hand"
+          onChange={(next) => {
+            updatePrefs((p) => ({ ...p, byHand: next === 'hands' }));
+          }}
+        />
+        {(lanes?.lanes ?? []).map((s) => {
           const colour = colours[s.index];
-          const isHidden = prefs.hidden.includes(s.index);
-          const isMuted = prefs.muted.includes(s.index);
+          const isHidden = hiddenLanes.includes(s.index);
+          const isMuted = mutedLanes.includes(s.index);
+          const hiddenKey = byHand ? 'handHidden' : 'hidden';
+          const mutedKey = byHand ? 'handMuted' : 'muted';
           return (
             <span key={s.index} className="playalong-part" data-testid="playalong-part">
               <span className="playalong-swatch" style={{ background: colour?.fill }} />
@@ -1049,13 +1099,13 @@ export function PlayAlong({
               <button
                 type="button"
                 className="btn small ghost icon part-toggle"
-                aria-label={isHidden ? tips.playAlong.show(s.name) : tips.playAlong.hide(s.name)}
+                aria-label={isHidden ? tips.playAlong.show(s.label) : tips.playAlong.hide(s.label)}
                 onClick={() => {
                   updatePrefs((p) => ({
                     ...p,
-                    hidden: isHidden
-                      ? p.hidden.filter((h) => h !== s.index)
-                      : [...p.hidden, s.index],
+                    [hiddenKey]: isHidden
+                      ? p[hiddenKey].filter((h) => h !== s.index)
+                      : [...p[hiddenKey], s.index],
                   }));
                 }}
               >
@@ -1064,11 +1114,13 @@ export function PlayAlong({
               <button
                 type="button"
                 className="btn small ghost icon part-toggle"
-                aria-label={isMuted ? tips.playAlong.unmute(s.name) : tips.playAlong.mute(s.name)}
+                aria-label={isMuted ? tips.playAlong.unmute(s.label) : tips.playAlong.mute(s.label)}
                 onClick={() => {
                   updatePrefs((p) => ({
                     ...p,
-                    muted: isMuted ? p.muted.filter((m) => m !== s.index) : [...p.muted, s.index],
+                    [mutedKey]: isMuted
+                      ? p[mutedKey].filter((m) => m !== s.index)
+                      : [...p[mutedKey], s.index],
                   }));
                 }}
               >
@@ -1156,6 +1208,9 @@ export function PlayAlong({
         transpose={transpose}
         prefs={prefs}
         colours={colours}
+        lanes={lanes ?? partLanes(perf)}
+        hiddenLanes={hiddenLanes}
+        mutedLanes={mutedLanes}
         onScrub={seekTo}
       />
     </section>

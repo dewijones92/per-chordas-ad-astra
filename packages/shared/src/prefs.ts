@@ -76,6 +76,9 @@ export const PlayAlongPrefs = z.object({
   click: z.boolean().default(false),
   halfBeats: z.boolean().default(false),
   playOn: Instrument.nullable().default(null),
+  byHand: z.boolean().nullable().default(null),
+  handHidden: z.array(z.int().min(0).max(1)).max(2).default([]),
+  handMuted: z.array(z.int().min(0).max(1)).max(2).default([]),
 });
 export type PlayAlongPrefs = z.output<typeof PlayAlongPrefs>;
 export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
@@ -95,6 +98,9 @@ export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
   click: false,
   halfBeats: false,
   playOn: null,
+  byHand: null,
+  handHidden: [],
+  handMuted: [],
 };
 
 export const VIEW_MODES = ['page', 'spread', 'width'] as const;

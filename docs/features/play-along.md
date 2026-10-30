@@ -36,6 +36,10 @@ keyboard from above, like the bird's-eye piano videos.
   flat keys, sharps in sharp keys), following any transposition. Remembered per file.
 - **Parts**: each staff can be hidden (👁, still heard) or muted (🔊, still shown) on its own, to practise one
   hand while the other plays.
+- **🎨 Colours: 🎼 By part / 🖐️ By hand** (ADR 0018): by hand, the app works out which hand plays each note,
+  so a guitar score played on piano never asks one hand to sit inside the other (Gran Vals bar 17). The lanes
+  become 🫱 Right hand and 🫲 Left hand, each with its own hide and mute, and the switch does not stop the music.
+  It starts on for a piece you play on piano that has no two-handed staff of its own, and is remembered per file.
 - **Sound**: a sampled grand piano (Salamander, CC BY 3.0, credited in the section), 30 notes in minor
   thirds at three loudnesses, about 3 MB, loaded on the first Play. Dynamics in the file set the loudness.
 - **Local time signatures** (one staff showing, say, 18/16 stretched over another's 3/4, as in Goldberg

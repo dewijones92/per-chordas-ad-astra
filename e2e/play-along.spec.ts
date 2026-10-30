@@ -1,5 +1,11 @@
 import { readFileSync } from 'node:fs';
-import { makeMscx, makeMusicXml, PIANO_WALTZ, zipScore } from '../packages/fixtures/src/index.ts';
+import {
+  GUITAR_STYLE_WALTZ,
+  makeMscx,
+  makeMusicXml,
+  PIANO_WALTZ,
+  zipScore,
+} from '../packages/fixtures/src/index.ts';
 import { expect, test, type Page } from '@playwright/test';
 import { createPiece, eventuallyInRemote, openLibrary, remoteLog } from './support/helpers.ts';
 import { strings, tips } from '../apps/web/src/strings.ts';
@@ -584,4 +590,51 @@ test('a file that is not music says why', async ({ page }) => {
   await expect(page.getByTestId('playalong-error')).toContainText(
     'Not a MuseScore or MusicXML file',
   );
+});
+
+test('by hand splits a guitar-style score so the hands never cross, and lets one hand be hidden', async ({
+  page,
+}) => {
+  const pressed = async () =>
+    Object.fromEntries(
+      ((await page.getByTestId('playalong-canvas').getAttribute('data-pressed')) ?? '')
+        .split(' ')
+        .filter(Boolean)
+        .map((pair) => pair.split(':')),
+    ) as Record<string, string>;
+  const choice = page.getByTestId('playalong-by-hand');
+  await createPiece(page, 'Hands Study', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles({
+    name: 'Guitar Style.mscz',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from(zipScore('guitar.mscx', makeMscx(GUITAR_STYLE_WALTZ, '4.50'))),
+  });
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await expect(choice.locator('[aria-pressed="true"]')).toHaveText(strings.playAlong.byHand);
+  await expect(page.getByTestId('playalong-part')).toHaveText([
+    new RegExp(strings.playAlong.handNames.right),
+    new RegExp(strings.playAlong.handNames.left),
+  ]);
+  const left = '#13b9a6';
+  const right = '#6d3df2';
+  await expect.poll(pressed).toEqual({ '48': left, '55': left, '67': right });
+
+  await choice.getByRole('button', { name: strings.playAlong.byPart }).click();
+  await expect(page.getByTestId('playalong-part')).toHaveCount(2);
+  await expect
+    .poll(async () => {
+      const p = await pressed();
+      return p['55'] === p['67'] && p['48'] !== p['55'];
+    })
+    .toBe(true);
+
+  await choice.getByRole('button', { name: strings.playAlong.byHand }).click();
+  await page.getByRole('button', { name: `Hide ${tips.playAlong.handNames.left}` }).click();
+  await expect.poll(pressed).toEqual({ '67': right });
+
+  await page.reload();
+  await expect(choice.locator('[aria-pressed="true"]')).toHaveText(strings.playAlong.byHand);
+  await expect(
+    page.getByRole('button', { name: `Show ${tips.playAlong.handNames.left}` }),
+  ).toBeVisible();
 });

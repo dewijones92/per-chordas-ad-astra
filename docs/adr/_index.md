@@ -1,6 +1,6 @@
 ---
 title: Architecture decision records
-updated: 2026-10-24
+updated: 2026-10-30
 ---
 
 # ADRs
@@ -23,6 +23,7 @@ updated: 2026-10-24
 | [0015](0015-notation-with-verovio.md)                       | Notation with Verovio, fed MusicXML, following our own play order                   | accepted           |
 | [0016](0016-drawing-on-the-notation-by-bar.md)              | Drawing on the notation: the PDF's tools, marks pinned to bars, one notation zoom   | accepted           |
 | [0017](0017-every-ui-string-in-strings-ts-with-an-emoji.md) | Every UI string in strings.ts; visible text starts with an emoji, checked by a test | accepted           |
+| [0018](0018-piano-hands-for-guitar-scores.md)               | Piano hands for guitar scores: an automatic split, By part / By hand                | accepted           |
 | [0012](0012-library-sort-facts.md)                          | Library sorts read recorded facts (edited, opened, pinned)                          | accepted           |
 
 Format: `NNNN-title.md` with frontmatter (`status`, `date`, `updated`). Change a decision by updating

@@ -340,3 +340,26 @@ export const PIANO_WALTZ: FixtureScore = {
     },
   ],
 };
+
+export const GUITAR_STYLE_WALTZ: FixtureScore = {
+  title: 'Guitar Style Waltz',
+  tempo: 120,
+  time: [3, 4],
+  fifths: 0,
+  parts: [
+    { name: 'Piano', staves: 1 },
+    { name: 'Piano', staves: 1 },
+  ],
+  measures: [
+    {
+      staves: [
+        [{ pitches: [55, 67], dur: 'half', dots: 1 }],
+        [
+          { pitches: [48], dur: 'quarter' },
+          { pitches: [60, 64], dur: 'quarter' },
+          { pitches: [60, 64], dur: 'quarter' },
+        ],
+      ],
+    },
+  ],
+};

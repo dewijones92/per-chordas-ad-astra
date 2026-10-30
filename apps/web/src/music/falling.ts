@@ -15,6 +15,7 @@ export interface FallingView {
   hidden: ReadonlySet<number>;
   muted: ReadonlySet<number>;
   colours: readonly StaffColour[];
+  laneOf: (n: PerfNote) => number;
   loop: { start: number; end: number } | null;
   names: { flats: boolean } | null;
   width: number;
@@ -102,7 +103,10 @@ function roundRect(
   ctx.roundRect(x, y, w, h, radius);
 }
 
-export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): void {
+export function drawFalling(
+  ctx: CanvasRenderingContext2D,
+  view: FallingView,
+): ReadonlyMap<number, string> {
   const { width, height, perf, position, transpose, range } = view;
   const g = geometry(view);
   const { layout, notesHeight, pxPerSecond } = g;
@@ -152,10 +156,10 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): v
 
   const notes = visibleNotes(perf.notes, position, top, longest);
   for (const n of notes) {
-    if (view.hidden.has(n.staff)) continue;
+    if (view.hidden.has(view.laneOf(n))) continue;
     const key = keyForPitch(layout, n.pitch + transpose, range);
     if (!key) continue;
-    const colour = view.colours[n.staff];
+    const colour = view.colours[view.laneOf(n)];
     if (!colour) continue;
     const yTop = yOf(n.end);
     const yBottom = yOf(n.start);
@@ -163,7 +167,7 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): v
     const x = key.x + 1;
     const w = Math.max(3, key.width - 2);
     const sounding = n.start <= position && n.end > position;
-    ctx.globalAlpha = view.muted.has(n.staff) ? 0.35 : 1;
+    ctx.globalAlpha = view.muted.has(view.laneOf(n)) ? 0.35 : 1;
     roundRect(ctx, x, yBottom - h, w, h, Math.min(6, w / 3));
     ctx.fillStyle = sounding ? colour.edge : colour.fill;
     ctx.fill();
@@ -187,8 +191,8 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): v
 
   const pressed = new Map<number, string>();
   for (const n of soundingAt(perf.notes, position, longest)) {
-    if (view.hidden.has(n.staff)) continue;
-    const colour = view.colours[n.staff];
+    if (view.hidden.has(view.laneOf(n))) continue;
+    const colour = view.colours[view.laneOf(n)];
     if (colour) pressed.set(n.pitch + transpose, colour.fill);
   }
 
@@ -220,4 +224,5 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): v
       ctx.stroke();
     }
   }
+  return pressed;
 }
