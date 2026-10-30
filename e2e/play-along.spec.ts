@@ -618,8 +618,19 @@ test('by hand splits a guitar-style score so the hands never cross, and lets one
   const left = '#13b9a6';
   const right = '#6d3df2';
   await expect.poll(pressed).toEqual({ '48': left, '55': left, '67': right });
+  const bassClefs = () =>
+    page
+      .getByTestId('notation-svg')
+      .evaluate(
+        (svg) =>
+          [...svg.querySelectorAll('g.clef use')].filter((u) =>
+            (u.getAttribute('xlink:href') ?? u.getAttribute('href') ?? '').includes('E062'),
+          ).length,
+      );
+  await expect.poll(bassClefs).toBeGreaterThan(0);
 
   await choice.getByRole('button', { name: strings.playAlong.byPart }).click();
+  await expect.poll(bassClefs).toBe(0);
   await expect(page.getByTestId('playalong-part')).toHaveCount(2);
   await expect
     .poll(async () => {

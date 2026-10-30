@@ -41,6 +41,8 @@ keyboard from above, like the bird's-eye piano videos.
   so a guitar score played on piano never asks one hand to sit inside the other (Gran Vals bar 17). The lanes
   become 🫱 Right hand and 🫲 Left hand, each with its own hide and mute, and the switch does not stop the music.
   It starts on for a piece you play on piano that has no two-handed staff of its own, and is remembered per file.
+  The notation follows: by hand, a MuseScore file is shown as a piano grand staff (right hand on treble, left hand
+  on bass, no guitar octave clef); by part it shows the file's own staves. Exports keep the file's layout.
 - **🔔 Ringing tails**: each note is drawn as a short strike (0.2 s) with a thin, paler tail for as long as it
   rings, and its key lights only for the strike, so a guitar's let-ring notes no longer look like keys to hold
   down (catch them with the pedal). With tails on, the hand split counts a key as released after its strike,

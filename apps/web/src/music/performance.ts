@@ -1,4 +1,11 @@
-import { DEFAULT_BPM, DEFAULT_VELOCITY, TPQ, type ScoreModel, type ScoreStaff } from './model.ts';
+import {
+  DEFAULT_BPM,
+  DEFAULT_VELOCITY,
+  TPQ,
+  type ScoreModel,
+  type ScoreNote,
+  type ScoreStaff,
+} from './model.ts';
 import { unroll } from './unroll.ts';
 
 export interface PerfNote {
@@ -9,6 +16,7 @@ export interface PerfNote {
   velocity: number;
   bar: number;
   grace: boolean;
+  source?: ScoreNote;
 }
 
 export interface PerfBar {
@@ -74,7 +82,8 @@ export function buildPerformance(score: ScoreModel): Performance {
   }
 
   const tempoEvents: { tick: number; bpm: number }[] = [];
-  const rawNotes: (Omit<PerfNote, 'start' | 'end'> & {
+  const rawNotes: (Omit<PerfNote, 'start' | 'end' | 'source'> & {
+    source: ScoreNote;
     startTick: number;
     endTick: number;
     tie: boolean;
@@ -108,6 +117,7 @@ export function buildPerformance(score: ScoreModel): Performance {
         startTick: n.tick + shift,
         endTick: n.tick + shift + n.ticks,
         tie: n.tieForward,
+        source: n,
       });
     }
     barTicks.push({
@@ -165,6 +175,7 @@ export function buildPerformance(score: ScoreModel): Performance {
     velocity: n.velocity,
     bar: n.bar,
     grace: n.grace,
+    source: n.source,
     start: Math.max(0, toSeconds(n.startTick)),
     end: Math.max(toSeconds(n.startTick) + 0.03, toSeconds(n.endTick)),
   }));

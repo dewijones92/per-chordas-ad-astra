@@ -34,6 +34,7 @@ import { BarStrip } from './BarStrip.tsx';
 import { parseScoreText, unpackScore } from './load.ts';
 import { instrumentFor } from './model.ts';
 import { assignHands, handLanes, partLanes, type Lanes } from './hands.ts';
+import { grandStaff, scoreHands } from './grand-staff.ts';
 import { DRAW_MIN_ZOOM, Notation } from './Notation.tsx';
 import { toMusicXml } from './to-musicxml.ts';
 import { download, exportName, performanceToMidi, transposeMusicXml } from './export.ts';
@@ -288,7 +289,6 @@ export function PlayAlong({
     if (data.score.format === 'musicxml') return data.text;
     return data.score.notation ? toMusicXml(data.score, data.score.notation) : null;
   }, [loaded.data]);
-  const notationXml = prefs.notation ? sourceXml : null;
 
   const updatePrefs = useCallback(
     (update: (p: PlayAlongPrefs) => PlayAlongPrefs) => {
@@ -322,6 +322,13 @@ export function PlayAlong({
     [hands, perf],
   );
   const colours = useMemo(() => (lanes ? staffColours(lanes.lanes) : []), [lanes]);
+  const grandXml = useMemo(() => {
+    const score = loaded.data?.score;
+    if (!hands || !score?.notation) return null;
+    const grand = grandStaff(score, scoreHands(score.notes, hands));
+    return grand.notation ? toMusicXml(grand, grand.notation) : null;
+  }, [loaded.data, hands]);
+  const notationXml = prefs.notation ? (grandXml ?? sourceXml) : null;
   const hiddenLanes = byHand ? prefs.handHidden : prefs.hidden;
   const mutedLanes = byHand ? prefs.handMuted : prefs.muted;
 

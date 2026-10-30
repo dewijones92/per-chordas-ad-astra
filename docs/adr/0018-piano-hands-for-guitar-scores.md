@@ -39,6 +39,13 @@ in this batch.
   rings, light the key only for the strike, and tell the hand split that the key is released after the strike
   (`keyUpAt`), since the pedal holds the sound. There is no pedal data in these files, so this is a reading
   choice, not a MIDI CC64 event.
+- **The notation follows the split as a grand staff.** By hand, a MuseScore file's notation is rebuilt as one
+  piano part (`music/grand-staff.ts`): each chord's notes go to the treble staff (right hand) or the bass staff
+  (left hand), each source voice keeps its own voice on its new staff, rests are left to the gaps (a staff with
+  nothing in a bar gets a bar rest), tied notes stay in the hand that struck them, and the clefs become plain
+  treble and bass, so the guitar's octave clef goes. Performance notes now carry their `source` score note, which
+  is how a played note's hand reaches the written note (its first playing decides, for repeats). Highlighting
+  still comes from Verovio's own timing, so it works unchanged. Exports keep the file's own layout.
 
 ## Consequences
 
@@ -46,4 +53,6 @@ in this batch.
   separately by muting or hiding one.
 - The split is a heuristic: it can choose a fingering a pianist would not, and nothing yet lets you move one
   note to the other hand (offered to Dewi as a later option).
-- The notation still shows the file's staves until the grand-staff view lands.
+- Drawings on the notation stay on their bars in either view, but a mark's height is measured from the top staff
+  line, so a mark drawn in one view can sit at a different height relative to the notes in the other.
+- The grand staff needs a MuseScore file (we hold its engraving); a MusicXML file keeps its own staves.
