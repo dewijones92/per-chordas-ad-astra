@@ -43,7 +43,9 @@ keyboard from above, like the bird's-eye piano videos.
 - **Play order**: repeats, first and second endings, D.C., D.S., al Fine, al Coda and section breaks are
   played as MuseScore plays them (checked against MuseScore's own repeat tests, ADR 0014).
 - **Transpose**: − / + by semitone (±24). Shows the written key and the key it now sounds in, minor where
-  the file says so, and for transposing up, the capo fret that keeps the written shapes on guitar. Saved
+  the file says so, and for transposing up, the capo fret that keeps the written shapes on guitar (only when **🙋 I play
+  on** is 🎸 Guitar; 🎹 Piano hides it). "I play on" starts as Guitar when a part's name says guitar and Piano
+  otherwise, and your choice is remembered per file with the other play-along settings. The key is saved
   in `piece.json`, so it opens in your key everywhere; the commit says `Transpose <file> to +2`.
 - **Export**: 💾 MusicXML and 💾 MIDI download the piece in the key it is transposed to, named like
   `Gran Vals (+2).musicxml`. MusicXML is respelled for the new key (every key signature, key changes included, moves

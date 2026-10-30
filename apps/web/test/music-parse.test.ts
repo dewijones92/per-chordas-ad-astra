@@ -2,6 +2,7 @@ import { makeMscx, makeMusicXml, PIANO_WALTZ, zipScore, type FixtureScore } from
 import { describe, expect, it } from 'vitest';
 import { loadScore, parseScoreText, unpackScore } from '../src/music/load.ts';
 import { buildPerformance, countInFor } from '../src/music/performance.ts';
+import { instrumentFor } from '../src/music/model.ts';
 import { spell, toMusicXml } from '../src/music/to-musicxml.ts';
 import { exportName, performanceToMidi, transposeMusicXml } from '../src/music/export.ts';
 
@@ -372,6 +373,15 @@ describe('local time signatures', () => {
       [76, 3, 5],
       [77, 5, 6],
     ]);
+  });
+});
+
+describe('instrument', () => {
+  it('assumes piano unless a part is a guitar', () => {
+    const waltz = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
+    expect(instrumentFor(waltz.staves)).toBe('piano');
+    expect(instrumentFor([{ name: 'Classical Guitar' }])).toBe('guitar');
+    expect(instrumentFor([{ name: 'Gtr. 2' }, { name: 'Bass' }])).toBe('guitar');
   });
 });
 

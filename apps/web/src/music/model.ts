@@ -1,3 +1,4 @@
+import type { Instrument } from '@pcaa/shared';
 export const TPQ = 480;
 export const GRACE_TICKS = TPQ / 8;
 
@@ -119,6 +120,10 @@ export function velocityForDynamic(name: string): number | null {
 export function roleFor(staffCount: number, position: number): StaffRole {
   if (staffCount < 2) return 'single';
   return position === 0 ? 'right' : 'left';
+}
+
+export function instrumentFor(staves: readonly { name: string }[]): Instrument {
+  return staves.some((s) => /guitar|gtr/i.test(s.name)) ? 'guitar' : 'piano';
 }
 
 export function staffName(partName: string, staffCount: number, position: number): string {

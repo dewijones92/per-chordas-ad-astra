@@ -1,5 +1,6 @@
 import {
   MAX_TRANSPOSE,
+  INSTRUMENTS,
   PLAY_ALONG_MAX_SPEED,
   PLAY_ALONG_MIN_SPEED,
   PLAY_ALONG_SPEED_STEP,
@@ -21,6 +22,7 @@ import { useAnnotations } from '../annotate/use-annotations.ts';
 import { claimDrawing, useDrawing } from '../annotate/use-drawing.ts';
 import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
 import { strings, tips, units } from '../strings.ts';
+import { Choice } from '../ui/Choice.tsx';
 import { LoopSwitch } from '../ui/LoopSwitch.tsx';
 import { PercentInput } from '../ui/PercentInput.tsx';
 import { rememberPlayAlong, savedPlayAlong, scoreKey } from '../resume/resume.ts';
@@ -30,6 +32,7 @@ import { drawFalling, geometry } from './falling.ts';
 import { capoFor, fitRange, keyName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip } from './BarStrip.tsx';
 import { parseScoreText, unpackScore } from './load.ts';
+import { instrumentFor } from './model.ts';
 import { DRAW_MIN_ZOOM, Notation } from './Notation.tsx';
 import { toMusicXml } from './to-musicxml.ts';
 import { download, exportName, performanceToMidi, transposeMusicXml } from './export.ts';
@@ -534,7 +537,8 @@ export function PlayAlong({
   const currentBar = () => (player ? barAt(perf, player.position() + 0.001) : 0);
   const writtenKey = keyName(perf.keyFifths, perf.keyMinor);
   const playedKey = keyName(transposeFifths(perf.keyFifths, transpose), perf.keyMinor);
-  const capo = capoFor(transpose);
+  const playOn = prefs.playOn ?? instrumentFor(perf.staves);
+  const capo = playOn === 'guitar' ? capoFor(transpose) : null;
   const loopLabel = prefs.loop
     ? strings.playAlong.loopBars(
         String(perf.bars[prefs.loop.from]?.number ?? '?'),
@@ -699,6 +703,16 @@ export function PlayAlong({
             </span>
           )}
         </span>
+        <Choice
+          label={strings.playAlong.playOn}
+          title={tips.playAlong.playOn}
+          value={playOn}
+          options={INSTRUMENTS.map((i) => ({ value: i, label: strings.playAlong.instruments[i] }))}
+          testId="playalong-play-on"
+          onChange={(next) => {
+            updatePrefs((p) => ({ ...p, playOn: next }));
+          }}
+        />
         <span className="playalong-field" data-testid="playalong-export">
           <span>{strings.playAlong.export}</span>
           <button

@@ -48,6 +48,14 @@ test('a MuseScore file plays as falling notes, transposes, loops, and remembers 
   await page.getByRole('button', { name: 'Transpose up a semitone' }).click();
   await page.getByRole('button', { name: 'Transpose up a semitone' }).click();
   await expect(page.getByTestId('playalong-key')).toContainText('now A major');
+  await expect(page.getByTestId('playalong-play-on').locator('[aria-pressed="true"]')).toHaveText(
+    strings.playAlong.instruments.piano,
+  );
+  await expect(page.getByTestId('playalong-capo')).toHaveCount(0);
+  await page
+    .getByTestId('playalong-play-on')
+    .getByRole('button', { name: strings.playAlong.instruments.guitar })
+    .click();
   await expect(page.getByTestId('playalong-capo')).toContainText('Capo 2');
   const json = await eventuallyInRemote(`pieces/${id}/piece.json`, (t) =>
     t.includes('"transpose": 2'),
@@ -68,6 +76,7 @@ test('a MuseScore file plays as falling notes, transposes, loops, and remembers 
 
   await page.reload();
   await expect(page.getByTestId('playalong-key')).toContainText('now A major');
+  await expect(page.getByTestId('playalong-capo')).toContainText('Capo 2');
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–2');
   await expect(page.getByTestId('playalong-speed')).toHaveValue('60');
   await expect(page.getByRole('button', { name: 'Show Piano RH' })).toBeVisible();

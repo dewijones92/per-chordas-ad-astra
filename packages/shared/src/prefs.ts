@@ -39,6 +39,10 @@ export const PIECE_VIEWS = ['score', 'split', 'notes'] as const;
 export const PieceView = z.enum(PIECE_VIEWS);
 export type PieceView = z.infer<typeof PieceView>;
 
+export const INSTRUMENTS = ['piano', 'guitar'] as const;
+export const Instrument = z.enum(INSTRUMENTS);
+export type Instrument = z.infer<typeof Instrument>;
+
 export const PLAY_ALONG_MIN_SPEED = 0.05;
 export const PLAY_ALONG_MAX_SPEED = 2;
 export const PLAY_ALONG_SPEED_STEP = 0.005;
@@ -71,6 +75,7 @@ export const PlayAlongPrefs = z.object({
   countIn: z.boolean().default(true),
   click: z.boolean().default(false),
   halfBeats: z.boolean().default(false),
+  playOn: Instrument.nullable().default(null),
 });
 export type PlayAlongPrefs = z.output<typeof PlayAlongPrefs>;
 export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
@@ -89,6 +94,7 @@ export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
   countIn: true,
   click: false,
   halfBeats: false,
+  playOn: null,
 };
 
 export const VIEW_MODES = ['page', 'spread', 'width'] as const;
