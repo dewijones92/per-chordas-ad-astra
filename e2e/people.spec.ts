@@ -13,7 +13,7 @@ test('a second person signed in through the gate gets their own practice log, an
   await expect(page.getByText('1 sessions')).toBeVisible();
   const month = new Date().toISOString().slice(0, 7).replace('-', '/');
   const log = await eventuallyInRemote(`log/${month}.jsonl`, (t) => t.includes('"shared-waltz"'));
-  expect(log).toContain('"who":"dewi"');
+  expect(log).not.toContain('"who"');
 
   const hers = await browser.newContext({
     extraHTTPHeaders: { 'x-forwarded-email': 'Partner.Name@example.com' },

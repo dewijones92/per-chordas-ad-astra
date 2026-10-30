@@ -14,7 +14,8 @@ export function scoreHands(
   perfHands: ReadonlyMap<PerfNote, Hand>,
 ): Map<string, Hand> {
   const bySource = new Map<ScoreNote, Hand>();
-  for (const [n, hand] of perfHands)
+  const played = [...perfHands].sort(([a], [b]) => a.start - b.start);
+  for (const [n, hand] of played)
     if (n.source && !bySource.has(n.source)) bySource.set(n.source, hand);
   const hands = new Map<string, Hand>();
   const tiedTo = new Map<string, Hand>();

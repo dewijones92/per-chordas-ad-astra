@@ -19,7 +19,7 @@ updated: 2026-10-30
   (weeks start Monday), sessions logged, a four-week bar chart, and recent sessions. It refreshes when a save
   finishes, so a session logged as you left a piece appears without reloading.
 
-- **Per person** (ADR 0019): each session records who practised (`who`, a person key from the gate's email), and
+- **Per person** (ADR 0019): each session someone other than the owner logs records who (`who`, a person key from the gate's email), and
   the log, the piece's totals and the library's practised sorts show only your own; lines from before count as
   the owner's. Hard-bit best speeds are per person too.
 

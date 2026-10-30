@@ -14,6 +14,7 @@ export type { ResumeState };
 export { emptyResume };
 
 const KEY = 'pcaa.resume.v2';
+const PERSON_KEY = 'pcaa.resume.person';
 const PUSH_DEBOUNCE_MS = 1000;
 
 export interface ScoreSpot {
@@ -60,17 +61,55 @@ function writeLocal(state: ResumeState): void {
   }
 }
 
+function cachedPerson(): string | null {
+  try {
+    return localStorage.getItem(PERSON_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function adoptPerson(res: Response): void {
+  const person = res.headers.get('x-person');
+  if (person === null) return;
+  const cached = cachedPerson();
+  if (cached === person) return;
+  if (cached !== null) {
+    console.info('dewidebug resume: someone else signed in; dropping this browser cache', {
+      from: cached,
+      to: person,
+    });
+    writeLocal(emptyResume());
+  }
+  try {
+    localStorage.setItem(PERSON_KEY, person);
+  } catch {
+    return;
+  }
+}
+
 let pushTimer: number | undefined;
 
 async function push(keepalive: boolean): Promise<void> {
   try {
+    const person = cachedPerson();
     const res = await fetch('/api/resume', {
       method: 'PUT',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...(person === null ? {} : { 'x-resume-person': person }),
+      },
       body: JSON.stringify(readResume()),
       keepalive,
     });
+    if (res.status === 409) {
+      adoptPerson(res);
+      console.info('dewidebug resume push refused: cache belonged to someone else; pulling');
+      await pullResume();
+      return;
+    }
     if (!res.ok) throw new Error(`${String(res.status)} ${res.statusText}`);
+    adoptPerson(res);
     const merged = ResumeState.safeParse(await res.json());
     if (merged.success) writeLocal(mergeResume(readResume(), merged.data));
   } catch (error) {
@@ -97,6 +136,7 @@ export async function pullResume(timeoutMs = 1500): Promise<void> {
   try {
     const res = await fetch('/api/resume', { signal: controller.signal });
     if (!res.ok) throw new Error(`${String(res.status)} ${res.statusText}`);
+    adoptPerson(res);
     const remote = ResumeState.safeParse(await res.json());
     if (remote.success) writeLocal(mergeResume(readResume(), remote.data));
     console.info('dewidebug resume pulled from server', {

@@ -133,6 +133,15 @@ export const api = {
       'hard bits',
       request(`/api/pieces/${enc(id)}/hard-bits/${enc(file)}`, HardBits, jsonInit('PUT', bits)),
     ),
+  putHardBitBest: (id: string, file: string, bit: string, bestSpeed: number) =>
+    tracked(
+      'hard bits',
+      request(
+        `/api/pieces/${enc(id)}/hard-bits/${enc(file)}/${enc(bit)}/best`,
+        HardBits,
+        jsonInit('PUT', { bestSpeed }),
+      ),
+    ),
   getSetlists: () => request('/api/setlists', Setlists),
   putSetlists: (setlists: Setlists) =>
     tracked('setlists', request('/api/setlists', Setlists, jsonInit('PUT', setlists))),

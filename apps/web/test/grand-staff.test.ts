@@ -65,4 +65,31 @@ describe('grand staff', () => {
       'right',
     ]);
   });
+
+  it('lets the first playing of a repeated note decide its hand', () => {
+    const written = {
+      staff: 0,
+      measure: 0,
+      pitch: 60,
+      tick: 0,
+      ticks: 480,
+      tieForward: false,
+      grace: false,
+    };
+    const play = (start: number) => ({
+      pitch: 60,
+      start,
+      end: start + 0.5,
+      staff: 0,
+      velocity: 80,
+      bar: 0,
+      grace: false,
+      source: written,
+    });
+    const hands = new Map([
+      [play(5), 'right' as const],
+      [play(0), 'left' as const],
+    ]);
+    expect(scoreHands([written], hands).get('0:60:0')).toBe('left');
+  });
 });

@@ -324,10 +324,10 @@ export function PlayAlong({
   const colours = useMemo(() => (lanes ? staffColours(lanes.lanes) : []), [lanes]);
   const grandXml = useMemo(() => {
     const score = loaded.data?.score;
-    if (!hands || !score?.notation) return null;
+    if (!hands || !score?.notation || !prefs.notation) return null;
     const grand = grandStaff(score, scoreHands(score.notes, hands));
     return grand.notation ? toMusicXml(grand, grand.notation) : null;
-  }, [loaded.data, hands]);
+  }, [loaded.data, hands, prefs.notation]);
   const notationXml = prefs.notation ? (grandXml ?? sourceXml) : null;
   const hiddenLanes = byHand ? prefs.handHidden : prefs.hidden;
   const mutedLanes = byHand ? prefs.handMuted : prefs.muted;
@@ -465,9 +465,18 @@ export function PlayAlong({
         from: bit.bestSpeed,
         to: speed,
       });
-      saveBits(bits.map((b) => (b.id === bit.id ? { ...b, bestSpeed: speed } : b)));
+      setHardBitsData((data) => ({
+        files: {
+          ...(data?.files ?? {}),
+          [music.file]: bits.map((b) => (b.id === bit.id ? { ...b, bestSpeed: speed } : b)),
+        },
+      }));
+      api.putHardBitBest(pieceId, music.file, bit.id, speed).catch((error: unknown) => {
+        console.warn('dewidebug hard bit best save failed; reloading', { error: String(error) });
+        reloadHardBits();
+      });
     });
-  }, [player, loopNow, bits, saveBits]);
+  }, [player, loopNow, bits, pieceId, music.file, setHardBitsData, reloadHardBits]);
 
   useEffect(() => {
     if (!player || !perf) return;

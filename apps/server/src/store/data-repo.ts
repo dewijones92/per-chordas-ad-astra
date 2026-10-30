@@ -15,6 +15,8 @@ import {
   Loop,
   HardBit,
   HardBits,
+  HardBitBest,
+  speedPercent,
   type FileName,
   Loops,
   MAX_SCORE_BYTES,
@@ -38,7 +40,14 @@ import {
   type TrackRef,
 } from '@pcaa/shared';
 import type { Logger } from '../log.ts';
-import { hardBitsFor, mergeHardBitsFrom, SOLE_USER, type Person } from '../person.ts';
+import {
+  bestFor,
+  hardBitsFor,
+  mergeHardBitsFrom,
+  SOLE_USER,
+  withBest,
+  type Person,
+} from '../person.ts';
 import {
   InvalidDataError,
   NotFoundError,
@@ -82,7 +91,7 @@ export function describeHardBits(before: readonly HardBit[], after: readonly Har
   const added = after.filter((b) => !old.has(b.id));
   const removed = before.filter((b) => !after.some((a) => a.id === b.id));
   const faster = after.filter((b) => (old.get(b.id)?.bestSpeed ?? b.bestSpeed) < b.bestSpeed);
-  const percent = (s: number) => `${String(Math.round(s * 100))}%`;
+  const percent = (s: number) => `${String(speedPercent(s))}%`;
   if (added.length === 1 && removed.length === 0 && added[0])
     return `Mark hard bit '${added[0].name}'`;
   if (removed.length === 1 && added.length === 0 && removed[0])
@@ -355,7 +364,7 @@ export class DataRepo {
         await rm(this.path('pieces', id, 'annotations', `${file}.json`), { force: true });
       }
       if (kind === 'music') {
-        const bits = await this.getHardBits(id);
+        const bits = await this.readHardBits(id);
         if (bits.files[file]) {
           const { [file]: _removed, ...rest } = bits.files;
           await this.writeJson(this.path('pieces', id, 'hard-bits.json'), { files: rest });
@@ -533,6 +542,46 @@ export class DataRepo {
           Object.entries(next.files).map(([f, list]) => [f, hardBitsFor(person, list)]),
         ),
       };
+    });
+  }
+
+  async putHardBitBest(
+    id: Slug,
+    file: FileName,
+    bitId: string,
+    input: unknown,
+    person: Person = SOLE_USER,
+  ): Promise<HardBits> {
+    const { bestSpeed } = HardBitBest.parse(input);
+    return this.locked(`piece:${id}`, async () => {
+      const piece = await this.getPiece(id);
+      const current = await this.readHardBits(id);
+      const list = current.files[file] ?? [];
+      const bit = list.find((b) => b.id === bitId);
+      if (!bit) throw new NotFoundError(`hard bit ${bitId}`);
+      const before = bestFor(person, bit);
+      if (bestSpeed <= before) {
+        this.log.debug(
+          { person: person.key, bit: bitId, before, offered: bestSpeed },
+          'dewidebug repo hard bit best not raised: not faster',
+        );
+      } else {
+        const next: HardBits = {
+          files: {
+            ...current.files,
+            [file]: list.map((b) => (b.id === bitId ? withBest(person, b, bestSpeed) : b)),
+          },
+        };
+        await this.writeJson(this.path('pieces', id, 'hard-bits.json'), next);
+        this.log.info(
+          { person: person.key, owner: person.owner, bit: bitId, before, after: bestSpeed },
+          'dewidebug repo hard bit best raised',
+        );
+        this.changes.markDirty(
+          `Hard bit '${bit.name}' up to ${String(speedPercent(bestSpeed))}%${person.owner ? '' : ` for ${person.key ?? ''}`} in ${quote(piece.title)} (${file})`,
+        );
+      }
+      return this.getHardBits(id, person);
     });
   }
 

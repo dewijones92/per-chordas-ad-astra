@@ -117,6 +117,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   const api = new Hono();
+  let warnedNoEmail = false;
 
   api.use('*', async (c, next) => {
     const method = c.req.method;
@@ -129,6 +130,15 @@ export function createApp(deps: AppDeps): Hono {
       return c.json({ error: 'Send JSON (Content-Type: application/json)' }, 415);
     }
     await next();
+    const email = c.req.header(PERSON_HEADER);
+    if (deps.ownerPerson && email === undefined && !warnedNoEmail) {
+      warnedNoEmail = true;
+      log.warn(
+        { path: c.req.path },
+        'dewidebug people: OWNER_PERSON is set but a request came with no email; it counts as the owner (is the nginx header missing?)',
+      );
+    }
+    c.res.headers.set('X-Person', personFromEmail(email) ?? '');
     return undefined;
   });
   const slug = (c: Context) => Slug.parse(c.req.param('id'));
@@ -180,6 +190,17 @@ export function createApp(deps: AppDeps): Hono {
 
   api.get('/pieces/:id/loops', async (c) => c.json(await repo.getLoops(slug(c))));
   api.get('/pieces/:id/hard-bits', async (c) => c.json(await repo.getHardBits(slug(c), person(c))));
+  api.put('/pieces/:id/hard-bits/:file/:bit/best', async (c) =>
+    c.json(
+      await repo.putHardBitBest(
+        slug(c),
+        file(c),
+        c.req.param('bit'),
+        await c.req.json(),
+        person(c),
+      ),
+    ),
+  );
   api.put('/pieces/:id/hard-bits/:file', async (c) =>
     c.json(await repo.putFileHardBits(slug(c), file(c), await c.req.json(), person(c))),
   );
@@ -204,7 +225,18 @@ export function createApp(deps: AppDeps): Hono {
   );
 
   api.get('/resume', async (c) => c.json(await deps.resume.get(person(c))));
-  api.put('/resume', async (c) => c.json(await deps.resume.merge(await c.req.json(), person(c))));
+  api.put('/resume', async (c) => {
+    const who = person(c);
+    const claimed = c.req.header('x-resume-person');
+    if (claimed !== undefined && claimed !== (who.key ?? '')) {
+      log.warn(
+        { claimed, person: who.key },
+        'dewidebug resume push refused: cache of someone else',
+      );
+      return c.json({ error: 'This browser cache belongs to someone else' }, 409);
+    }
+    return c.json(await deps.resume.merge(await c.req.json(), who));
+  });
 
   api.get('/sync', (c) => c.json(sync.status()));
   api.post('/sync/flush', async (c) => c.json(await sync.flush(c.req.query('reason') ?? 'client')));

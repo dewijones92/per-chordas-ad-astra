@@ -52,6 +52,32 @@ describe('resume store', () => {
     expect(readResume().timers['p']?.at).toBeGreaterThan(0);
   });
 
+  it("drops this browser's cached place when a different person signs in, and says whose cache it pushes", async () => {
+    const reply = (person: string, body: unknown = {}) =>
+      new Response(JSON.stringify(body), { headers: { 'x-person': person } });
+    const fetchMock = vi.fn((_url: string, _init?: RequestInit) =>
+      Promise.resolve(reply('dewi', { lastPath: { path: '/piece/his', at: 5 } })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await pullResume();
+    rememberTimer('p', { accumulatedMs: 5000, startedAt: 1 });
+    expect(readResume().lastPath?.path).toBe('/piece/his');
+
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(reply('partner', { lastPath: { path: '/piece/hers', at: 4 } })),
+    );
+    await pullResume();
+    expect(readResume().lastPath?.path).toBe('/piece/hers');
+    expect(savedTimer('p')).toBeNull();
+
+    flushResume();
+    await vi.waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(true);
+    });
+    const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT')?.[1];
+    expect(new Headers(put?.headers).get('x-resume-person')).toBe('partner');
+  });
+
   it('survives missing, corrupt or wrongly shaped data', () => {
     expect(parseResume(null)).toEqual(emptyResume());
     expect(parseResume('{oops')).toEqual(emptyResume());

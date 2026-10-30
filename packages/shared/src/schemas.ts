@@ -242,6 +242,11 @@ export const HardBit = z
   .refine((b) => b.to >= b.from, 'A hard bit must end at or after its start');
 export type HardBit = z.infer<typeof HardBit>;
 
+export const HardBitBest = z.object({
+  bestSpeed: z.number().min(0).max(PLAY_ALONG_MAX_SPEED),
+});
+export type HardBitBest = z.infer<typeof HardBitBest>;
+
 export const HardBits = z.object({
   files: z.record(z.string(), z.array(HardBit)),
 });

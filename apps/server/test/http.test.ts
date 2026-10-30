@@ -424,16 +424,128 @@ describe('HTTP API with two people', () => {
       ).files['waltz.mscz']?.[0];
     expect(await best(WIFE)).toEqual({ ...bit, bestSpeed: 0 });
     await app.request(
-      `/api/pieces/${piece.id}/hard-bits/waltz.mscz`,
-      as(WIFE, send('PUT', [{ ...bit, bestSpeed: 0.35 }])),
+      `/api/pieces/${piece.id}/hard-bits/waltz.mscz/b1/best`,
+      as(WIFE, send('PUT', { bestSpeed: 0.35 })),
     );
     expect(await best(WIFE)).toEqual({ ...bit, bestSpeed: 0.35 });
     expect(await best(DEWI)).toEqual(bit);
     await app.request(
-      `/api/pieces/${piece.id}/hard-bits/waltz.mscz`,
-      as(DEWI, send('PUT', [{ ...bit, bestSpeed: 0.7 }])),
+      `/api/pieces/${piece.id}/hard-bits/waltz.mscz/b1/best`,
+      as(DEWI, send('PUT', { bestSpeed: 0.7 })),
     );
     expect(await best(WIFE)).toEqual({ ...bit, bestSpeed: 0.35 });
     expect((await best(DEWI))?.bestSpeed).toBe(0.7);
+  });
+
+  async function pieceWithTwoFiles(): Promise<string> {
+    const piece = (await (
+      await app.request('/api/pieces', as(DEWI, send('POST', { title: 'Two Files' })))
+    ).json()) as Piece;
+    for (const name of ['a.mscz', 'b.mscz']) {
+      const res = await app.request(`/api/pieces/${piece.id}/music`, {
+        method: 'POST',
+        headers: { 'x-file-name': name },
+        body: zipScore('waltz.mscx', makeMscx(PIANO_WALTZ, '4.50')),
+      });
+      expect(res.status).toBe(201);
+    }
+    return piece.id;
+  }
+  const bit = (id: string, bestSpeed = 0) => ({
+    id,
+    name: id,
+    from: 0,
+    to: 1,
+    fromBar: 1,
+    toBar: 2,
+    bestSpeed,
+  });
+  const bests = async (id: string, file: string, email: string) =>
+    (
+      (await (await app.request(`/api/pieces/${id}/hard-bits`, as(email))).json()) as {
+        files: Record<string, { id: string; bestSpeed: number }[]>;
+      }
+    ).files[file] ?? [];
+
+  it("keeps the other person's best speeds when a different music file is removed", async () => {
+    const id = await pieceWithTwoFiles();
+    await app.request(`/api/pieces/${id}/hard-bits/a.mscz`, as(DEWI, send('PUT', [bit('a1')])));
+    await app.request(`/api/pieces/${id}/hard-bits/b.mscz`, as(DEWI, send('PUT', [bit('b1')])));
+    await app.request(
+      `/api/pieces/${id}/hard-bits/b.mscz/b1/best`,
+      as(WIFE, send('PUT', { bestSpeed: 0.35 })),
+    );
+    expect((await bests(id, 'b.mscz', WIFE))[0]?.bestSpeed).toBe(0.35);
+    const removed = await app.request(
+      `/api/pieces/${id}/files/a.mscz`,
+      as(DEWI, { method: 'DELETE' }),
+    );
+    expect(removed.status).toBe(200);
+    expect((await bests(id, 'b.mscz', WIFE))[0]?.bestSpeed).toBe(0.35);
+  });
+
+  it('records a best speed for one hard bit without dropping a bit another person added meanwhile', async () => {
+    const id = await pieceWithTwoFiles();
+    await app.request(`/api/pieces/${id}/hard-bits/a.mscz`, as(DEWI, send('PUT', [bit('a1')])));
+    await app.request(
+      `/api/pieces/${id}/hard-bits/a.mscz`,
+      as(DEWI, send('PUT', [bit('a1'), bit('a2')])),
+    );
+    const raised = await app.request(
+      `/api/pieces/${id}/hard-bits/a.mscz/a1/best`,
+      as(WIFE, send('PUT', { bestSpeed: 0.4 })),
+    );
+    expect(raised.status).toBe(200);
+    expect((await bests(id, 'a.mscz', DEWI)).map((b) => b.id)).toEqual(['a1', 'a2']);
+    expect((await bests(id, 'a.mscz', WIFE)).map((b) => b.bestSpeed)).toEqual([0.4, 0]);
+    await app.request(
+      `/api/pieces/${id}/hard-bits/a.mscz/a1/best`,
+      as(WIFE, send('PUT', { bestSpeed: 0.3 })),
+    );
+    expect((await bests(id, 'a.mscz', WIFE))[0]?.bestSpeed).toBe(0.4);
+    await app.request(
+      `/api/pieces/${id}/hard-bits/a.mscz`,
+      as(DEWI, send('PUT', [bit('a1', 0), bit('a2')])),
+    );
+    expect((await bests(id, 'a.mscz', WIFE))[0]?.bestSpeed).toBe(0.4);
+  });
+
+  it("labels replies with the person and refuses a resume push from someone else's browser cache", async () => {
+    const mine = await app.request('/api/resume', as(WIFE));
+    expect(mine.headers.get('x-person')).toBe('wife.name');
+    const refused = await app.request(
+      '/api/resume',
+      as(WIFE, {
+        ...send('PUT', { lastPath: { path: '/piece/his', at: 9 } }),
+        headers: { 'x-resume-person': 'dewi' },
+      }),
+    );
+    expect(refused.status).toBe(409);
+    const resume = (await (await app.request('/api/resume', as(WIFE))).json()) as {
+      lastPath: unknown;
+    };
+    expect(resume.lastPath).toBeNull();
+    const accepted = await app.request(
+      '/api/resume',
+      as(WIFE, {
+        ...send('PUT', { lastPath: { path: '/piece/hers', at: 9 } }),
+        headers: { 'x-resume-person': 'wife.name' },
+      }),
+    );
+    expect(accepted.status).toBe(200);
+  });
+
+  it("never hides the owner's sessions if the owner setting is later unset", async () => {
+    const id = await pieceWithTwoFiles();
+    await app.request(
+      '/api/sessions',
+      as(DEWI, send('POST', session(id, '2026-10-30T11:00:00.000Z'))),
+    );
+    const repo = new DataRepo({
+      dir: join(dir, 'data'),
+      changes: { markDirty: () => undefined },
+      log: silentLog,
+    });
+    expect(await repo.listSessions()).toHaveLength(1);
   });
 });
