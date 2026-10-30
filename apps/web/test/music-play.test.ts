@@ -151,7 +151,7 @@ describe('Transport', () => {
     t.setSpeed(1, 2 + START_LEAD_SECONDS);
     expect(t.songAt(2 + START_LEAD_SECONDS)).toBeCloseTo(before);
     expect(clampSpeed(9)).toBe(2);
-    expect(clampSpeed(0)).toBe(0.25);
+    expect(clampSpeed(0)).toBe(0.05);
   });
 
   it('wraps a loop seamlessly and keeps going', () => {
@@ -221,6 +221,22 @@ describe('Transport', () => {
     expect(t.speedAt(lead + 8)).toBe(1);
     expect(t.songAt(lead + 3.999)).toBeCloseTo(2, 2);
     expect(t.songAt(lead + 4.001)).toBeCloseTo(0, 2);
+  });
+
+  it('speeds up by half a percent a pass, stops at the chosen target, and plays as slow as 5%', () => {
+    const t = new Transport(notes, 4);
+    t.setSpeed(0.01, 0);
+    expect(t.speed).toBe(0.05);
+    t.setSpeed(0.5, 0);
+    t.setLoop({ start: 0, end: 1 }, 0);
+    t.ramp = { step: 0.005, target: 0.51 };
+    t.play(0);
+    t.pump(0, 30, () => true);
+    const lead = START_LEAD_SECONDS;
+    expect(t.speedAt(lead + 1)).toBe(0.5);
+    expect(t.speedAt(lead + 3)).toBe(0.505);
+    expect(t.speedAt(lead + 5)).toBe(0.51);
+    expect(t.speedAt(lead + 25)).toBe(0.51);
   });
 
   it('keeps the music waiting for a count-in when you seek, change speed or loop during it', () => {

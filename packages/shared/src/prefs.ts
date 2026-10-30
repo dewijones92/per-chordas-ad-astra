@@ -39,8 +39,21 @@ export const PIECE_VIEWS = ['score', 'split', 'notes'] as const;
 export const PieceView = z.enum(PIECE_VIEWS);
 export type PieceView = z.infer<typeof PieceView>;
 
-export const PLAY_ALONG_MIN_SPEED = 0.25;
+export const PLAY_ALONG_MIN_SPEED = 0.05;
 export const PLAY_ALONG_MAX_SPEED = 2;
+export const PLAY_ALONG_SPEED_STEP = 0.005;
+export const RAMP_STEP = 0.05;
+export const RAMP_TARGET = 1;
+export const RAMP_MIN_STEP = 0.005;
+export const RAMP_MAX_STEP = 0.2;
+
+export function roundSpeed(speed: number): number {
+  return Math.round(speed / PLAY_ALONG_SPEED_STEP) / (1 / PLAY_ALONG_SPEED_STEP);
+}
+
+export function speedPercent(speed: number): number {
+  return Math.round(speed * 1000) / 10;
+}
 
 export const PlayAlongPrefs = z.object({
   speed: z.number().min(PLAY_ALONG_MIN_SPEED).max(PLAY_ALONG_MAX_SPEED),
@@ -51,14 +64,14 @@ export const PlayAlongPrefs = z.object({
   full: z.boolean(),
   position: z.number().min(0),
   ramp: z.boolean().default(false),
+  rampStep: z.number().min(RAMP_MIN_STEP).max(RAMP_MAX_STEP).default(RAMP_STEP),
+  rampTarget: z.number().min(PLAY_ALONG_MIN_SPEED).max(PLAY_ALONG_MAX_SPEED).default(RAMP_TARGET),
   names: z.boolean().default(false),
   notation: z.boolean().default(true),
   countIn: z.boolean().default(true),
   click: z.boolean().default(false),
 });
 export type PlayAlongPrefs = z.output<typeof PlayAlongPrefs>;
-export const RAMP_STEP = 0.05;
-export const RAMP_TARGET = 1;
 export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
   speed: 1,
   loop: null,
@@ -68,6 +81,8 @@ export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
   full: false,
   position: 0,
   ramp: false,
+  rampStep: RAMP_STEP,
+  rampTarget: RAMP_TARGET,
   names: false,
   notation: true,
   countIn: true,

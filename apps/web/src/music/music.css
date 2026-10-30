@@ -34,6 +34,20 @@
   width: 110px;
 }
 
+.playalong-speed input[type='range'] {
+  width: 240px;
+}
+
+.percent-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.percent-input .input.mini {
+  width: 64px;
+}
+
 .playalong-readout {
   font-weight: 800;
   font-variant-numeric: tabular-nums;

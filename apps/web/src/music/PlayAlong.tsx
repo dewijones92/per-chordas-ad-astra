@@ -2,9 +2,12 @@ import {
   MAX_TRANSPOSE,
   PLAY_ALONG_MAX_SPEED,
   PLAY_ALONG_MIN_SPEED,
-  RAMP_STEP,
-  RAMP_TARGET,
+  PLAY_ALONG_SPEED_STEP,
+  RAMP_MAX_STEP,
+  RAMP_MIN_STEP,
   newId,
+  roundSpeed,
+  speedPercent,
   type HardBit,
   type MusicRef,
   type PlayAlongPrefs,
@@ -19,6 +22,7 @@ import { claimDrawing, useDrawing } from '../annotate/use-drawing.ts';
 import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
 import { strings, tips, units } from '../strings.ts';
 import { LoopSwitch } from '../ui/LoopSwitch.tsx';
+import { PercentInput } from '../ui/PercentInput.tsx';
 import { rememberPlayAlong, savedPlayAlong, scoreKey } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
 import { staffColours } from './colours.ts';
@@ -34,8 +38,6 @@ import { PianoPlayer, type PlayerEvent } from './player.ts';
 import { PlayAlongLog } from './practice-session.ts';
 import { clampSpeed } from './transport.ts';
 import './music.css';
-
-const SPEED_STEP = 0.05;
 
 function clock(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
@@ -348,8 +350,8 @@ export function PlayAlong({
   }, [player, prefs.speed]);
 
   useEffect(() => {
-    player?.setRamp(prefs.ramp ? { step: RAMP_STEP, target: RAMP_TARGET } : null);
-  }, [player, prefs.ramp]);
+    player?.setRamp(prefs.ramp ? { step: prefs.rampStep, target: prefs.rampTarget } : null);
+  }, [player, prefs.ramp, prefs.rampStep, prefs.rampTarget]);
 
   useEffect(() => {
     player?.setClick(prefs.click);
@@ -483,7 +485,7 @@ export function PlayAlong({
 
   const setSpeed = useCallback(
     (speed: number) => {
-      const clamped = Math.round(clampSpeed(speed) * 100) / 100;
+      const clamped = roundSpeed(clampSpeed(speed));
       updatePrefs((p) => ({ ...p, speed: clamped }));
     },
     [updatePrefs],
@@ -497,9 +499,9 @@ export function PlayAlong({
         e.preventDefault();
         toggle();
       } else if (e.key === '[') {
-        setSpeed(prefs.speed - SPEED_STEP);
+        setSpeed(prefs.speed - PLAY_ALONG_SPEED_STEP);
       } else if (e.key === ']') {
-        setSpeed(prefs.speed + SPEED_STEP);
+        setSpeed(prefs.speed + PLAY_ALONG_SPEED_STEP);
       } else if (e.key === ',') {
         stepBar(-1);
       } else if (e.key === '.') {
@@ -593,21 +595,51 @@ export function PlayAlong({
         </button>
         <span className="playalong-readout" ref={readout} data-testid="playalong-position" />
         <span className="spacer" />
-        <label className="playalong-field" title={tips.playAlong.speed}>
+        <span className="playalong-field playalong-speed" title={tips.playAlong.speed}>
           <span>{strings.common.speed}</span>
+          <button
+            type="button"
+            className="btn small icon"
+            aria-label={tips.playAlong.slower}
+            disabled={prefs.speed <= PLAY_ALONG_MIN_SPEED}
+            onClick={() => {
+              setSpeed(prefs.speed - PLAY_ALONG_SPEED_STEP);
+            }}
+          >
+            −
+          </button>
           <input
             type="range"
             min={PLAY_ALONG_MIN_SPEED * 100}
             max={PLAY_ALONG_MAX_SPEED * 100}
-            step={SPEED_STEP * 100}
-            value={Math.round(prefs.speed * 100)}
+            step={PLAY_ALONG_SPEED_STEP * 100}
+            value={speedPercent(prefs.speed)}
             aria-label={tips.playAlong.speedLabel}
             onChange={(e) => {
               setSpeed(Number(e.target.value) / 100);
             }}
           />
-          <strong data-testid="playalong-speed">{Math.round(prefs.speed * 100)}%</strong>
-        </label>
+          <button
+            type="button"
+            className="btn small icon"
+            aria-label={tips.playAlong.faster}
+            disabled={prefs.speed >= PLAY_ALONG_MAX_SPEED}
+            onClick={() => {
+              setSpeed(prefs.speed + PLAY_ALONG_SPEED_STEP);
+            }}
+          >
+            +
+          </button>
+          <PercentInput
+            value={prefs.speed}
+            min={PLAY_ALONG_MIN_SPEED}
+            max={PLAY_ALONG_MAX_SPEED}
+            step={PLAY_ALONG_SPEED_STEP}
+            label={tips.playAlong.exactSpeed}
+            testId="playalong-speed"
+            onChange={setSpeed}
+          />
+        </span>
       </div>
       <div className="playalong-bar">
         <span className="playalong-field" data-testid="playalong-transpose">
@@ -754,18 +786,51 @@ export function PlayAlong({
             </button>
           )}
         </span>
-        <label className="playalong-field" title={tips.playAlong.ramp}>
-          <input
-            type="checkbox"
-            checked={prefs.ramp}
-            data-testid="playalong-ramp"
-            onChange={(e) => {
-              const ramp = e.target.checked;
-              updatePrefs((p) => ({ ...p, ramp }));
-            }}
-          />
-          {strings.playAlong.ramp}
-        </label>
+        <span
+          className="playalong-field"
+          title={tips.playAlong.ramp(speedPercent(prefs.rampStep), speedPercent(prefs.rampTarget))}
+        >
+          <label className="playalong-field">
+            <input
+              type="checkbox"
+              checked={prefs.ramp}
+              data-testid="playalong-ramp"
+              onChange={(e) => {
+                const ramp = e.target.checked;
+                updatePrefs((p) => ({ ...p, ramp }));
+              }}
+            />
+            {strings.playAlong.ramp}
+          </label>
+          {prefs.ramp && (
+            <>
+              <span className="muted">{units.by}</span>
+              <PercentInput
+                value={prefs.rampStep}
+                min={RAMP_MIN_STEP}
+                max={RAMP_MAX_STEP}
+                step={PLAY_ALONG_SPEED_STEP}
+                label={tips.playAlong.rampStep}
+                testId="playalong-ramp-step"
+                onChange={(rampStep) => {
+                  updatePrefs((p) => ({ ...p, rampStep: roundSpeed(rampStep) }));
+                }}
+              />
+              <span className="muted">{units.upTo}</span>
+              <PercentInput
+                value={prefs.rampTarget}
+                min={PLAY_ALONG_MIN_SPEED}
+                max={PLAY_ALONG_MAX_SPEED}
+                step={PLAY_ALONG_SPEED_STEP}
+                label={tips.playAlong.rampTarget}
+                testId="playalong-ramp-target"
+                onChange={(rampTarget) => {
+                  updatePrefs((p) => ({ ...p, rampTarget: roundSpeed(rampTarget) }));
+                }}
+              />
+            </>
+          )}
+        </span>
         <span className="spacer" />
         <label className="playalong-field">
           <input
@@ -893,7 +958,7 @@ export function PlayAlong({
                 {b.name}
               </button>
               <span className="muted small-print" data-testid="hard-bit-best">
-                {strings.playAlong.best(Math.round(b.bestSpeed * 100))}
+                {strings.playAlong.best(speedPercent(b.bestSpeed))}
               </span>
               <button
                 type="button"

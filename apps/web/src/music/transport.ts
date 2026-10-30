@@ -1,4 +1,4 @@
-import { PLAY_ALONG_MAX_SPEED, PLAY_ALONG_MIN_SPEED } from '@pcaa/shared';
+import { PLAY_ALONG_MAX_SPEED, PLAY_ALONG_MIN_SPEED, roundSpeed } from '@pcaa/shared';
 export interface Timed {
   start: number;
   end: number;
@@ -163,7 +163,7 @@ export class Transport<T extends Timed = Timed> {
         const speed = this.ramp
           ? Math.max(
               anchor.speed,
-              Math.min(this.ramp.target, Math.round((anchor.speed + this.ramp.step) * 100) / 100),
+              Math.min(this.ramp.target, roundSpeed(anchor.speed + this.ramp.step)),
             )
           : anchor.speed;
         this.speed = speed;

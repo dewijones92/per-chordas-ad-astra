@@ -300,6 +300,11 @@ export const tips = {
     nextBarTitle: 'Next bar (.)',
     speed: 'Speed ([ and ])',
     speedLabel: 'Play-along speed',
+    slower: 'Half a percent slower ([)',
+    faster: 'Half a percent faster (])',
+    exactSpeed: 'Exact speed in percent; press Enter to apply',
+    rampStep: 'How much faster each time round, in percent',
+    rampTarget: 'Stop speeding up at this speed, in percent',
     down: 'Transpose down a semitone',
     up: 'Transpose up a semitone',
     capo: (fret: number, key: string) =>
@@ -309,7 +314,8 @@ export const tips = {
     fromHere: 'Start the loop at the current bar',
     toHere: 'End the loop at the current bar',
     clearLoop: 'Clear the loop',
-    ramp: 'Each time the loop comes round, play it 5% faster until full speed',
+    ramp: (step: number, target: number) =>
+      `Each time the loop comes round, play it ${String(step)}% faster until ${String(target)}%`,
     countIn: 'One bar of clicks before the music starts',
     click: 'A metronome click on every beat while it plays',
     hardBits: 'Hard bits',
@@ -451,4 +457,6 @@ export const units = {
   plusBpm: '+bpm',
   everyBars: 'every bars',
   upTo: 'up to',
+  by: 'by',
+  percent: '%',
 } as const;

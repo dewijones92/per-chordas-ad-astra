@@ -1,4 +1,4 @@
-import { Slug, type NewPracticeSession } from '@pcaa/shared';
+import { Slug, speedPercent, type NewPracticeSession } from '@pcaa/shared';
 
 export const LOG_MIN_MS = 60_000;
 export const LOG_IDLE_MS = 120_000;
@@ -65,7 +65,7 @@ export class PlayAlongLog {
       startedAt: new Date(startedAt).toISOString(),
       durationSec: Math.max(1, Math.round(played / 1000)),
       bpm: bpm !== null && bpm >= 20 && bpm <= 400 ? bpm : null,
-      note: `Play-along: ${target.name}${looped}, up to ${String(Math.round(speed * 100))}% speed`.slice(
+      note: `Play-along: ${target.name}${looped}, up to ${String(speedPercent(speed))}% speed`.slice(
         0,
         2000,
       ),

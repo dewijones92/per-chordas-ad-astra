@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { makeMscx, makeMusicXml, PIANO_WALTZ, zipScore } from '../packages/fixtures/src/index.ts';
 import { expect, test, type Page } from '@playwright/test';
 import { createPiece, eventuallyInRemote, openLibrary, remoteLog } from './support/helpers.ts';
-import { strings } from '../apps/web/src/strings.ts';
+import { strings, tips } from '../apps/web/src/strings.ts';
 
 const waltzMscz = () => ({
   name: 'Fixture Waltz.mscz',
@@ -63,13 +63,13 @@ test('a MuseScore file plays as falling notes, transposes, loops, and remembers 
   await page.getByRole('button', { name: 'Hide Piano RH' }).click();
   await page.getByRole('button', { name: 'Mute Piano LH' }).click();
   await page.getByLabel('Play-along speed').fill('60');
-  await expect(page.getByTestId('playalong-speed')).toHaveText('60%');
+  await expect(page.getByTestId('playalong-speed')).toHaveValue('60');
   await page.getByTestId('playalong-names').check();
 
   await page.reload();
   await expect(page.getByTestId('playalong-key')).toContainText('now A major');
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–2');
-  await expect(page.getByTestId('playalong-speed')).toHaveText('60%');
+  await expect(page.getByTestId('playalong-speed')).toHaveValue('60');
   await expect(page.getByRole('button', { name: 'Show Piano RH' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Unmute Piano LH' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Mute Piano RH' })).toBeVisible();
@@ -107,6 +107,47 @@ test('a loop switched off plays straight through, keeps its bars, and comes back
   await expect(page.getByTestId('playalong-loop-on')).toBeChecked();
 });
 
+test('speed goes down to 5% in half-percent steps, takes a typed speed, and speeds up by a chosen step to a chosen stop', async ({
+  page,
+}) => {
+  await createPiece(page, 'Fine Speed', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  const speed = page.getByTestId('playalong-speed');
+  await page.getByLabel('Play-along speed').fill('5');
+  await expect(speed).toHaveValue('5');
+  await expect(page.getByRole('button', { name: tips.playAlong.slower })).toBeDisabled();
+  await page.getByRole('button', { name: tips.playAlong.faster }).click();
+  await expect(speed).toHaveValue('5.5');
+  await speed.fill('50');
+  await speed.press('Enter');
+  await expect(speed).toHaveValue('50');
+  await speed.blur();
+  await page.keyboard.press(']');
+  await expect(speed).toHaveValue('50.5');
+  await page.keyboard.press('[');
+  await expect(speed).toHaveValue('50');
+
+  await page.getByRole('button', { name: 'From here' }).click();
+  await page.getByRole('button', { name: 'To here' }).click();
+  await page.getByTestId('playalong-ramp').check();
+  await page.getByTestId('playalong-ramp-step').fill('2.5');
+  await page.getByTestId('playalong-ramp-step').press('Enter');
+  await page.getByTestId('playalong-ramp-target').fill('55');
+  await page.getByTestId('playalong-ramp-target').press('Enter');
+  await page.getByTestId('playalong-countin').uncheck();
+  await page.getByTestId('playalong-play').click();
+  await expect(speed).toHaveValue('52.5', { timeout: 10_000 });
+  await expect(speed).toHaveValue('55', { timeout: 10_000 });
+  await page.waitForTimeout(4000);
+  await expect(speed).toHaveValue('55');
+  await page.getByTestId('playalong-play').click();
+
+  await page.reload();
+  await expect(page.getByTestId('playalong-ramp-step')).toHaveValue('2.5');
+  await expect(page.getByTestId('playalong-ramp-target')).toHaveValue('55');
+});
+
 test('speed up each loop plays the looped bar faster every time round, and a hard bit keeps its best', async ({
   page,
 }) => {
@@ -124,8 +165,8 @@ test('speed up each loop plays the looped bar faster every time round, and a har
   await page.getByTestId('playalong-ramp').check();
   await page.getByTestId('playalong-countin').uncheck();
   await page.getByTestId('playalong-play').click();
-  await expect(page.getByTestId('playalong-speed')).toHaveText('55%', { timeout: 10_000 });
-  await expect(page.getByTestId('playalong-speed')).toHaveText('60%', { timeout: 10_000 });
+  await expect(page.getByTestId('playalong-speed')).toHaveValue('55', { timeout: 10_000 });
+  await expect(page.getByTestId('playalong-speed')).toHaveValue('60', { timeout: 10_000 });
   await page.getByTestId('playalong-play').click();
   await expect(page.getByTestId('hard-bit-best')).toHaveText(/best 5[05]%/);
   const json = await eventuallyInRemote(`pieces/${id}/hard-bits.json`, (t) =>

@@ -1,7 +1,7 @@
 ---
 title: Play-along (MuseScore and MusicXML, falling notes, transpose, loop)
 status: shipped
-updated: 2026-10-24
+updated: 2026-10-30
 ---
 
 # Play-along
@@ -53,11 +53,13 @@ keyboard from above, like the bird's-eye piano videos.
   is a type-1 file with a track per staff, repeats played out, at the written tempo shape (fixed 120 bpm
   clock, timings from the performance). Nothing is uploaded; it is built in the browser.
 - **Loop**: drag across bars on the **bar strip** above the notes, or use From here / To here. Click a bar
-  to jump to it, Shift+click to stretch the loop. **Speed up each loop** adds 5% every time round until
-  full speed; the change happens exactly at the loop point, so no note is cut. **🔁 Loop** switches the loop off
+  to jump to it, Shift+click to stretch the loop. **Speed up each loop** adds a chosen step every time
+  round (0.5–20%, 5% to start with) until a chosen speed (100% to start with), both typed in beside the switch; the change happens exactly at the loop point, so no note is cut. **🔁 Loop** switches the loop off
   and on without losing it: off, the music plays straight through and the bars stay marked (paler) on the strip;
-  setting a loop (From/To here, a drag, a hard bit) switches it back on. Speed (25–200%), the loop and the switch
-  are remembered per file, on every device.
+  setting a loop (From/To here, a drag, a hard bit) switches it back on. Speed runs from 5% to 200% in half-percent
+  steps: drag the wide slider, use − / + or `[` / `]` (half a percent each), or type an exact number and press
+  Enter (the box applies on Enter or when you leave it, so typing 50 never plays at 5% on the way). Speed, the
+  speed-up step and stop, the loop and the switch are remembered per file, on every device.
 - **Count-in and click**: 🥁 Count-in (on by default) plays one bar of clicks at the playing speed
   before the music starts (after a pickup, the next full bar's beats); Click puts a metronome click on
   every beat while it plays, accented on the first. Compound time counts dotted beats (6/8 in two). The
