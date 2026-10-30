@@ -681,7 +681,11 @@ test('ringing tails let go of the keys after the strike while the notes still ri
   await expect(canvas).toBeVisible();
   await expect.poll(pressed).toEqual(['48', '55', '67']);
   await canvas.hover();
-  for (let i = 0; i < 40 && (await position(page)) < 0.28; i++) await page.mouse.wheel(0, -8);
+  for (let i = 0; i < 40 && (await position(page)) < 0.28; i++) {
+    const before = await position(page);
+    await page.mouse.wheel(0, -8);
+    await expect.poll(() => position(page)).not.toBe(before);
+  }
   expect(await position(page)).toBeGreaterThan(0.25);
   expect(await position(page)).toBeLessThan(0.45);
   await expect.poll(pressed).toEqual(['48', '55', '67']);
