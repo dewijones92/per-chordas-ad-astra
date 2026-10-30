@@ -62,7 +62,9 @@ keyboard from above, like the bird's-eye piano videos.
   speed-up step and stop, the loop and the switch are remembered per file, on every device.
 - **Count-in and click**: 🥁 Count-in (on by default) plays one bar of clicks at the playing speed
   before the music starts (after a pickup, the next full bar's beats); Click puts a metronome click on
-  every beat while it plays, accented on the first. Compound time counts dotted beats (6/8 in two). The
+  every beat while it plays, accented on the first. Compound time counts dotted beats (6/8 in two). With Click on,
+  **🎶 Half-beats** adds a softer, lower click between the beats at the same tempo (on the "and"; three per
+  dotted beat in compound time), handy when playing very slowly; it is remembered with the other settings. The
   click is the metronome's own sound (`metronome/click.ts`). Pausing during the count-in silences the clicks
   already scheduled, and a seek, speed or loop change during it keeps the music waiting for the count-in to
   end.

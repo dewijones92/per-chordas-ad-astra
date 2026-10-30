@@ -22,7 +22,7 @@ export interface PerfBar {
 export interface PerfClick {
   start: number;
   end: number;
-  kind: 'bar' | 'beat';
+  kind: 'bar' | 'beat' | 'sub';
 }
 
 export interface Performance {
@@ -178,9 +178,17 @@ export function buildPerformance(score: ScoreModel): Performance {
   }));
   const clicks: PerfClick[] = [];
   for (const b of barTicks) {
-    for (let t = b.start, k = 0; t < b.end - 1; t += Math.max(1, b.beat), k++) {
+    const beat = Math.max(1, b.beat);
+    const parts = beat === TPQ * 1.5 ? 3 : 2;
+    for (let t = b.start, k = 0; t < b.end - 1; t += beat, k++) {
       const start = toSeconds(t);
       clicks.push({ start, end: start + 0.05, kind: k === 0 ? 'bar' : 'beat' });
+      for (let p = 1; p < parts; p++) {
+        const at = t + (beat * p) / parts;
+        if (at >= b.end - 1) break;
+        const sub = toSeconds(at);
+        clicks.push({ start: sub, end: sub + 0.05, kind: 'sub' });
+      }
     }
   }
   let lowest = Infinity;

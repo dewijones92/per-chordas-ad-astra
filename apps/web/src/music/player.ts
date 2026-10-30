@@ -95,6 +95,7 @@ export class PianoPlayer {
   private readonly transport: Transport<PerfNote>;
   private readonly clicks: Transport<PerfClick>;
   private clickOn = false;
+  private halfBeats = false;
   private readonly perf: Performance;
   private timer: number | undefined;
   private voices = new Set<Voice>();
@@ -221,6 +222,7 @@ export class PianoPlayer {
       transpose: this.transpose,
       countIn: count,
       click: this.clickOn,
+      halfBeats: this.halfBeats,
     });
     this.onEvent({ kind: 'state', playing: true });
   }
@@ -260,8 +262,11 @@ export class PianoPlayer {
     this.passListener = listener;
   }
 
-  setClick(on: boolean): void {
+  setClick(on: boolean, halfBeats: boolean): void {
+    if (on !== this.clickOn || halfBeats !== this.halfBeats)
+      console.info('dewidebug play-along click', { on, halfBeats });
     this.clickOn = on;
+    this.halfBeats = halfBeats;
   }
 
   setRamp(ramp: Ramp | null): void {
@@ -316,7 +321,12 @@ export class PianoPlayer {
         this.passListener(speed);
       }
       if (this.clickOn) {
-        for (const c of this.clicks.pump(ctx.currentTime, HORIZON_SECONDS, () => true)) {
+        const halves = this.halfBeats;
+        for (const c of this.clicks.pump(
+          ctx.currentTime,
+          HORIZON_SECONDS,
+          (c) => halves || c.kind !== 'sub',
+        )) {
           if (this.master)
             keep(this.trackClicks, playClick(ctx, this.master, c.when, c.note.kind, 0.8));
         }

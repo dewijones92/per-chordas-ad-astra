@@ -70,6 +70,7 @@ export const PlayAlongPrefs = z.object({
   notation: z.boolean().default(true),
   countIn: z.boolean().default(true),
   click: z.boolean().default(false),
+  halfBeats: z.boolean().default(false),
 });
 export type PlayAlongPrefs = z.output<typeof PlayAlongPrefs>;
 export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
@@ -87,6 +88,7 @@ export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
   notation: true,
   countIn: true,
   click: false,
+  halfBeats: false,
 };
 
 export const VIEW_MODES = ['page', 'spread', 'width'] as const;

@@ -378,13 +378,46 @@ describe('local time signatures', () => {
 describe('clicks and count-in', () => {
   it('clicks every beat, accenting the first of each bar, and counts compound time in dotted beats', () => {
     const waltz = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
-    expect(waltz.clicks.slice(0, 4).map((c) => [round(c.start), c.kind])).toEqual([
+    const beats = waltz.clicks.filter((c) => c.kind !== 'sub');
+    expect(beats.slice(0, 4).map((c) => [round(c.start), c.kind])).toEqual([
       [0, 'bar'],
       [0.5, 'beat'],
       [1, 'beat'],
       [1.5, 'bar'],
     ]);
-    expect(waltz.clicks).toHaveLength(12);
+    expect(beats).toHaveLength(12);
+    const jig = buildPerformance(
+      parseScoreText(
+        makeMscx(
+          {
+            ...PIANO_WALTZ,
+            time: [6, 8],
+            measures: [{ staves: [[{ pitches: [67], dur: 'half', dots: 1 }], []] }],
+          },
+          '3.02',
+        ),
+      ),
+    );
+    expect(jig.clicks.filter((c) => c.kind !== 'sub').map((c) => [round(c.start), c.kind])).toEqual(
+      [
+        [0, 'bar'],
+        [0.75, 'beat'],
+      ],
+    );
+  });
+
+  it('adds half-beat clicks between the beats, and thirds of a dotted beat in compound time', () => {
+    const waltz = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
+    expect(waltz.clicks.slice(0, 7).map((c) => [round(c.start), c.kind])).toEqual([
+      [0, 'bar'],
+      [0.25, 'sub'],
+      [0.5, 'beat'],
+      [0.75, 'sub'],
+      [1, 'beat'],
+      [1.25, 'sub'],
+      [1.5, 'bar'],
+    ]);
+    expect(waltz.clicks.filter((c) => c.kind === 'sub')).toHaveLength(12);
     const jig = buildPerformance(
       parseScoreText(
         makeMscx(
@@ -399,7 +432,11 @@ describe('clicks and count-in', () => {
     );
     expect(jig.clicks.map((c) => [round(c.start), c.kind])).toEqual([
       [0, 'bar'],
+      [0.25, 'sub'],
+      [0.5, 'sub'],
       [0.75, 'beat'],
+      [1, 'sub'],
+      [1.25, 'sub'],
     ]);
   });
 

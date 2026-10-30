@@ -354,8 +354,8 @@ export function PlayAlong({
   }, [player, prefs.ramp, prefs.rampStep, prefs.rampTarget]);
 
   useEffect(() => {
-    player?.setClick(prefs.click);
-  }, [player, prefs.click]);
+    player?.setClick(prefs.click, prefs.halfBeats);
+  }, [player, prefs.click, prefs.halfBeats]);
 
   const [practice] = useState(() => new PlayAlongLog());
   const logTarget = useMemo(
@@ -867,6 +867,20 @@ export function PlayAlong({
           />
           {strings.playAlong.click}
         </label>
+        {prefs.click && (
+          <label className="playalong-field" title={tips.playAlong.halfBeats}>
+            <input
+              type="checkbox"
+              checked={prefs.halfBeats}
+              data-testid="playalong-half-beats"
+              onChange={(e) => {
+                const halfBeats = e.target.checked;
+                updatePrefs((p) => ({ ...p, halfBeats }));
+              }}
+            />
+            {strings.playAlong.halfBeats}
+          </label>
+        )}
         <label className="playalong-field">
           <input
             type="checkbox"

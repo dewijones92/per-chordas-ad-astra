@@ -456,6 +456,48 @@ test('a count-in bar plays before the music starts, and the click is remembered'
   await expect(page.getByTestId('playalong-click')).toBeChecked();
 });
 
+test('half-beats adds a softer click between the beats at the same tempo, and is remembered', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const started: number[] = [];
+    (window as unknown as { clickPitches: number[] }).clickPitches = started;
+    const start = OscillatorNode.prototype.start;
+    OscillatorNode.prototype.start = function (this: OscillatorNode, when?: number) {
+      started.push(Math.round(this.frequency.value));
+      start.call(this, when);
+    };
+  });
+  const pitches = () =>
+    page.evaluate(() => (window as unknown as { clickPitches: number[] }).clickPitches.slice());
+  await createPiece(page, 'Half Beat Waltz', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await expect(page.getByTestId('playalong-half-beats')).toHaveCount(0);
+  await page.getByTestId('playalong-countin').uncheck();
+  await page.getByTestId('playalong-click').check();
+
+  await page.getByTestId('playalong-play').click();
+  await expect.poll(() => position(page), { timeout: 8000 }).toBeGreaterThan(1.2);
+  await page.getByTestId('playalong-play').click();
+  const plain = await pitches();
+  expect(plain.filter((p) => p === 1175).length).toBeGreaterThan(0);
+  expect(plain.filter((p) => p === 784)).toHaveLength(0);
+
+  await page.getByTestId('playalong-half-beats').check();
+  await page.getByTestId('playalong-play').click();
+  await expect.poll(() => position(page), { timeout: 8000 }).toBeGreaterThan(2.7);
+  await page.getByTestId('playalong-play').click();
+  const halves = (await pitches()).slice(plain.length);
+  const beats = halves.filter((p) => p === 1175 || p === 1760).length;
+  const subs = halves.filter((p) => p === 784).length;
+  expect(subs).toBeGreaterThan(0);
+  expect(Math.abs(subs - beats)).toBeLessThanOrEqual(2);
+
+  await page.reload();
+  await expect(page.getByTestId('playalong-half-beats')).toBeChecked();
+});
+
 test('pausing while the piano is still loading stops it from starting', async ({ page }) => {
   await createPiece(page, 'Quick Pause', { pdf: false });
   await page.getByTestId('upload-music').setInputFiles(waltzMscz());
