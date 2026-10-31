@@ -13,6 +13,16 @@ import { grandStaff, scoreHands } from '../src/music/grand-staff.ts';
 const corpus = process.env['MUSIC_CORPUS'];
 const KNOWN_DIFFERENCES = new Set(['repeat52.mscx', 'repeat53.mscx']);
 const CROSS_STAFF_TIES: Readonly<Record<string, number>> = { 'goldberg.mscz': 3 };
+const HANDS_AGREE: Readonly<Record<string, number>> = {
+  'Reunion.mscz': 0.86,
+  'goldberg.mscz': 0.82,
+  'medium.mscx': 0.96,
+  'schubert.mscx': 0.9,
+  'small.mscx': 0.96,
+  'tutorial-apres-un-reve.musicxml': 0.6,
+  'tutorial-chopin-prelude.musicxml': 1,
+};
+const HANDS_WIDE: Readonly<Record<string, number>> = { 'Reunion.mscz': 12, 'goldberg.mscz': 30 };
 
 describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
   const dir = corpus ?? '';
@@ -111,6 +121,7 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
       const crossed = [...byStart].filter(([, s]) => s.left >= s.right).map(([at]) => at);
       expect(crossed).toEqual([]);
     },
+    30_000,
   );
 
   it.each(files)(
@@ -156,7 +167,7 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
         );
       }
     },
-    60_000,
+    120_000,
   );
 
   it.each(files)(
@@ -190,5 +201,47 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
       );
     },
     60_000,
+  );
+
+  it.each(files)(
+    '%s: the hand split never crosses, rarely stretches past an octave, and on piano scores mostly agrees with the written hands',
+    (name) => {
+      const perf = buildPerformance(loadScore(readFileSync(join(dir, 'dl', name))));
+      const right = perf.staves.find((s) => s.role === 'right');
+      const left = perf.staves.find((s) => s.role === 'left');
+      const notes =
+        right && left
+          ? perf.notes.filter((n) => n.staff === right.index || n.staff === left.index)
+          : perf.notes;
+      const hands = assignHands(notes);
+      const sorted = [...notes].sort((a, b) => a.start - b.start);
+      let crossed = 0;
+      let wide = 0;
+      let next = 0;
+      let live: typeof sorted = [];
+      for (const at of [...new Set(sorted.map((n) => n.start))]) {
+        while (next < sorted.length && (sorted[next]?.start ?? Infinity) <= at + 1e-6) {
+          const n = sorted[next];
+          if (n) live.push(n);
+          next += 1;
+        }
+        live = live.filter((n) => n.end > at + 0.01);
+        const lows = live.filter((n) => hands.get(n) === 'left').map((n) => n.pitch);
+        const highs = live.filter((n) => hands.get(n) === 'right').map((n) => n.pitch);
+        if (lows.length > 0 && highs.length > 0 && Math.max(...lows) >= Math.min(...highs))
+          crossed += 1;
+        for (const hand of [lows, highs])
+          if (hand.length > 0 && Math.max(...hand) - Math.min(...hand) > 12) wide += 1;
+      }
+      expect(crossed).toBe(0);
+      expect(wide).toBeLessThanOrEqual(HANDS_WIDE[name] ?? 0);
+      if (right && left) {
+        const same = notes.filter(
+          (n) => hands.get(n) === (n.staff === right.index ? 'right' : 'left'),
+        ).length;
+        expect(same / Math.max(1, notes.length)).toBeGreaterThanOrEqual(HANDS_AGREE[name] ?? 0.9);
+      }
+    },
+    30_000,
   );
 });

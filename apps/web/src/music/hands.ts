@@ -7,6 +7,8 @@ const ONSET_SECONDS = 0.03;
 const RELEASE_SECONDS = 0.01;
 const BEAM = 32;
 const MAX_SPAN = 12;
+const CLOSE_CHORD = 4;
+const CHORD_SPLIT_COST = 20;
 const MAX_NOTES = 5;
 const LEFT_CEILING = 64;
 const RIGHT_FLOOR = 55;
@@ -48,6 +50,14 @@ function handCost(pitches: readonly number[]): number {
   return span + Math.max(0, span - MAX_SPAN) * 40 + Math.max(0, pitches.length - MAX_NOTES) * 500;
 }
 
+function situation(s: State): string {
+  const held = s.held
+    .map((h) => (h.pitch * 2 + (h.hand === 'left' ? 1 : 0)) * 100000 + Math.round(h.end * 100))
+    .sort((a, b) => a - b)
+    .join(',');
+  return `${held}|${String(Math.round(s.centre.left ?? -1))}|${String(Math.round(s.centre.right ?? -1))}`;
+}
+
 function mean(pitches: readonly number[]): number | null {
   return pitches.length === 0 ? null : pitches.reduce((a, b) => a + b, 0) / pitches.length;
 }
@@ -68,6 +78,10 @@ function step(
   if (allLeft.length > 0 && allRight.length > 0) {
     const overlap = Math.max(...allLeft) - Math.min(...allRight);
     if (overlap >= 0) cost += 1000 * (overlap + 1);
+  }
+  if (left.length > 0 && right.length > 0) {
+    const gap = Math.min(...right) - Math.max(...left);
+    if (gap <= CLOSE_CHORD) cost += CHORD_SPLIT_COST * (CLOSE_CHORD + 1 - gap);
   }
   for (const p of left) cost += Math.max(0, p - LEFT_CEILING) * 2;
   for (const p of right) cost += Math.max(0, RIGHT_FLOOR - p) * 2;
@@ -108,7 +122,15 @@ export function assignHands(
       for (let split = 0; split <= group.length; split++)
         next.push(step(state, group, split, keyUp));
     next.sort((a, b) => a.cost - b.cost);
-    beam = next.slice(0, BEAM);
+    const seen = new Set<string>();
+    beam = [];
+    for (const s of next) {
+      const key = situation(s);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      beam.push(s);
+      if (beam.length === BEAM) break;
+    }
   }
   const hands = new Map<PerfNote, Hand>();
   let state: State | null = beam[0] ?? null;

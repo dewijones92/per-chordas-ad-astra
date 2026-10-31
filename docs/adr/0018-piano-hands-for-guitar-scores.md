@@ -25,9 +25,15 @@ in this batch.
   hands overlapping, counting notes still held, costs 1000 per semitone of overlap; a hand wider than an octave
   costs 40 per extra semitone; more than five notes in a hand costs 500 each; every semitone of a hand's span
   costs 1; the left hand above E4 or the right below G3 costs a little; moving a hand costs half a semitone per
-  semitone. A beam search keeps the 32 cheapest histories, so a held octave at the start of a bar is split to
-  leave room for the chords that follow. On the real Gran Vals file the part layout crosses at 79 moments; the
-  split crosses at none, has two moments wider than an octave, and takes about 80 ms.
+  semitone; splitting notes struck together across the hands when they sit within 4 semitones of each other costs 20
+  per semitone closer than 5 (31 Oct 2026: Après un rêve's C–E♭–G was split between the hands). A beam search keeps
+  the 32 cheapest histories, merging histories that leave the same notes held in the same hands with the same hand
+  positions (only the cheapest survives), so a held octave at the start of a bar is split to leave room for the
+  chords that follow, and a chord kept together does not trap a hand a few beats later. The opt-in corpus test checks
+  it against the written hands of real piano scores (Chopin 100%, songs 96–98%, Schubert 93%, Reunion 88%, Goldberg
+  84%, Après un rêve 67% where Fauré relies on the pedal) and that no hand passes an octave in Gran Vals, the Bach
+  fugue or the Schubert song (Goldberg 26 moments of 22,000; it was 120). On the real Gran Vals file the part layout crosses at 79 moments; the
+  split crosses at none and has no moment wider than an octave (40 ms).
 - **By hand is a view, not a new performance.** The player keeps the same notes, and each note is mapped to a
   lane (part or hand), so the falling notes, key colours, hide and mute follow the lane and switching does not
   restart playback. The lanes are 🫱 Right hand and 🫲 Left hand, in the usual right/left colours.

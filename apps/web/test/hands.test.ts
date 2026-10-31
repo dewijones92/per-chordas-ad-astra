@@ -87,4 +87,14 @@ describe('hand split', () => {
     expect(crossings(notes, hands, keyUp)).toEqual([]);
     expect(crossings(notes, assignHands(notes))).toEqual([]);
   });
+
+  it('keeps a comfortable chord in one hand instead of splitting it between the hands', () => {
+    const chords = [0, 0.5, 1].flatMap((t) => [60, 63, 67].map((p) => note(p, t, t + 0.5)));
+    const hands = assignHands(chords);
+    expect(new Set(chords.map((n) => hands.get(n)))).toEqual(new Set(['right']));
+    const withBass = [note(36, 0, 1.5), ...chords];
+    const split = assignHands(withBass);
+    expect(split.get(withBass[0]!)).toBe('left');
+    expect(new Set(chords.map((n) => split.get(n)))).toEqual(new Set(['right']));
+  });
 });
