@@ -31,7 +31,9 @@ in this batch.
 - **By hand is a view, not a new performance.** The player keeps the same notes, and each note is mapped to a
   lane (part or hand), so the falling notes, key colours, hide and mute follow the lane and switching does not
   restart playback. The lanes are 🫱 Right hand and 🫲 Left hand, in the usual right/left colours.
-- **Its default follows the instrument.** `byHand` is unset until chosen: it starts on when 🙋 I play on is
+- **Its default follows the instrument, and says so.** Dewi, 31 Oct 2026: make it clear which to press. Both settings
+  have a visible ✨ Auto choice that names what it picked and why, hover text on every button and a ❓ explanation
+  (shared `ui/Choice.tsx`); the hand choices are named 🎼 As written and 🖐️ Split for piano. `byHand` is unset until chosen: it starts on when 🙋 I play on is
   Piano and the score has no two-handed staff of its own (a real piano score keeps its RH/LH staves), and off
   otherwise. I play on starts as Guitar when a part's name says guitar. Both, and the hands' own hide and mute
   lists, live in the play-along preferences, so they are remembered per file and will be per person.

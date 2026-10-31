@@ -124,12 +124,22 @@ export const strings = {
     click: '🔊 Click',
     halfBeats: '🎶 Half-beats',
     playOn: '🙋 I play on',
-    colourBy: '🎨 Colours',
-    byPart: '🎼 By part',
-    byHand: '🖐️ By hand',
+    hands: '🖐️ Hands',
+    handModes: { auto: '✨ Auto', parts: '🎼 As written', hands: '🖐️ Split for piano' },
+    playOnModes: { auto: '✨ Auto', piano: '🎹 Piano', guitar: '🎸 Guitar' },
+    autoChose: (choice: string, why: string) => `✨ Auto chose ${choice}: ${why}`,
+    handsHelp: [
+      "🎼 As written: the file decides. A piano score's treble staff is your right hand and its bass staff your left.",
+      '🖐️ Split for piano: the app works out which hand plays each note so your hands never cross. Use it for music written for guitar (like Gran Vals) or another instrument.',
+      '✨ Auto: Split for piano when you play the piece on piano and the file has no piano staves of its own; otherwise As written.',
+    ],
+    playOnHelp: [
+      '🎹 Piano: no capo hints, and music written for guitar is split between your hands.',
+      '🎸 Guitar: when you transpose, shows the capo fret that keeps the written shapes.',
+      '✨ Auto: Guitar when a part in the file is named guitar, otherwise Piano.',
+    ],
     tails: '🔔 Ringing tails',
     handNames: { right: '🫱 Right hand', left: '🫲 Left hand' },
-    instruments: { piano: '🎹 Piano', guitar: '🎸 Guitar' },
     notation: '🎼 Notation',
     noteNames: '🔤 Note names',
     hardBits: '📌 Hard bits',
@@ -253,6 +263,9 @@ export const strings = {
 } as const;
 
 export const tips = {
+  common: {
+    help: (what: string) => `Explain: ${what}`,
+  },
   library: {
     tagsPlaceholder: 'fingerstyle, learning',
     pin: (title: string) => `Pin ${title}`,
@@ -327,8 +340,17 @@ export const tips = {
     countIn: 'One bar of clicks before the music starts',
     click: 'A metronome click on every beat while it plays',
     playOn: 'The instrument you play this on; guitar shows capo hints',
-    colourBy:
-      'By part follows the file; by hand splits the notes between your hands so they never cross',
+    hands: 'Which hand plays each note',
+    handModes: {
+      auto: 'Let the app choose',
+      parts: "Use the file's own staves: treble is the right hand, bass the left",
+      hands: 'Work out the hands so they never cross; for guitar music played on piano',
+    },
+    playOnModes: {
+      auto: 'Let the app choose from the part names',
+      piano: 'You play this on piano',
+      guitar: 'You play this on guitar; shows capo hints',
+    },
     handNames: { right: 'right hand', left: 'left hand' },
     tails:
       'Draw each note as a short strike with a thin tail while it rings, so long notes do not look like keys to hold down; catch them with the pedal',
@@ -472,6 +494,13 @@ export const units = {
   plusBpm: '+bpm',
   everyBars: 'every bars',
   upTo: 'up to',
+  autoWhy: {
+    noPianoStaves: 'this file has no piano staves',
+    pianoStaves: 'this file has its own piano staves',
+    guitar: 'you play it on guitar',
+    guitarPart: 'a part is named guitar',
+    noGuitarPart: 'no part is named guitar',
+  },
   by: 'by',
   percent: '%',
 } as const;

@@ -8,7 +8,7 @@ import {
 } from '../packages/fixtures/src/index.ts';
 import { expect, test, type Page } from '@playwright/test';
 import { createPiece, eventuallyInRemote, openLibrary, remoteLog } from './support/helpers.ts';
-import { strings, tips } from '../apps/web/src/strings.ts';
+import { strings, tips, units } from '../apps/web/src/strings.ts';
 
 const waltzMscz = () => ({
   name: 'Fixture Waltz.mscz',
@@ -55,13 +55,17 @@ test('a MuseScore file plays as falling notes, transposes, loops, and remembers 
   await page.getByRole('button', { name: 'Transpose up a semitone' }).click();
   await expect(page.getByTestId('playalong-key')).toContainText('now A major');
   await expect(page.getByTestId('playalong-play-on').locator('[aria-pressed="true"]')).toHaveText(
-    strings.playAlong.instruments.piano,
+    strings.playAlong.playOnModes.auto,
+  );
+  await expect(page.getByTestId('playalong-play-on-note')).toContainText(
+    strings.playAlong.playOnModes.piano,
   );
   await expect(page.getByTestId('playalong-capo')).toHaveCount(0);
   await page
     .getByTestId('playalong-play-on')
-    .getByRole('button', { name: strings.playAlong.instruments.guitar })
+    .getByRole('button', { name: strings.playAlong.playOnModes.guitar })
     .click();
+  await expect(page.getByTestId('playalong-play-on-note')).toHaveCount(0);
   await expect(page.getByTestId('playalong-capo')).toContainText('Capo 2');
   const json = await eventuallyInRemote(`pieces/${id}/piece.json`, (t) =>
     t.includes('"transpose": 2'),
@@ -610,7 +614,22 @@ test('by hand splits a guitar-style score so the hands never cross, and lets one
     buffer: Buffer.from(zipScore('guitar.mscx', makeMscx(GUITAR_STYLE_WALTZ, '4.50'))),
   });
   await expect(page.getByTestId('playalong-canvas')).toBeVisible();
-  await expect(choice.locator('[aria-pressed="true"]')).toHaveText(strings.playAlong.byHand);
+  await expect(choice.locator('[aria-pressed="true"]')).toHaveText(
+    strings.playAlong.handModes.auto,
+  );
+  await expect(page.getByTestId('playalong-by-hand-note')).toHaveText(
+    strings.playAlong.autoChose(strings.playAlong.handModes.hands, units.autoWhy.noPianoStaves),
+  );
+  await expect(
+    choice.getByRole('button', { name: strings.playAlong.handModes.parts }),
+  ).toHaveAttribute('title', tips.playAlong.handModes.parts);
+  await expect(page.getByTestId('playalong-by-hand-help-text')).toHaveCount(0);
+  await page.getByTestId('playalong-by-hand-help').click();
+  await expect(page.getByTestId('playalong-by-hand-help-text')).toContainText(
+    strings.playAlong.handsHelp[0],
+  );
+  await page.getByTestId('playalong-by-hand-help').click();
+  await expect(page.getByTestId('playalong-by-hand-help-text')).toHaveCount(0);
   await expect(page.getByTestId('playalong-part')).toHaveText([
     new RegExp(strings.playAlong.handNames.right),
     new RegExp(strings.playAlong.handNames.left),
@@ -629,7 +648,8 @@ test('by hand splits a guitar-style score so the hands never cross, and lets one
       );
   await expect.poll(bassClefs).toBeGreaterThan(0);
 
-  await choice.getByRole('button', { name: strings.playAlong.byPart }).click();
+  await choice.getByRole('button', { name: strings.playAlong.handModes.parts }).click();
+  await expect(page.getByTestId('playalong-by-hand-note')).toHaveCount(0);
   await expect.poll(bassClefs).toBe(0);
   await expect(page.getByTestId('playalong-part')).toHaveCount(2);
   await expect
@@ -639,12 +659,14 @@ test('by hand splits a guitar-style score so the hands never cross, and lets one
     })
     .toBe(true);
 
-  await choice.getByRole('button', { name: strings.playAlong.byHand }).click();
+  await choice.getByRole('button', { name: strings.playAlong.handModes.hands }).click();
   await page.getByRole('button', { name: `Hide ${tips.playAlong.handNames.left}` }).click();
   await expect.poll(pressed).toEqual({ '67': right });
 
   await page.reload();
-  await expect(choice.locator('[aria-pressed="true"]')).toHaveText(strings.playAlong.byHand);
+  await expect(choice.locator('[aria-pressed="true"]')).toHaveText(
+    strings.playAlong.handModes.hands,
+  );
   await expect(
     page.getByRole('button', { name: `Show ${tips.playAlong.handNames.left}` }),
   ).toBeVisible();

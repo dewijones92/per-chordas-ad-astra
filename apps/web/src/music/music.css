@@ -237,3 +237,18 @@
 .notation-marks.is-editable .text-editor {
   pointer-events: auto;
 }
+
+.choice-help {
+  flex-basis: 100%;
+  margin: 2px 0 4px;
+  padding: 8px 12px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--sun-wash);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.choice-help p {
+  margin: 2px 0;
+}

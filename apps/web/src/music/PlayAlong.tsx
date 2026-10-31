@@ -764,11 +764,24 @@ export function PlayAlong({
         <Choice
           label={strings.playAlong.playOn}
           title={tips.playAlong.playOn}
-          value={playOn}
-          options={INSTRUMENTS.map((i) => ({ value: i, label: strings.playAlong.instruments[i] }))}
+          value={prefs.playOn ?? 'auto'}
+          options={(['auto', ...INSTRUMENTS] as const).map((i) => ({
+            value: i,
+            label: strings.playAlong.playOnModes[i],
+            tip: tips.playAlong.playOnModes[i],
+          }))}
           testId="playalong-play-on"
+          help={strings.playAlong.playOnHelp}
+          note={
+            prefs.playOn === null
+              ? strings.playAlong.autoChose(
+                  strings.playAlong.playOnModes[playOn],
+                  playOn === 'guitar' ? units.autoWhy.guitarPart : units.autoWhy.noGuitarPart,
+                )
+              : null
+          }
           onChange={(next) => {
-            updatePrefs((p) => ({ ...p, playOn: next }));
+            updatePrefs((p) => ({ ...p, playOn: next === 'auto' ? null : next }));
           }}
         />
         <span className="playalong-field" data-testid="playalong-export">
@@ -1109,16 +1122,30 @@ export function PlayAlong({
       </div>
       <div className="playalong-parts playalong-settings" aria-label={tips.playAlong.parts}>
         <Choice
-          label={strings.playAlong.colourBy}
-          title={tips.playAlong.colourBy}
-          value={byHand ? 'hands' : 'parts'}
-          options={[
-            { value: 'parts', label: strings.playAlong.byPart },
-            { value: 'hands', label: strings.playAlong.byHand },
-          ]}
+          label={strings.playAlong.hands}
+          title={tips.playAlong.hands}
+          value={prefs.byHand === null ? 'auto' : prefs.byHand ? 'hands' : 'parts'}
+          options={(['auto', 'parts', 'hands'] as const).map((m) => ({
+            value: m,
+            label: strings.playAlong.handModes[m],
+            tip: tips.playAlong.handModes[m],
+          }))}
           testId="playalong-by-hand"
+          help={strings.playAlong.handsHelp}
+          note={
+            prefs.byHand === null
+              ? strings.playAlong.autoChose(
+                  strings.playAlong.handModes[byHand ? 'hands' : 'parts'],
+                  byHand
+                    ? units.autoWhy.noPianoStaves
+                    : playOn === 'guitar'
+                      ? units.autoWhy.guitar
+                      : units.autoWhy.pianoStaves,
+                )
+              : null
+          }
           onChange={(next) => {
-            updatePrefs((p) => ({ ...p, byHand: next === 'hands' }));
+            updatePrefs((p) => ({ ...p, byHand: next === 'auto' ? null : next === 'hands' }));
           }}
         />
         {(lanes?.lanes ?? []).map((s) => {

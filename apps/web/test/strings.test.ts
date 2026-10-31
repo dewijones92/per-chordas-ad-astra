@@ -10,13 +10,19 @@ const PLAIN_ATTRIBUTES = new Set(['title', 'aria-label', 'placeholder', 'alt', '
 
 type Leaf = string | ((...args: never[]) => string);
 interface Tree {
-  readonly [key: string]: Leaf | Tree;
+  readonly [key: string]: Leaf | Tree | readonly string[];
+}
+
+function isLines(value: unknown): value is readonly string[] {
+  return Array.isArray(value);
 }
 
 function leaves(tree: Tree, path: string[] = []): [string, string][] {
   return Object.entries(tree).flatMap(([key, value]): [string, string][] => {
     const at = [...path, key];
     if (typeof value === 'string') return [[at.join('.'), value]];
+    if (isLines(value))
+      return value.map((line, i): [string, string] => [[...at, String(i)].join('.'), line]);
     if (typeof value === 'function') {
       const sample = (value as (...args: unknown[]) => string)(7, 'x', 3, 'y');
       return [[at.join('.'), sample]];

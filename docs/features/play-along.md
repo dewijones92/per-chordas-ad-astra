@@ -37,12 +37,13 @@ keyboard from above, like the bird's-eye piano videos.
   flat keys, sharps in sharp keys), following any transposition. Remembered per file.
 - **Parts**: each staff can be hidden (👁, still heard) or muted (🔊, still shown) on its own, to practise one
   hand while the other plays.
-- **🎨 Colours: 🎼 By part / 🖐️ By hand** (ADR 0018): by hand, the app works out which hand plays each note,
-  so a guitar score played on piano never asks one hand to sit inside the other (Gran Vals bar 17). The lanes
-  become 🫱 Right hand and 🫲 Left hand, each with its own hide and mute, and the switch does not stop the music.
-  It starts on for a piece you play on piano that has no two-handed staff of its own, and is remembered per file.
-  The notation follows: by hand, a MuseScore file is shown as a piano grand staff (right hand on treble, left hand
-  on bass, no guitar octave clef); by part it shows the file's own staves. Exports keep the file's layout.
+- **🖐️ Hands: ✨ Auto / 🎼 As written / 🖐️ Split for piano** (ADR 0018): As written uses the file's own staves (a
+  piano score's treble is the right hand, bass the left). Split for piano works out which hand plays each note, so a
+  guitar score played on piano never asks one hand to sit inside the other (Gran Vals bar 17); the lanes become 🫱
+  Right hand and 🫲 Left hand, each with its own hide and mute, and switching does not stop the music. ✨ Auto (the
+  default) picks Split for piano when you play the piece on piano and the file has no piano staves, and says what it
+  chose and why beside the buttons. Every button has hover text and ❓ opens a plain explanation; the same goes for
+  🙋 I play on (✨ Auto / 🎹 Piano / 🎸 Guitar). Remembered per file.
 - **🔔 Ringing tails**: each note is drawn as a short strike (0.2 s) with a thin, paler tail for as long as it
   rings, and its key lights only for the strike, so a guitar's let-ring notes no longer look like keys to hold
   down (catch them with the pedal). With tails on, the hand split counts a key as released after its strike,
@@ -57,7 +58,7 @@ keyboard from above, like the bird's-eye piano videos.
   played as MuseScore plays them (checked against MuseScore's own repeat tests, ADR 0014).
 - **Transpose**: − / + by semitone (±24). Shows the written key and the key it now sounds in, minor where
   the file says so, and for transposing up, the capo fret that keeps the written shapes on guitar (only when **🙋 I play
-  on** is 🎸 Guitar; 🎹 Piano hides it). "I play on" starts as Guitar when a part's name says guitar and Piano
+  on** is 🎸 Guitar; 🎹 Piano hides it). Its ✨ Auto picks Guitar when a part's name says guitar and Piano
   otherwise, and your choice is remembered per file with the other play-along settings. The key is saved
   in `piece.json`, so it opens in your key everywhere; the commit says `Transpose <file> to +2`.
 - **Export**: 💾 MusicXML and 💾 MIDI download the piece in the key it is transposed to, named like
