@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assignHands, type Hand } from '../src/music/hands.ts';
+import { assignHands, handLanes, LEFT_OUT, thinOctaves, type Hand } from '../src/music/hands.ts';
 import type { PerfNote } from '../src/music/performance.ts';
 import { keyUpAt, STRIKE_SECONDS } from '../src/music/falling.ts';
 
@@ -28,6 +28,52 @@ function crossings(
   }
   return found;
 }
+
+describe('thin octaves', () => {
+  const bar18 = () => {
+    const bass = note(43, 0, 0.5, 1);
+    const lower = note(57, 0, 1.5, 0);
+    const upper = note(69, 0, 1.5, 0);
+    const chords = [0.5, 1].flatMap((t) => [note(60, t, t + 0.5, 1), note(64, t, t + 0.5, 1)]);
+    return { bass, lower, upper, chords, all: [bass, lower, upper, ...chords] };
+  };
+
+  it('leaves out the lower copy of a tune written in octaves (Gran Vals bar 18), so no hand holds an octave', () => {
+    const { lower, all } = bar18();
+    const left = thinOctaves(all);
+    expect([...left]).toEqual([lower]);
+    const kept = all.filter((n) => !left.has(n));
+    const hands = assignHands(kept);
+    expect(crossings(kept, hands)).toEqual([]);
+    for (const at of [0, 0.5, 1]) {
+      const sounding = kept.filter((n) => n.start <= at + 1e-6 && n.end > at + 0.01);
+      for (const hand of ['left', 'right'] as const) {
+        const pitches = sounding.filter((n) => hands.get(n) === hand).map((n) => n.pitch);
+        if (pitches.length > 0)
+          expect(Math.max(...pitches) - Math.min(...pitches)).toBeLessThan(12);
+      }
+    }
+  });
+
+  it('keeps a bass octave, an octave whose copy is shorter, and an octave under a higher held tune', () => {
+    const bassOctave = [note(36, 0, 1), note(48, 0, 1)];
+    const shortCopy = [note(57, 2, 2.5), note(69, 2, 3)];
+    const held = note(79, 4, 6);
+    const inner = [note(60, 5, 6), note(72, 5, 6)];
+    expect(thinOctaves([...bassOctave, ...shortCopy, held, ...inner]).size).toBe(0);
+  });
+
+  it('puts a left-out note in no hand lane', () => {
+    const { lower, all } = bar18();
+    const left = thinOctaves(all);
+    const lanes = handLanes(
+      assignHands(all.filter((n) => !left.has(n))),
+      { right: 'R', left: 'L' },
+      { right: 'r', left: 'l' },
+    );
+    expect(lanes.laneOf(lower)).toBe(LEFT_OUT);
+  });
+});
 
 describe('hand split', () => {
   it('splits Gran Vals bar 17 so no hand sits inside the other', () => {

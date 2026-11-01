@@ -139,6 +139,7 @@ export const strings = {
       '✨ Auto: Guitar when a part in the file is named guitar, otherwise Piano.',
     ],
     tails: '🔔 Ringing tails',
+    thinOctaves: '✂️ Thin octaves',
     handNames: { right: '🫱 Right hand', left: '🫲 Left hand' },
     notation: '🎼 Notation',
     noteNames: '🔤 Note names',
@@ -352,6 +353,8 @@ export const tips = {
       guitar: 'You play this on guitar; shows capo hints',
     },
     handNames: { right: 'right hand', left: 'left hand' },
+    thinOctaves:
+      'Where the tune is written in octaves, leave out the lower copy (not drawn, not played), so one hand is not stretched over an octave and the other is free for the bass and chords',
     tails:
       'Draw each note as a short strike with a thin tail while it rings, so long notes do not look like keys to hold down; catch them with the pedal',
     halfBeats: 'A softer click between the beats too (three per beat in 6/8), at the same tempo',

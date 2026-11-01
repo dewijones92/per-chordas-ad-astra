@@ -596,7 +596,7 @@ test('a file that is not music says why', async ({ page }) => {
   );
 });
 
-test('by hand splits a guitar-style score so the hands never cross, and lets one hand be hidden', async ({
+test('by hand splits a guitar-style score so the hands never cross, thins its octaves, and lets one hand be hidden', async ({
   page,
 }) => {
   const pressed = async () =>
@@ -636,6 +636,13 @@ test('by hand splits a guitar-style score so the hands never cross, and lets one
   ]);
   const left = '#13b9a6';
   const right = '#6d3df2';
+  await expect(page.getByTestId('playalong-thin-octaves')).toBeChecked();
+  await expect(page.getByTestId('playalong-thin-octaves').locator('..')).toHaveAttribute(
+    'title',
+    tips.playAlong.thinOctaves,
+  );
+  await expect.poll(pressed).toEqual({ '48': left, '67': right });
+  await page.getByTestId('playalong-thin-octaves').uncheck();
   await expect.poll(pressed).toEqual({ '48': left, '55': left, '67': right });
   const bassClefs = () =>
     page
@@ -650,6 +657,7 @@ test('by hand splits a guitar-style score so the hands never cross, and lets one
 
   await choice.getByRole('button', { name: strings.playAlong.handModes.parts }).click();
   await expect(page.getByTestId('playalong-by-hand-note')).toHaveCount(0);
+  await expect(page.getByTestId('playalong-thin-octaves')).toHaveCount(0);
   await expect.poll(bassClefs).toBe(0);
   await expect(page.getByTestId('playalong-part')).toHaveCount(2);
   await expect
@@ -670,6 +678,7 @@ test('by hand splits a guitar-style score so the hands never cross, and lets one
   await expect(
     page.getByRole('button', { name: `Show ${tips.playAlong.handNames.left}` }),
   ).toBeVisible();
+  await expect(page.getByTestId('playalong-thin-octaves')).not.toBeChecked();
 });
 
 test('stepping bars while paused moves the bar readout with the notes', async ({ page }) => {
@@ -701,7 +710,7 @@ test('ringing tails let go of the keys after the strike while the notes still ri
   });
   const canvas = page.getByTestId('playalong-canvas');
   await expect(canvas).toBeVisible();
-  await expect.poll(pressed).toEqual(['48', '55', '67']);
+  await expect.poll(pressed).toEqual(['48', '67']);
   await canvas.hover();
   for (let i = 0; i < 40 && (await position(page)) < 0.28; i++) {
     const before = await position(page);
@@ -710,7 +719,7 @@ test('ringing tails let go of the keys after the strike while the notes still ri
   }
   expect(await position(page)).toBeGreaterThan(0.25);
   expect(await position(page)).toBeLessThan(0.45);
-  await expect.poll(pressed).toEqual(['48', '55', '67']);
+  await expect.poll(pressed).toEqual(['48', '67']);
   await page.getByTestId('playalong-tails').check();
   await expect.poll(pressed).toEqual([]);
   await page.reload();

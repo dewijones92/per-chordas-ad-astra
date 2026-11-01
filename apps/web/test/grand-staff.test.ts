@@ -1,7 +1,7 @@
 import { GUITAR_STYLE_WALTZ, makeMscx } from '@pcaa/fixtures';
 import { describe, expect, it } from 'vitest';
 import { grandStaff, scoreHands } from '../src/music/grand-staff.ts';
-import { assignHands } from '../src/music/hands.ts';
+import { assignHands, thinOctaves } from '../src/music/hands.ts';
 import { parseScoreText } from '../src/music/load.ts';
 import { buildPerformance } from '../src/music/performance.ts';
 import { toMusicXml } from '../src/music/to-musicxml.ts';
@@ -34,6 +34,27 @@ describe('grand staff', () => {
         .sort();
     expect(byStaff('2')).toEqual(['C3', 'G3']);
     expect(byStaff('1')).toEqual(['C4', 'C4', 'E4', 'E4', 'G4']);
+  });
+
+  it('leaves a thinned octave copy out of the grand staff', () => {
+    const score = parseScoreText(makeMscx(GUITAR_STYLE_WALTZ, '4.50'));
+    const perf = buildPerformance(score);
+    const left = thinOctaves(perf.notes);
+    const hands = assignHands(perf.notes.filter((n) => !left.has(n)));
+    const grand = grandStaff(score, scoreHands(score.notes, hands, left));
+    if (!grand.notation) throw new Error('no notation');
+    const doc = new DOMParser().parseFromString(
+      toMusicXml(grand, grand.notation),
+      'application/xml',
+    );
+    const pitches = [...doc.querySelectorAll('note pitch')]
+      .map(
+        (p) =>
+          `${p.querySelector('step')?.textContent ?? ''}${p.querySelector('octave')?.textContent ?? ''}`,
+      )
+      .sort();
+    expect(pitches).toEqual(['C3', 'C4', 'C4', 'E4', 'E4', 'G4']);
+    expect(grand.notes.map((n) => n.pitch)).not.toContain(55);
   });
 
   it('keeps a tied note in the hand that struck it', () => {

@@ -12,27 +12,40 @@ function noteKey(staff: number, pitch: number, tick: number): string {
 export function scoreHands(
   notes: readonly ScoreNote[],
   perfHands: ReadonlyMap<PerfNote, Hand>,
-): Map<string, Hand> {
-  const bySource = new Map<ScoreNote, Hand>();
+  leftOut: ReadonlySet<PerfNote> = new Set(),
+): Map<string, Hand | null> {
+  const bySource = new Map<ScoreNote, Hand | null>();
   const played = [...perfHands].sort(([a], [b]) => a.start - b.start);
   for (const [n, hand] of played)
     if (n.source && !bySource.has(n.source)) bySource.set(n.source, hand);
-  const hands = new Map<string, Hand>();
-  const tiedTo = new Map<string, Hand>();
+  for (const n of leftOut) if (n.source && !bySource.has(n.source)) bySource.set(n.source, null);
+  const hands = new Map<string, Hand | null>();
+  const tiedTo = new Map<string, Hand | null>();
   for (const n of [...notes].sort((a, b) => a.tick - b.tick)) {
     const key = noteKey(n.staff, n.pitch, n.tick);
-    const hand = bySource.get(n) ?? tiedTo.get(key) ?? (n.pitch < MIDDLE_C ? 'left' : 'right');
+    const hand = bySource.has(n)
+      ? (bySource.get(n) ?? null)
+      : tiedTo.has(key)
+        ? (tiedTo.get(key) ?? null)
+        : n.pitch < MIDDLE_C
+          ? 'left'
+          : 'right';
     hands.set(key, hand);
     if (n.tieForward) tiedTo.set(noteKey(n.staff, n.pitch, n.tick + n.ticks), hand);
   }
   return hands;
 }
 
-export function grandStaff(score: ScoreModel, hands: ReadonlyMap<string, Hand>): ScoreModel {
+function handAt(hands: ReadonlyMap<string, Hand | null>, key: string, pitch: number): Hand | null {
+  const hand = hands.get(key);
+  return hand === undefined ? (pitch < MIDDLE_C ? 'left' : 'right') : hand;
+}
+
+export function grandStaff(score: ScoreModel, hands: ReadonlyMap<string, Hand | null>): ScoreModel {
   const notation = score.notation;
   if (!notation) return score;
-  const handOf = (e: NotationEvent, pitch: number): Hand =>
-    hands.get(noteKey(e.staff, pitch, e.tick)) ?? (pitch < MIDDLE_C ? 'left' : 'right');
+  const handOf = (e: NotationEvent, pitch: number): Hand | null =>
+    handAt(hands, noteKey(e.staff, pitch, e.tick), pitch);
 
   const events: NotationEvent[] = [];
   const groups = new Map<string, NotationEvent[]>();
@@ -107,6 +120,7 @@ export function grandStaff(score: ScoreModel, hands: ReadonlyMap<string, Hand>):
   const name = score.parts[0]?.name ?? 'Piano';
   console.info('dewidebug grand staff', {
     events: notation.events.length,
+    leftOut: [...hands.values()].filter((h) => h === null).length,
     grand: events.length,
     left: events.filter((e) => e.staff === 1 && !e.rest).length,
   });
@@ -117,10 +131,10 @@ export function grandStaff(score: ScoreModel, hands: ReadonlyMap<string, Hand>):
       { index: 0, part: 0, name, role: 'right' },
       { index: 1, part: 0, name, role: 'left' },
     ],
-    notes: score.notes.map((n) => ({
-      ...n,
-      staff: HAND_STAFF[hands.get(noteKey(n.staff, n.pitch, n.tick)) ?? 'right'],
-    })),
+    notes: score.notes.flatMap((n) => {
+      const hand = handAt(hands, noteKey(n.staff, n.pitch, n.tick), n.pitch);
+      return hand === null ? [] : [{ ...n, staff: HAND_STAFF[hand] }];
+    }),
     dynamics: score.dynamics.map((d) => ({ ...d, part: 0 })),
     notation: {
       ...notation,

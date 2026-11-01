@@ -33,7 +33,7 @@ import { capoFor, fitRange, keyName, signedSemitones, transposeFifths } from './
 import { BarStrip } from './BarStrip.tsx';
 import { parseScoreText, unpackScore } from './load.ts';
 import { instrumentFor } from './model.ts';
-import { assignHands, handLanes, partLanes, type Lanes } from './hands.ts';
+import { assignHands, handLanes, LEFT_OUT, partLanes, thinOctaves, type Lanes } from './hands.ts';
 import { grandStaff, scoreHands } from './grand-staff.ts';
 import { DRAW_MIN_ZOOM, Notation } from './Notation.tsx';
 import { toMusicXml } from './to-musicxml.ts';
@@ -124,7 +124,7 @@ function FallingCanvas({
     const to = perf.bars[shownLoop.to];
     return from && to ? { start: from.start, end: to.end } : null;
   }, [perf, shownLoop]);
-  const hidden = useMemo(() => new Set(hiddenLanes), [hiddenLanes]);
+  const hidden = useMemo(() => new Set([...hiddenLanes, LEFT_OUT]), [hiddenLanes]);
   const names = useMemo(
     () => (prefs.names ? { flats: transposeFifths(perf.keyFifths, transpose) < 0 } : null),
     [prefs.names, perf.keyFifths, transpose],
@@ -307,10 +307,20 @@ export function PlayAlong({
       (prefs.playOn ?? instrumentFor(perf.staves)) === 'piano' &&
       !perf.staves.some((s) => s.role === 'left'));
   const tails = prefs.tails;
+  const thin = prefs.thinOctaves;
+  const leftOut = useMemo(
+    () => (perf && byHand && thin ? thinOctaves(perf.notes) : null),
+    [perf, byHand, thin],
+  );
   const hands = useMemo(
     () =>
-      perf && byHand ? assignHands(perf.notes, tails ? (n) => keyUpAt(n, true) : undefined) : null,
-    [perf, byHand, tails],
+      perf && byHand
+        ? assignHands(
+            leftOut ? perf.notes.filter((n) => !leftOut.has(n)) : perf.notes,
+            tails ? (n) => keyUpAt(n, true) : undefined,
+          )
+        : null,
+    [perf, byHand, tails, leftOut],
   );
   const lanes = useMemo(
     () =>
@@ -325,9 +335,9 @@ export function PlayAlong({
   const grandXml = useMemo(() => {
     const score = loaded.data?.score;
     if (!hands || !score?.notation || !prefs.notation) return null;
-    const grand = grandStaff(score, scoreHands(score.notes, hands));
+    const grand = grandStaff(score, scoreHands(score.notes, hands, leftOut ?? undefined));
     return grand.notation ? toMusicXml(grand, grand.notation) : null;
-  }, [loaded.data, hands, prefs.notation]);
+  }, [loaded.data, hands, leftOut, prefs.notation]);
   const notationXml = prefs.notation ? (grandXml ?? sourceXml) : null;
   const hiddenLanes = byHand ? prefs.handHidden : prefs.hidden;
   const mutedLanes = byHand ? prefs.handMuted : prefs.muted;
@@ -378,9 +388,13 @@ export function PlayAlong({
       byHand: lanes.byHand,
       lanes: lanes.lanes.map((l) => l.label),
       muted: mutedLanes,
+      leftOut: leftOut?.size ?? 0,
     });
-    player.setInclude((n) => !muted.has(lanes.laneOf(n)));
-  }, [player, lanes, mutedLanes]);
+    player.setInclude((n) => {
+      const lane = lanes.laneOf(n);
+      return lane !== LEFT_OUT && !muted.has(lane);
+    });
+  }, [player, lanes, mutedLanes, leftOut]);
 
   const applied = activeLoop(prefs);
   const loopFrom = applied?.from ?? null;
@@ -1148,6 +1162,20 @@ export function PlayAlong({
             updatePrefs((p) => ({ ...p, byHand: next === 'auto' ? null : next === 'hands' }));
           }}
         />
+        {byHand && (
+          <label className="playalong-field" title={tips.playAlong.thinOctaves}>
+            <input
+              type="checkbox"
+              checked={prefs.thinOctaves}
+              data-testid="playalong-thin-octaves"
+              onChange={(e) => {
+                const thinOctaves = e.target.checked;
+                updatePrefs((p) => ({ ...p, thinOctaves }));
+              }}
+            />
+            {strings.playAlong.thinOctaves}
+          </label>
+        )}
         {(lanes?.lanes ?? []).map((s) => {
           const colour = colours[s.index];
           const isHidden = hiddenLanes.includes(s.index);

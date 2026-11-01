@@ -1,7 +1,7 @@
 ---
 title: Play-along (MuseScore and MusicXML, falling notes, transpose, loop)
 status: shipped
-updated: 2026-10-30
+updated: 2026-11-01
 ---
 
 # Play-along
@@ -44,6 +44,10 @@ keyboard from above, like the bird's-eye piano videos.
   default) picks Split for piano when you play the piece on piano and the file has no piano staves, and says what it
   chose and why beside the buttons. Every button has hover text and ❓ opens a plain explanation; the same goes for
   🙋 I play on (✨ Auto / 🎹 Piano / 🎸 Guitar). Remembered per file.
+- **✂️ Thin octaves** (by hand only, on to start with): where the tune is written in octaves, as guitar music
+  often is, the lower copy is left out (not drawn, not played, not on the grand staff), so in Gran Vals bars 18–21
+  the right hand plays the tune and the left hand bass then chords instead of the right hand stretching an octave
+  over the chords. Untick it to see and play every written note. Remembered per file (ADR 0018).
 - **🔔 Ringing tails**: each note is drawn as a short strike (0.2 s) with a thin, paler tail for as long as it
   rings, and its key lights only for the strike, so a guitar's let-ring notes no longer look like keys to hold
   down (catch them with the pedal). With tails on, the hand split counts a key as released after its strike,

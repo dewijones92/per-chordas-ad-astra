@@ -12,6 +12,10 @@ const CHORD_SPLIT_COST = 20;
 const MAX_NOTES = 5;
 const LEFT_CEILING = 64;
 const RIGHT_FLOOR = 55;
+const MIDDLE_C = 60;
+const OCTAVE = 12;
+
+export const LEFT_OUT = -1;
 
 interface Held {
   pitch: number;
@@ -42,6 +46,30 @@ function onsetGroups(notes: readonly PerfNote[]): PerfNote[][] {
   }
   if (current.length > 0) groups.push(current.sort((a, b) => a.pitch - b.pitch));
   return groups;
+}
+
+export function thinOctaves(notes: readonly PerfNote[]): Set<PerfNote> {
+  const left = new Set<PerfNote>();
+  const sorted = [...notes].sort((a, b) => a.start - b.start);
+  let next = 0;
+  let sounding: PerfNote[] = [];
+  for (const group of onsetGroups(notes)) {
+    const top = group[group.length - 1];
+    if (!top) continue;
+    while (next < sorted.length && (sorted[next]?.start ?? Infinity) < top.start - ONSET_SECONDS) {
+      const n = sorted[next];
+      if (n) sounding.push(n);
+      next += 1;
+    }
+    sounding = sounding.filter((n) => n.end > top.start + RELEASE_SECONDS);
+    if (top.pitch < MIDDLE_C || sounding.some((n) => n.pitch > top.pitch)) continue;
+    const copy = group.find(
+      (n) => n.pitch === top.pitch - OCTAVE && Math.abs(n.end - top.end) <= ONSET_SECONDS,
+    );
+    if (copy) left.add(copy);
+  }
+  console.info('dewidebug thin octaves', { notes: notes.length, leftOut: left.size });
+  return left;
 }
 
 function handCost(pitches: readonly number[]): number {
@@ -178,6 +206,9 @@ export function handLanes(
       { index: 0, part: 0, name: names.right, label: labels.right, role: 'right' },
       { index: 1, part: 0, name: names.left, label: labels.left, role: 'left' },
     ],
-    laneOf: (n) => (hands.get(n) === 'left' ? 1 : 0),
+    laneOf: (n) => {
+      const hand = hands.get(n);
+      return hand === undefined ? LEFT_OUT : hand === 'left' ? 1 : 0;
+    },
   };
 }

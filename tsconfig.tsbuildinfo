@@ -1,0 +1,1 @@
+{"root":["./e2e/annotate.spec.ts","./e2e/devices.spec.ts","./e2e/health.spec.ts","./e2e/library.spec.ts","./e2e/pdf-marks.spec.ts","./e2e/people.spec.ts","./e2e/play-along.spec.ts","./e2e/practice.spec.ts","./e2e/resume.spec.ts","./e2e/tools.spec.ts","./e2e/zoom.spec.ts","./e2e/support/helpers.ts","./playwright.config.ts"],"version":"6.0.3"}

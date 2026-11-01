@@ -2,7 +2,7 @@
 title: Piano hands for guitar scores, worked out by the app
 status: accepted
 date: 2026-10-30
-updated: 2026-10-30
+updated: 2026-11-01
 ---
 
 # 0018 · Piano hands for guitar scores: an automatic split, switchable
@@ -47,6 +47,15 @@ in this batch.
   rings, light the key only for the strike, and tell the hand split that the key is released after the strike
   (`keyUpAt`), since the pedal holds the sound. There is no pedal data in these files, so this is a reading
   choice, not a MIDI CC64 event.
+- **✂️ Thin octaves** (on to start with, shown only when splitting; Dewi, 1 Nov 2026). Guitar music often doubles
+  the tune an octave lower. On piano that left one hand holding an octave with the chords inside it (Gran Vals bar
+  18: A3 + A4 held over C4 + E4), because the lower copy sits under the chords and the other hand cannot reach it
+  from the bass. With the switch on, `thinOctaves` leaves out the lower note of an octave struck with the highest
+  note of its onset, when the two end together, the tune is at or above middle C and nothing higher is still
+  ringing. A left-out note is in no hand (lane `LEFT_OUT`): not split, not drawn, not played and not in the grand
+  staff. So bars 18–21 become the plain waltz pattern: bass then C + E, C + E in the left hand, the tune alone in
+  the right. It leaves out 55 of Gran Vals' 982 notes; bass octaves, unequal lengths and inner octaves under a
+  held tune are kept. It changes what is written, so it is a switch, remembered per file.
 - **The notation follows the split as a grand staff.** By hand, a MuseScore file's notation is rebuilt as one
   piano part (`music/grand-staff.ts`): each chord's notes go to the treble staff (right hand) or the bass staff
   (left hand), each source voice is packed bar by bar into the first voice on its new staff that it does not overlap in time, rests are left to the gaps (a staff with
