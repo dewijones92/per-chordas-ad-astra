@@ -153,7 +153,7 @@ export class FindService {
   }
 
   async music(url: string): Promise<MusicDownload> {
-    const name = decodeURIComponent(new URL(url).pathname.split('/').pop() ?? '');
+    const name = fileNameOf(url, this.deps.log);
     const ext = extensionOf(name);
     if (!(MUSIC_EXTENSIONS as readonly string[]).includes(ext)) {
       throw new RejectedError('That address is not a MuseScore, MusicXML or MIDI file');
@@ -234,7 +234,19 @@ export class FindService {
         else await repo.addMusic(piece.id, name, blob);
         imported.push({ ext: item.file.ext, label: item.file.label });
       } catch (error) {
-        if (!(error instanceof RejectedError)) throw error;
+        if (!(error instanceof RejectedError)) {
+          log.error(
+            { err: error, id: piece.id, file: name },
+            'dewidebug find import: storing a file failed, so the new piece is removed again',
+          );
+          await repo.deletePiece(piece.id).catch((cleanup: unknown) => {
+            log.error(
+              { err: cleanup, id: piece.id },
+              'dewidebug find import: the half-made piece could not be removed',
+            );
+          });
+          throw error;
+        }
         log.warn(
           { id: piece.id, file: name, reason: error.message },
           'dewidebug find import: the library refused a downloaded file',
@@ -255,6 +267,18 @@ export class FindService {
       'dewidebug find import done',
     );
     return { piece: await repo.getPiece(piece.id), imported, skipped };
+  }
+}
+
+function fileNameOf(url: string, log: Logger): string {
+  try {
+    return decodeURIComponent(new URL(url).pathname.split('/').pop() ?? '');
+  } catch (error) {
+    log.info(
+      { url: url.slice(0, 200), error: String(error) },
+      'dewidebug find file refused: the address could not be read',
+    );
+    throw new RejectedError('That is not a web address this app can fetch');
   }
 }
 

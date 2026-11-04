@@ -46,13 +46,18 @@ name, caching, no bursts.
   searching again or importing a file already checked asks the site for nothing; one request per site per search.
 - **Only the configured sites can be fetched.** Every address, including each redirect hop, must be on the origin
   list built from `FIND_MUTOPIA_BASE`, `FIND_COMMONS_API` and `FIND_COMMONS_FILE_ORIGIN`. The import endpoint receives
-  a result from the browser, so this list (not the browser's word) is what stops it fetching from anywhere else.
+  a result from the browser, so this list (not the browser's word) is what stops it fetching from anywhere else. Every
+  address in a result is checked as an http or https link (`HttpUrl`, the same as a piece's source), so a `javascript:`
+  or `data:` link cannot be stored and later rendered as a link; an address that cannot be read at all is a 422.
   Downloads are size-capped while streaming (not just by the declared length), checked by their first bytes with the
   same checks as an upload (`%PDF-`, MIDI header, zip, XML), and never trusted by content type.
 - **Import uses the library's own storage path.** `FindService.importScore` downloads first, then calls
   `DataRepo.createPiece`, `addScore` and `addMusic`; there is no second way to write a file. One PDF (A4 first) for
   the score view and the richest music file (MusicXML, MuseScore, then MIDI) for Play-along. If one file fails the
-  piece keeps the other and the dialog says what was skipped; if none can be stored the new piece is removed again.
+  piece keeps the other and the dialog says what was skipped; if none can be stored, or the disk or the data repo fails
+  part way (anything but a refusal), the new piece is removed again so a retry cannot leave a duplicate. 🎵 Start in
+  C major runs after the import, on its own: if it fails the piece still exists and the dialog says it was imported
+  but not moved, instead of saying the import failed.
 - **The licence stays with the piece.** `piece.json` gains an optional `source` (`name`, page `url`, `licence`,
   `licenceUrl`), set when a piece is imported, kept through edits (it can now be changed by a source edit alone, see
   [ADR 0028](0028-piece-sources-and-ratings.md)), and shown in the piece

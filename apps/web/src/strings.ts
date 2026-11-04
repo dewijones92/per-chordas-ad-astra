@@ -105,6 +105,8 @@ export const strings = {
     imported: (title: string) => `✅ Imported “${title}”`,
     importFailed: (message: string) => `❌ Could not import: ${message}`,
     skipped: (label: string, reason: string) => `⚠️ ${label} was skipped: ${reason}`,
+    keyNotChanged: (message: string) =>
+      `⚠️ Imported, but it could not be moved to C major or A minor: ${message}`,
     open: '➡️ Open the piece',
     attribution: (licence: string) => `📜 Shared under ${licence}`,
     fromSite: (name: string) => `🔗 From ${name}`,

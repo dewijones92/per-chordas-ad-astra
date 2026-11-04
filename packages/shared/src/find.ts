@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MUSIC_EXTENSIONS, SCORE_EXTENSIONS } from './files.ts';
 import type { PieceSource } from './schemas.ts';
-import { Piece } from './schemas.ts';
+import { HttpUrl, Piece } from './schemas.ts';
 
 export const FIND_SOURCES = ['mutopia', 'commons'] as const;
 export const FindSourceId = z.enum(FIND_SOURCES);
@@ -12,7 +12,7 @@ export const FIND_QUERY_MAX = 100;
 
 export const FoundFile = z.object({
   ext: z.enum([...SCORE_EXTENSIONS, ...MUSIC_EXTENSIONS]),
-  url: z.url(),
+  url: HttpUrl,
   label: z.string().min(1).max(60),
   bytes: z.int().min(0).nullable(),
 });
@@ -27,8 +27,8 @@ export const FoundScore = z.object({
   instrument: z.string().trim().max(100),
   detail: z.string().trim().max(200),
   licence: z.string().trim().min(1).max(100),
-  licenceUrl: z.url().nullable(),
-  pageUrl: z.url(),
+  licenceUrl: HttpUrl.nullable(),
+  pageUrl: HttpUrl,
   files: z.array(FoundFile).min(1).max(20),
 });
 export type FoundScore = z.infer<typeof FoundScore>;

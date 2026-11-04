@@ -291,8 +291,20 @@ export class DataRepo {
         }
       }
       const pinOnly = patch.pinned !== undefined && Object.keys(patch).length === 1;
-      const transposed = describeTransposition(current.music, patch);
-      const { source: sourceEdit, ...rest } = patch;
+      const { source: sourceEdit, transposeFile, ...rest } = patch;
+      const music = transposeFile
+        ? (patch.music ?? current.music).map((m) =>
+            m.file === transposeFile.file ? { ...m, transpose: transposeFile.transpose } : m,
+          )
+        : patch.music;
+      if (transposeFile && !current.music.some((m) => m.file === transposeFile.file)) {
+        throw new RejectedError(`Unknown music file: ${transposeFile.file}`);
+      }
+      const transposed = transposeFile
+        ? Object.keys(patch).length === 1
+          ? describeTransposition(current.music, { music })
+          : null
+        : describeTransposition(current.music, patch);
       const now = this.now().toISOString();
       const source =
         sourceEdit === undefined
@@ -303,6 +315,7 @@ export class DataRepo {
       const next = Piece.parse({
         ...current,
         ...rest,
+        ...(transposeFile ? { music } : {}),
         source,
         updatedAt: pinOnly ? current.updatedAt : now,
       });

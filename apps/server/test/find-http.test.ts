@@ -81,6 +81,25 @@ describe('find a score over HTTP', () => {
     expect(((await res.json()) as { error: string }).error).toContain('not one of the sites');
   });
 
+  it('says an address that is not a web address is a 422, not a crash', async () => {
+    for (const bad of ['not a url', '', 'https://', 'https://www.example.org/%E0%A4%A.mid']) {
+      const res = await app.request(`/api/find/file?url=${encodeURIComponent(bad)}`);
+      expect(res.status, bad).toBe(422);
+    }
+  });
+
+  it('refuses a result whose links are not web links, so one cannot reach the piece page', async () => {
+    const hit = await found();
+    for (const result of [
+      { ...hit, pageUrl: 'javascript:alert(1)' },
+      { ...hit, licenceUrl: 'data:text/html,hi' },
+      { ...hit, files: hit.files.map((f) => ({ ...f, url: 'file:///etc/passwd' })) },
+    ]) {
+      const res = await app.request('/api/find/import', post({ result }));
+      expect(res.status).toBe(400);
+    }
+  });
+
   it('imports a result into a new piece that keeps its licence and source', async () => {
     const res = await app.request('/api/find/import', post({ result: await found() }));
     expect(res.status).toBe(201);

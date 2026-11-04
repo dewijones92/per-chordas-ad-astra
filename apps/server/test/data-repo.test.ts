@@ -839,6 +839,28 @@ describe('DataRepo music files', () => {
     ).rejects.toThrow(/only be renamed or reordered/);
   });
 
+  it('transposes one music file without sending, or overwriting, the others', async () => {
+    const piece = await repo.createPiece({ title: 'Two Files' });
+    const a = await repo.addMusic(piece.id, 'a.mxl', new Blob([zip]));
+    const b = await repo.addMusic(piece.id, 'b.mxl', new Blob([zip]));
+    await repo.updatePiece(piece.id, { transposeFile: { file: b.file, transpose: 3 } });
+    const up = await repo.updatePiece(piece.id, { transposeFile: { file: a.file, transpose: -5 } });
+    expect(up.music.map((m) => [m.file, m.transpose])).toEqual([
+      ['a.mxl', -5],
+      ['b.mxl', 3],
+    ]);
+    expect(changes.descriptions.at(-1)).toBe("Transpose a.mxl to -5 in 'Two Files'");
+    await repo.updatePiece(piece.id, { transposeFile: { file: b.file, transpose: 0 } });
+    expect(changes.descriptions.at(-1)).toBe("Transpose b.mxl to the written key in 'Two Files'");
+    await expect(
+      repo.updatePiece(piece.id, { transposeFile: { file: 'ghost.mxl', transpose: 1 } }),
+    ).rejects.toThrow(/Unknown music file/);
+    await expect(
+      repo.updatePiece(piece.id, { transposeFile: { file: a.file, transpose: 30 } }),
+    ).rejects.toThrow();
+    expect((await repo.getPiece(piece.id)).music.map((m) => m.transpose)).toEqual([-5, 0]);
+  });
+
   it('removes a music file', async () => {
     const piece = await repo.createPiece({ title: 'Y' });
     const ref = await repo.addMusic(piece.id, 'y.mscz', new Blob([zip]));

@@ -494,7 +494,7 @@ export function PiecePage({ id }: { id: string }) {
     const music = current.music.map((m) => (m.file === file ? { ...m, transpose: semitones } : m));
     console.info('dewidebug transpose', { id, file, semitones });
     setData((p) => (p ? { ...p, music } : p));
-    stablePatch({ music });
+    stablePatch({ transposeFile: { file, transpose: semitones } });
   };
 
   return (

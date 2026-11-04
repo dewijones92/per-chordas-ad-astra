@@ -126,6 +126,12 @@ export const PieceDraft = Piece.pick({
 }).partial({ artist: true, tags: true, notes: true, targetBpm: true });
 export type PieceDraft = z.input<typeof PieceDraft>;
 
+export const TransposeFile = z.object({
+  file: FileName,
+  transpose: z.int().min(-MAX_TRANSPOSE).max(MAX_TRANSPOSE),
+});
+export type TransposeFile = z.infer<typeof TransposeFile>;
+
 export const PiecePatch = z
   .object({
     title: z.string().trim().min(1).max(200),
@@ -136,6 +142,7 @@ export const PiecePatch = z
     scores: z.array(ScoreRef),
     tracks: z.array(TrackRef),
     music: z.array(MusicRef),
+    transposeFile: TransposeFile,
     bookmarks: z.array(Bookmark),
     pinned: z.boolean(),
     source: SourceEdit.nullable(),

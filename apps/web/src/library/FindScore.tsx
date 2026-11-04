@@ -24,7 +24,7 @@ type Import =
   | { phase: 'idle' }
   | { phase: 'importing' }
   | { phase: 'failed'; message: string }
-  | { phase: 'done'; result: FindImportResponse };
+  | { phase: 'done'; result: FindImportResponse; keyWarning: string | null };
 
 function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -168,11 +168,20 @@ export function FindScore({
       });
       const music = musicToCheck(result);
       const added = done.piece.music[0];
+      let keyWarning: string | null = null;
       if (learnKey && music && added) {
-        await startInLearnKey(done.piece.id, added.file, await api.findMusic(music.url));
+        try {
+          await startInLearnKey(done.piece.id, added.file, await api.findMusic(music.url));
+        } catch (e) {
+          keyWarning = errorText(e);
+          console.warn('dewidebug find import: the piece exists but start in C major failed', {
+            id: done.piece.id,
+            error: keyWarning,
+          });
+        }
       }
-      if (done.skipped.length === 0) onImported(done.piece.id);
-      else setImported({ phase: 'done', result: done });
+      if (done.skipped.length === 0 && keyWarning === null) onImported(done.piece.id);
+      else setImported({ phase: 'done', result: done, keyWarning });
     } catch (e) {
       console.warn('dewidebug find import failed', { id: result.id, error: errorText(e) });
       setImported({ phase: 'failed', message: errorText(e) });
@@ -308,6 +317,11 @@ export function FindScore({
             {imported.phase === 'done' ? (
               <div className="stack" data-testid="find-imported">
                 <p>{strings.find.imported(imported.result.piece.title)}</p>
+                {imported.keyWarning !== null && (
+                  <p className="error" data-testid="find-key-warning">
+                    {strings.find.keyNotChanged(imported.keyWarning)}
+                  </p>
+                )}
                 {imported.result.skipped.map((s) => (
                   <p key={s.label} className="error">
                     {strings.find.skipped(s.label, s.reason)}

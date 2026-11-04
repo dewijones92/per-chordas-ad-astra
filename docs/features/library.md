@@ -12,7 +12,7 @@ updated: 2026-11-04
   with music and no PDF it opens in Play-along. A failed upload keeps the created piece and does not upload
   a file twice on retry.
 - **🎵 Start in C major or A minor** (in the dialog and beside ➕ Add music on a piece): when ticked, new music opens
-  in C major, or A minor if it is in a minor key, by the nearest shift; remembered per person, off until ticked
+  in C major, or A minor if it is in a minor key, by the nearest shift (saved as that one file's transposition); remembered per person, off until ticked
   ([ADR 0013](../adr/0013-where-preferences-live.md)).
 - **🔍 Find a score** (top of the New piece dialog): search Mutopia and Wikimedia Commons for free, public-domain
   or openly licensed scores (ADR [0026](../adr/0026-find-a-score.md)). Each result shows title, composer, instrument,

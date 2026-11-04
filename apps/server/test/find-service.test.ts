@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { isMidi, MAX_MUSIC_BYTES, type FoundScore } from '@pcaa/shared';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PoliteFetch, UpstreamError } from '../src/find/polite-fetch.ts';
 import { TtlCache } from '../src/find/ttl-cache.ts';
 import type { FindService } from '../src/find/service.ts';
@@ -282,6 +282,19 @@ describe('FindService', () => {
       );
       const found = await op9(find);
       await expect(find.importScore(found)).rejects.toThrow();
+      expect(await repo.listPieces()).toEqual([]);
+    });
+
+    it('removes the new piece again when the disk fails part way, so a retry cannot duplicate it', async () => {
+      const { find } = make();
+      const found = await op9(find);
+      const addScore = vi.spyOn(repo, 'addScore').mockRejectedValue(new Error('disk full'));
+      await expect(find.importScore(found)).rejects.toThrow('disk full');
+      expect(await repo.listPieces()).toEqual([]);
+      addScore.mockRestore();
+
+      vi.spyOn(repo, 'addMusic').mockRejectedValue(new Error('write failed'));
+      await expect(find.importScore(found)).rejects.toThrow('write failed');
       expect(await repo.listPieces()).toEqual([]);
     });
 

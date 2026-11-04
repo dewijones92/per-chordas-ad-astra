@@ -217,3 +217,40 @@ test('a found score honours Start in C major or A minor like the other ways of a
   await dialog.getByTestId('learn-key').uncheck();
   await learnKeySaved(page, false);
 });
+
+test('when moving an imported piece to C major fails, the piece is still there and the dialog says so instead of saying the import failed', async ({
+  page,
+}) => {
+  const panel = await openFinder(page);
+  const dialog = page.getByTestId('new-piece-dialog');
+  await dialog.getByTestId('learn-key').check();
+  await learnKeySaved(page, true);
+  await search(page, panel, 'chopin nocturne');
+  await panel
+    .locator('[data-testid="find-result"][data-id="mutopia:582"]')
+    .getByTestId('find-choose')
+    .click();
+  await page.route('**/api/pieces/*', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: '{"error":"disk"}',
+      });
+      return;
+    }
+    await route.fallback();
+  });
+  await panel.getByTestId('find-chosen').getByTestId('find-import').click();
+  await expect(panel.getByTestId('find-imported')).toBeVisible();
+  await expect(panel.getByTestId('find-key-warning')).toBeVisible();
+  await expect(panel.getByTestId('find-import-failed')).toHaveCount(0);
+  await expect(page).not.toHaveURL(/\/piece\//);
+  await panel.getByTestId('find-imported').getByRole('button', { name: strings.find.open }).click();
+  await expect(page).toHaveURL(/\/piece\//);
+
+  await openLibrary(page);
+  await page.getByTestId('new-piece').click();
+  await dialog.getByTestId('learn-key').uncheck();
+  await learnKeySaved(page, false);
+});

@@ -35,8 +35,6 @@ export async function startInLearnKey(
   const shift = learnKeyShift(key);
   console.info('dewidebug learn key', { pieceId, file, key, shift });
   if (shift === 0) return 0;
-  const piece = await api.getPiece(pieceId);
-  const music = piece.music.map((m) => (m.file === file ? { ...m, transpose: shift } : m));
-  await api.patchPiece(pieceId, { music });
+  await api.patchPiece(pieceId, { transposeFile: { file, transpose: shift } });
   return shift;
 }
