@@ -3,11 +3,14 @@ import {
   parseCount,
   parseSourceUrl,
   parseStars,
+  type FileName,
   type Piece,
+  type PieceSource,
   type SourceEdit,
 } from '@pcaa/shared';
 import { useState, type SyntheticEvent } from 'react';
 import { api } from '../api/client.ts';
+import { filesOf, patchFor, sourceOf, WHOLE_PIECE, type Target } from './source-targets.ts';
 import { ratingLine, strings, tips } from '../strings.ts';
 
 interface Fields {
@@ -17,7 +20,7 @@ interface Fields {
   views: string;
 }
 
-function fieldsOf(source: Piece['source']): Fields {
+function fieldsOf(source: PieceSource | undefined): Fields {
   return {
     url: source?.url ?? '',
     stars:
@@ -82,31 +85,45 @@ function Field({
   );
 }
 
-function SourceBody({ piece, onSaved }: { piece: Piece; onSaved: (next: Piece) => void }) {
-  const source = piece.source;
-  const [editing, setEditing] = useState(false);
-  const [fields, setFields] = useState<Fields>(() => fieldsOf(source));
+function SourceForm({
+  piece,
+  initial,
+  onClose,
+  onSaved,
+}: {
+  piece: Piece;
+  initial: Target;
+  onClose: () => void;
+  onSaved: (next: Piece) => void;
+}) {
+  const files = filesOf(piece);
+  const [target, setTarget] = useState<Target>(initial);
+  const source = sourceOf(piece, target);
+  const [fields, setFields] = useState<Fields>(() => fieldsOf(sourceOf(piece, initial)));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const open = () => {
-    setFields(fieldsOf(source));
+  const choose = (next: Target) => {
+    console.info('dewidebug source form target', { id: piece.id, target: next });
+    setTarget(next);
+    setFields(fieldsOf(sourceOf(piece, next)));
     setError(null);
-    setEditing(true);
   };
 
-  const send = async (patch: { source: SourceEdit | null }) => {
+  const send = async (edit: SourceEdit | null) => {
     setSaving(true);
     try {
-      const next = await api.patchPiece(piece.id, patch);
-      console.info('dewidebug piece source saved', {
+      const next = await api.patchPiece(piece.id, patchFor(target, edit));
+      const saved = sourceOf(next, target);
+      console.info('dewidebug source saved', {
         id: piece.id,
-        source: next.source ? { name: next.source.name, rated: next.source.rating !== null } : null,
+        target,
+        source: saved ? { name: saved.name, rated: saved.rating !== null } : null,
       });
       onSaved(next);
-      setEditing(false);
+      onClose();
     } catch (e) {
-      console.warn('dewidebug piece source save failed', { id: piece.id, error: String(e) });
+      console.warn('dewidebug source save failed', { id: piece.id, target, error: String(e) });
       setError(strings.source.saveFailed(e instanceof Error ? e.message : String(e)));
     } finally {
       setSaving(false);
@@ -117,121 +134,144 @@ function SourceBody({ piece, onSaved }: { piece: Piece; onSaved: (next: Piece) =
     event.preventDefault();
     const checked = check(fields);
     if ('error' in checked) {
-      console.info('dewidebug piece source refused', { id: piece.id, why: checked.error });
+      console.info('dewidebug source refused', { id: piece.id, target, why: checked.error });
       setError(checked.error);
       return;
     }
     setError(null);
-    void send({ source: checked.edit });
+    void send(checked.edit);
   };
 
   const set = (key: keyof Fields) => (value: string) => {
     setFields((f) => ({ ...f, [key]: value }));
   };
 
-  if (editing) {
-    return (
-      <form
-        className="source-form stack"
-        aria-label={tips.source.form}
-        data-testid="source-form"
-        onSubmit={submit}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') setEditing(false);
-        }}
-      >
-        <div className="row source-fields">
-          <Field
-            label={strings.source.urlLabel}
-            testId="source-url"
-            value={fields.url}
-            placeholder={tips.source.urlPlaceholder}
-            wide
-            onChange={set('url')}
-          />
-          <Field
-            label={strings.source.starsLabel}
-            testId="source-stars"
-            value={fields.stars}
-            placeholder={tips.source.starsPlaceholder}
-            onChange={set('stars')}
-          />
-          <Field
-            label={strings.source.ratingsLabel}
-            testId="source-ratings"
-            value={fields.ratings}
-            placeholder={tips.source.ratingsPlaceholder}
-            onChange={set('ratings')}
-          />
-          <Field
-            label={strings.source.viewsLabel}
-            testId="source-views"
-            value={fields.views}
-            placeholder={tips.source.viewsPlaceholder}
-            onChange={set('views')}
-          />
-        </div>
-        <p className="muted small-print">{strings.source.hint}</p>
-        {error && (
-          <p className="error" data-testid="source-error">
-            {error}
-          </p>
-        )}
-        <div className="row">
-          <button
-            type="submit"
-            className="btn small primary"
-            disabled={saving}
-            data-testid="source-save"
+  const targetName =
+    target === WHOLE_PIECE ? null : (files.find((f) => f.file === target)?.name ?? target);
+
+  return (
+    <form
+      className="source-form stack"
+      aria-label={tips.source.form}
+      data-testid="source-form"
+      onSubmit={submit}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+    >
+      {files.length > 0 && (
+        <label className="row source-for">
+          <span className="small-print">{strings.source.forLabel}</span>
+          <select
+            className="input source-for-select"
+            aria-label={tips.source.forTarget}
+            data-testid="source-for"
+            value={target}
+            onChange={(e) => {
+              const chosen = e.target.value;
+              choose(
+                chosen === WHOLE_PIECE
+                  ? WHOLE_PIECE
+                  : (files.find((f) => f.file === chosen)?.file ?? WHOLE_PIECE),
+              );
+            }}
           >
-            {saving ? strings.source.saving : strings.source.save}
-          </button>
+            <option value={WHOLE_PIECE}>{strings.source.forPiece}</option>
+            {files.map((f) => (
+              <option key={f.file} value={f.file}>
+                {strings.source.forFile[f.kind](f.name)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <div className="row source-fields">
+        <Field
+          label={strings.source.urlLabel}
+          testId="source-url"
+          value={fields.url}
+          placeholder={tips.source.urlPlaceholder}
+          wide
+          onChange={set('url')}
+        />
+        <Field
+          label={strings.source.starsLabel}
+          testId="source-stars"
+          value={fields.stars}
+          placeholder={tips.source.starsPlaceholder}
+          onChange={set('stars')}
+        />
+        <Field
+          label={strings.source.ratingsLabel}
+          testId="source-ratings"
+          value={fields.ratings}
+          placeholder={tips.source.ratingsPlaceholder}
+          onChange={set('ratings')}
+        />
+        <Field
+          label={strings.source.viewsLabel}
+          testId="source-views"
+          value={fields.views}
+          placeholder={tips.source.viewsPlaceholder}
+          onChange={set('views')}
+        />
+      </div>
+      <p className="muted small-print">{strings.source.hint}</p>
+      {error && (
+        <p className="error" data-testid="source-error">
+          {error}
+        </p>
+      )}
+      <div className="row">
+        <button
+          type="submit"
+          className="btn small primary"
+          disabled={saving}
+          data-testid="source-save"
+        >
+          {saving ? strings.source.saving : strings.source.save}
+        </button>
+        <button type="button" className="btn small ghost" disabled={saving} onClick={onClose}>
+          {strings.source.cancel}
+        </button>
+        {source && (
           <button
             type="button"
             className="btn small ghost"
             disabled={saving}
+            data-testid="source-remove"
             onClick={() => {
-              setEditing(false);
+              const question =
+                targetName === null
+                  ? strings.source.removeConfirm(source.name)
+                  : strings.source.removeFileConfirm(source.name, targetName);
+              if (window.confirm(question)) void send(null);
             }}
           >
-            {strings.source.cancel}
+            {strings.source.remove}
           </button>
-          {source && (
-            <button
-              type="button"
-              className="btn small ghost"
-              disabled={saving}
-              data-testid="source-remove"
-              onClick={() => {
-                if (window.confirm(strings.source.removeConfirm(source.name))) {
-                  void send({ source: null });
-                }
-              }}
-            >
-              {strings.source.remove}
-            </button>
-          )}
-        </div>
-      </form>
-    );
-  }
+        )}
+      </div>
+    </form>
+  );
+}
 
-  if (!source) {
-    return (
-      <button
-        type="button"
-        className="btn small ghost piece-source-add"
-        data-testid="piece-source-add"
-        title={tips.source.add}
-        onClick={open}
-      >
-        {strings.source.add}
-      </button>
-    );
-  }
-
+function SourceShow({
+  source,
+  label,
+  testId,
+  file,
+  onEdit,
+}: {
+  source: PieceSource;
+  label?: string;
+  testId: string;
+  file?: FileName;
+  onEdit: () => void;
+}) {
   return (
-    <span className="piece-source small-print" data-testid="piece-source">
+    <span className="piece-source small-print" data-testid={testId} data-file={file}>
+      {label && <span className="piece-source-file">{label}</span>}
       <a
         href={source.url}
         target="_blank"
@@ -255,7 +295,7 @@ function SourceBody({ piece, onSaved }: { piece: Piece; onSaved: (next: Piece) =
         className="btn small ghost"
         data-testid="piece-source-edit"
         title={tips.source.edit}
-        onClick={open}
+        onClick={onEdit}
       >
         {strings.source.edit}
       </button>
@@ -263,10 +303,62 @@ function SourceBody({ piece, onSaved }: { piece: Piece; onSaved: (next: Piece) =
   );
 }
 
-export function SourceLine(props: { piece: Piece; onSaved: (next: Piece) => void }) {
+export function SourceLine({ piece, onSaved }: { piece: Piece; onSaved: (next: Piece) => void }) {
+  const [editing, setEditing] = useState<Target | null>(null);
+  const own = filesOf(piece).filter((f) => f.source !== undefined);
+
+  if (editing !== null) {
+    return (
+      <div className="piece-source-line">
+        <SourceForm
+          piece={piece}
+          initial={editing}
+          onClose={() => {
+            setEditing(null);
+          }}
+          onSaved={onSaved}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="piece-source-line">
-      <SourceBody {...props} />
+    <div className="piece-source-line stack">
+      {piece.source ? (
+        <SourceShow
+          source={piece.source}
+          testId="piece-source"
+          onEdit={() => {
+            setEditing(WHOLE_PIECE);
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          className="btn small ghost piece-source-add"
+          data-testid="piece-source-add"
+          title={tips.source.add}
+          onClick={() => {
+            setEditing(WHOLE_PIECE);
+          }}
+        >
+          {strings.source.add}
+        </button>
+      )}
+      {own.map((f) =>
+        f.source ? (
+          <SourceShow
+            key={f.file}
+            source={f.source}
+            label={strings.source.fileLabel[f.kind](f.name)}
+            testId="file-source"
+            file={f.file}
+            onEdit={() => {
+              setEditing(f.file);
+            }}
+          />
+        ) : null,
+      )}
     </div>
   );
 }

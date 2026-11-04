@@ -7,7 +7,6 @@ import {
   newId,
   parseTags,
   SCORE_ACCEPT,
-  type FileKind,
   type PieceView,
   type Piece,
   type PiecePatch,
@@ -51,7 +50,7 @@ import { useAsync } from '../ui/use-async.ts';
 import { useDraft } from '../ui/use-draft.ts';
 import './piece.css';
 import { SourceLine } from './SourceLine.tsx';
-import { names, strings, tips } from '../strings.ts';
+import { fileIcons, names, strings, tips } from '../strings.ts';
 
 function Section({
   title,
@@ -79,7 +78,6 @@ const VIEW_MODES: { mode: ViewMode; label: string; title: string }[] = [
   { mode: 'spread', label: strings.piece.layouts.spread, title: tips.piece.layouts.spread },
   { mode: 'width', label: strings.piece.layouts.width, title: tips.piece.layouts.width },
 ];
-const FILE_ICON: Record<FileKind, string> = { scores: '📄', tracks: '🎧', music: '🎹' };
 
 const VIEW_CHOICES: { mode: PieceView; label: string; title: string }[] = [
   { mode: 'score', label: strings.piece.views.score, title: tips.piece.views.score },
@@ -790,7 +788,7 @@ export function PiecePage({ id }: { id: string }) {
             <ul className="file-list">
               {[...current.scores, ...current.tracks, ...current.music].map((f) => (
                 <li key={f.file} className="row">
-                  <span>{FILE_ICON[kindOfFile(f.file) ?? 'tracks']}</span>
+                  <span>{fileIcons[kindOfFile(f.file) ?? 'tracks']}</span>
                   <a href={api.fileUrl(current.id, f.file)} target="_blank" rel="noreferrer">
                     {f.name}
                   </a>

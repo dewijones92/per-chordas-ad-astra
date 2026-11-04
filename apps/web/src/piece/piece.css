@@ -29,6 +29,21 @@
   flex-basis: 100%;
 }
 
+.source-for {
+  align-items: center;
+}
+
+.source-for-select {
+  width: auto;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 2px 6px;
+}
+
+.piece-source-file {
+  font-weight: 800;
+}
+
 .piece-source {
   display: inline-flex;
   flex-wrap: wrap;

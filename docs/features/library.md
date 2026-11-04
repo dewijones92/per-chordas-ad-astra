@@ -32,7 +32,13 @@ updated: 2026-11-04
   🔗 From MuseScore (a link to the page, new tab), the licence if Find a score recorded one, and
   `⭐ 4.8 (120 ratings) · 15k views · noted 4 Nov 2026`; the date is when the numbers were saved and stays until they
   change. The library card shows `⭐ 4.8` beside its counts. 🗑️ Remove clears the whole source. Saving writes only the
-  source (`Source for 'X': MuseScore ⭐ 4.8` in the commit). A piece has one source, not one per file.
+  source (`Source for 'X': MuseScore ⭐ 4.8` in the commit).
+- **🎯 A source per file** (4 Nov 2026, ADR 0028): the same form's **🎯 For** list chooses the whole piece or one of
+  its files (📄 a score, 🎹 a music file, 🎧 a recording), so a PDF from IMSLP and a MuseScore file can each name
+  where they came from. A file with its own link shows on its own line under the piece's (`📄 Gran Vals: 🔗 From
+IMSLP ✏️ Edit`); a file without one goes by the piece's. The commit says which file
+  (`Source for 'Gran Vals' (gran-vals.pdf): IMSLP`). Renaming or reordering files never drops a file's source: the
+  server keeps what it holds, and only the For form changes it.
 - **Search** (`/` focuses it): MiniSearch over title, artist, tags and notes, with prefix matching and
   small typos forgiven; title matches rank first.
 - **Tag chips**: a piece must have every selected tag.

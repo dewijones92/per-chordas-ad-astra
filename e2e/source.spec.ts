@@ -1,3 +1,4 @@
+import { makeMusicXml, PIANO_WALTZ } from '../packages/fixtures/src/index.ts';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { ratingLine, strings } from '../apps/web/src/strings.ts';
 import { createPiece, eventuallyInRemote, openLibrary, remoteLog } from './support/helpers.ts';
@@ -110,4 +111,61 @@ test('the link and rating can be changed, and removed again', async ({ page }) =
   const json = await eventuallyInRemote(`pieces/${id}/piece.json`, (t) => !t.includes('imslp'));
   expect(JSON.parse(json)).not.toHaveProperty('source');
   await expect.poll(() => remoteLog('%B').join('\n')).toContain("Remove the source of 'Gran Vals'");
+});
+
+test('one file can name its own source: the PDF from IMSLP and the piece from MuseScore, each kept and removable', async ({
+  page,
+}) => {
+  await createPiece(page, 'Gran Vals');
+  await page.getByTestId('upload-music').setInputFiles({
+    name: 'Gran Vals.musicxml',
+    mimeType: 'application/xml',
+    buffer: Buffer.from(makeMusicXml(PIANO_WALTZ)),
+  });
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  const fileRows = page.getByTestId('file-source');
+
+  await page.getByTestId('piece-source-add').click();
+  const form = page.getByTestId('source-form');
+  await form
+    .getByTestId('source-for')
+    .selectOption({ label: strings.source.forFile.scores('Gran Vals') });
+  await fillSource(form, { url: 'imslp.org/wiki/Gran_Vals', stars: '4.5' });
+  await form.getByTestId('source-save').click();
+
+  await expect(fileRows).toHaveCount(1);
+  await expect(fileRows).toContainText(strings.source.fileLabel.scores('Gran Vals'));
+  await expect(fileRows.getByTestId('piece-source-link')).toHaveText(
+    strings.find.fromSite('IMSLP'),
+  );
+  await expect(fileRows.getByTestId('piece-source-link')).toHaveAttribute(
+    'href',
+    'https://imslp.org/wiki/Gran_Vals',
+  );
+  await expect(page.getByTestId('piece-source-add')).toBeVisible();
+
+  await page.getByTestId('piece-source-add').click();
+  await expect(form.getByTestId('source-for')).toHaveValue('piece');
+  await fillSource(form, { url: 'musescore.com/user/1/scores/2' });
+  await form.getByTestId('source-save').click();
+  await expect(sourceBox(page).getByTestId('piece-source-link')).toHaveText(
+    strings.find.fromSite('MuseScore'),
+  );
+
+  await page.reload();
+  await expect(sourceBox(page).getByTestId('piece-source-link')).toHaveText(
+    strings.find.fromSite('MuseScore'),
+  );
+  await expect(fileRows.getByTestId('piece-source-link')).toHaveText(
+    strings.find.fromSite('IMSLP'),
+  );
+
+  await fileRows.getByTestId('piece-source-edit').click();
+  await expect(form.getByTestId('source-url')).toHaveValue('https://imslp.org/wiki/Gran_Vals');
+  page.once('dialog', (d) => void d.accept());
+  await form.getByTestId('source-remove').click();
+  await expect(fileRows).toHaveCount(0);
+  await expect(sourceBox(page).getByTestId('piece-source-link')).toHaveText(
+    strings.find.fromSite('MuseScore'),
+  );
 });

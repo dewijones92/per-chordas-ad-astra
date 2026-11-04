@@ -47,6 +47,8 @@ import {
   type NewPracticeSession,
   type ScoreRef,
   type TrackRef,
+  type FileSourceEdit,
+  type PieceSource,
 } from '@pcaa/shared';
 import type { Logger } from '../log.ts';
 import {
@@ -133,11 +135,40 @@ export function describeHardBits(before: readonly HardBit[], after: readonly Har
 }
 const audioList = AUDIO_EXTENSIONS.join(', ');
 
-function describeSource(piece: Piece): string {
-  if (!piece.source) return `Remove the source of ${quote(piece.title)}`;
-  const stars = piece.source.rating?.stars;
+function describeSource(title: string, source: PieceSource | undefined, file?: FileName): string {
+  const what = file === undefined ? quote(title) : `${quote(title)} (${file})`;
+  if (!source) return `Remove the source of ${what}`;
+  const stars = source.rating?.stars;
   const rated = stars === null || stars === undefined ? '' : ` ⭐ ${formatStars(stars)}`;
-  return `Source for ${quote(piece.title)}: ${piece.source.name}${rated}`;
+  return `Source for ${what}: ${source.name}${rated}`;
+}
+
+interface Sourced {
+  file: FileName;
+  source?: PieceSource | undefined;
+}
+
+function keepFileSources<T extends Sourced>(
+  list: readonly T[],
+  stored: readonly Sourced[],
+  edit: FileSourceEdit | undefined,
+  today: string,
+): T[] {
+  return list.map((ref) => {
+    const { source: _sent, ...rest } = ref;
+    const kept = stored.find((s) => s.file === ref.file)?.source;
+    const source =
+      edit?.file !== ref.file
+        ? kept
+        : edit.source === null
+          ? undefined
+          : applySourceEdit(kept, edit.source, today);
+    return (source ? { ...rest, source } : rest) as T;
+  });
+}
+
+function fileSourceOf(piece: Piece, file: FileName): PieceSource | undefined {
+  return [...piece.scores, ...piece.tracks, ...piece.music].find((r) => r.file === file)?.source;
 }
 
 function quote(title: string): string {
@@ -291,7 +322,15 @@ export class DataRepo {
         }
       }
       const pinOnly = patch.pinned !== undefined && Object.keys(patch).length === 1;
-      const { source: sourceEdit, transposeFile, ...rest } = patch;
+      const { source: sourceEdit, transposeFile, fileSource, ...rest } = patch;
+      if (
+        fileSource &&
+        ![...current.scores, ...current.tracks, ...current.music].some(
+          (r) => r.file === fileSource.file,
+        )
+      ) {
+        throw new RejectedError(`Unknown file: ${fileSource.file}`);
+      }
       const music = transposeFile
         ? (patch.music ?? current.music).map((m) =>
             m.file === transposeFile.file ? { ...m, transpose: transposeFile.transpose } : m,
@@ -312,12 +351,19 @@ export class DataRepo {
           : sourceEdit === null
             ? undefined
             : applySourceEdit(current.source, sourceEdit, now.slice(0, 10));
-      const next = Piece.parse({
+      const today = now.slice(0, 10);
+      const merged = Piece.parse({
         ...current,
         ...rest,
         ...(transposeFile ? { music } : {}),
         source,
         updatedAt: pinOnly ? current.updatedAt : now,
+      });
+      const next = Piece.parse({
+        ...merged,
+        scores: keepFileSources(merged.scores, current.scores, fileSource, today),
+        tracks: keepFileSources(merged.tracks, current.tracks, fileSource, today),
+        music: keepFileSources(merged.music, current.music, fileSource, today),
       });
       await this.writeJson(this.path('pieces', id, 'piece.json'), next);
       this.log.info(
@@ -329,6 +375,9 @@ export class DataRepo {
           source: next.source
             ? { name: next.source.name, rated: next.source.rating !== null }
             : null,
+          fileSource: fileSource
+            ? { file: fileSource.file, name: fileSourceOf(next, fileSource.file)?.name ?? null }
+            : undefined,
         },
         'dewidebug repo piece patched',
       );
@@ -336,10 +385,12 @@ export class DataRepo {
         pinOnly
           ? `${next.pinned ? 'Pin' : 'Unpin'} ${quote(next.title)}`
           : sourceEdit !== undefined && Object.keys(patch).length === 1
-            ? describeSource(next)
-            : transposed
-              ? `${transposed} in ${quote(next.title)}`
-              : `Edit ${quote(next.title)}`,
+            ? describeSource(next.title, next.source)
+            : fileSource !== undefined && Object.keys(patch).length === 1
+              ? describeSource(next.title, fileSourceOf(next, fileSource.file), fileSource.file)
+              : transposed
+                ? `${transposed} in ${quote(next.title)}`
+                : `Edit ${quote(next.title)}`,
       );
       return next;
     });

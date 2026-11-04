@@ -32,34 +32,6 @@ export type FileName = z.infer<typeof FileName>;
 
 export const Colour = z.string().regex(/^#[0-9a-f]{6}$/i);
 
-export const ScoreRef = z.object({
-  file: FileName,
-  name: z.string().min(1).max(200),
-});
-export type ScoreRef = z.infer<typeof ScoreRef>;
-
-export const TrackRef = z.object({
-  file: FileName,
-  name: z.string().min(1).max(200),
-});
-export type TrackRef = z.infer<typeof TrackRef>;
-
-export const MusicRef = z.object({
-  file: FileName,
-  name: z.string().min(1).max(200),
-  transpose: z.int().min(-MAX_TRANSPOSE).max(MAX_TRANSPOSE).default(0),
-});
-export type MusicRef = z.infer<typeof MusicRef>;
-
-export const Bookmark = z.object({
-  id: z.string().min(1).max(40),
-  name: z.string().min(1).max(120),
-  score: FileName,
-  page: z.int().min(1),
-  y: z.number().min(0),
-});
-export type Bookmark = z.infer<typeof Bookmark>;
-
 export const HttpUrl = z.url({ protocol: /^https?$/ });
 
 const Stars = z
@@ -98,6 +70,37 @@ export type PieceSource = z.infer<typeof PieceSource>;
 export const SourceEdit = z.object({ url: HttpUrl, rating: SourceRatingInput.nullable() });
 export type SourceEdit = z.infer<typeof SourceEdit>;
 
+export const ScoreRef = z.object({
+  file: FileName,
+  name: z.string().min(1).max(200),
+  source: PieceSource.optional(),
+});
+export type ScoreRef = z.infer<typeof ScoreRef>;
+
+export const TrackRef = z.object({
+  file: FileName,
+  name: z.string().min(1).max(200),
+  source: PieceSource.optional(),
+});
+export type TrackRef = z.infer<typeof TrackRef>;
+
+export const MusicRef = z.object({
+  file: FileName,
+  name: z.string().min(1).max(200),
+  transpose: z.int().min(-MAX_TRANSPOSE).max(MAX_TRANSPOSE).default(0),
+  source: PieceSource.optional(),
+});
+export type MusicRef = z.infer<typeof MusicRef>;
+
+export const Bookmark = z.object({
+  id: z.string().min(1).max(40),
+  name: z.string().min(1).max(120),
+  score: FileName,
+  page: z.int().min(1),
+  y: z.number().min(0),
+});
+export type Bookmark = z.infer<typeof Bookmark>;
+
 export const Piece = z.object({
   id: Slug,
   title: z.string().trim().min(1).max(200),
@@ -132,6 +135,9 @@ export const TransposeFile = z.object({
 });
 export type TransposeFile = z.infer<typeof TransposeFile>;
 
+export const FileSourceEdit = z.object({ file: FileName, source: SourceEdit.nullable() });
+export type FileSourceEdit = z.infer<typeof FileSourceEdit>;
+
 export const PiecePatch = z
   .object({
     title: z.string().trim().min(1).max(200),
@@ -146,6 +152,7 @@ export const PiecePatch = z
     bookmarks: z.array(Bookmark),
     pinned: z.boolean(),
     source: SourceEdit.nullable(),
+    fileSource: FileSourceEdit,
   })
   .partial()
   .strict();

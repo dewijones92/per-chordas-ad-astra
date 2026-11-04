@@ -62,5 +62,25 @@ types it in once, by hand.
 
 - Nothing here talks to MuseScore or IMSLP. The app only links to them.
 - The rating is a note Dewi typed on a date, not live data; the date is shown with it so it reads as such.
-- A piece has one source. Two origins for one piece is the known gap above.
+- A piece has one source. Two origins for one piece is the known gap above. **Closed 4 Nov 2026** by the
+  extension below.
+
+## Update, 4 Nov 2026: a source per file
+
+Dewi asked for the follow-ups to be done, and this was the first of them. The extension is the one sketched in the
+Decision, with the piece's source as the fallback:
+
+- `ScoreRef`, `MusicRef` and `TrackRef` each gain an optional `source`, the same `PieceSource` shape with the same
+  rules (`applySourceEdit`, the site name from the host, the day stamped by the server and kept while the numbers do
+  not change). No file migration: an old ref simply has none.
+- The patch is a targeted `fileSource: { file, source: SourceEdit | null }`, so a file's link is set or removed without
+  sending the file lists. An unknown file is refused.
+- **Only `fileSource` changes a file's source.** A patch that sends the file lists (a rename, a reorder, a
+  transposition) gets each file's stored source put back, and a `source` inside those lists is dropped, so a stale tab
+  can neither wipe nor forge one. This is the "never send a whole document" gotcha again.
+- One form for all of them: the existing form gains **🎯 For** (the whole piece, or each file with its kind's icon
+  from `fileIcons`, which moved into `strings.ts` from the piece page so the file list and the form share it). A file
+  with its own link gets its own line under the piece's; a file without one shows nothing extra and goes by the
+  piece's. The library card's ⭐ stays the piece's rating.
+- Commit messages name the file: `Source for 'Gran Vals' (gran-vals.pdf): IMSLP ⭐ 4.5`.
 - Old `piece.json` files with a Find source keep working, and a rating or link added to one keeps its licence.

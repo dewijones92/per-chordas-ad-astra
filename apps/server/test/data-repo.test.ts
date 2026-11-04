@@ -618,6 +618,84 @@ describe('DataRepo edited time and pins', () => {
     );
   });
 
+  it('gives one file its own source, keeps the piece source, and a rename of the files never drops it', async () => {
+    const piece = await repo.createPiece({ title: 'Gran Vals' });
+    const score = await repo.addScore(piece.id, 'gran-vals.pdf', new Blob([pdf]));
+    const music = await repo.addMusic(
+      piece.id,
+      'gran-vals.musicxml',
+      new Blob([makeMusicXml(PIANO_WALTZ)]),
+    );
+    await repo.updatePiece(piece.id, {
+      source: { url: 'https://musescore.com/user/1/scores/2', rating: null },
+    });
+    later('2026-11-04T08:30:00.000Z');
+    const next = await repo.updatePiece(piece.id, {
+      fileSource: {
+        file: score.file,
+        source: {
+          url: 'https://imslp.org/wiki/Gran_Vals',
+          rating: { stars: 4.5, ratings: null, views: null },
+        },
+      },
+    });
+    expect(next.source?.name).toBe('MuseScore');
+    expect(next.scores[0]?.source).toEqual({
+      name: 'IMSLP',
+      url: 'https://imslp.org/wiki/Gran_Vals',
+      licence: null,
+      licenceUrl: null,
+      rating: { stars: 4.5, ratings: null, views: null, notedOn: '2026-11-04' },
+    });
+    expect(next.music[0]?.source).toBeUndefined();
+    expect(changes.descriptions.at(-1)).toBe(
+      "Source for 'Gran Vals' (gran-vals.pdf): IMSLP ⭐ 4.5",
+    );
+
+    const renamed = await repo.updatePiece(piece.id, {
+      scores: [{ file: score.file, name: 'Renamed' }],
+      music: [{ file: music.file, name: 'Tune', transpose: 0 }],
+    });
+    expect(renamed.scores[0]).toMatchObject({ name: 'Renamed', source: { name: 'IMSLP' } });
+
+    const smuggled = await repo.updatePiece(piece.id, {
+      music: [
+        {
+          file: music.file,
+          name: 'Tune',
+          transpose: 0,
+          source: {
+            name: 'Evil',
+            url: 'https://example.com/',
+            licence: null,
+            licenceUrl: null,
+            rating: null,
+          },
+        },
+      ],
+    });
+    expect(smuggled.music[0]?.source).toBeUndefined();
+
+    const cleared = await repo.updatePiece(piece.id, {
+      fileSource: { file: score.file, source: null },
+    });
+    expect(cleared.scores[0]?.source).toBeUndefined();
+    expect(cleared.source?.name).toBe('MuseScore');
+    expect(changes.descriptions.at(-1)).toBe("Remove the source of 'Gran Vals' (gran-vals.pdf)");
+  });
+
+  it('refuses a source for a file the piece does not have', async () => {
+    const piece = await repo.createPiece({ title: 'Air' });
+    await expect(
+      repo.updatePiece(piece.id, {
+        fileSource: {
+          file: file('nope.pdf'),
+          source: { url: 'https://imslp.org/x', rating: null },
+        },
+      }),
+    ).rejects.toThrow(/nope\.pdf/);
+  });
+
   it('refuses a link that is not http or https, and an empty rating', async () => {
     const piece = await repo.createPiece({ title: 'Air' });
     await expect(

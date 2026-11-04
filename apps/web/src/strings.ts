@@ -1,6 +1,18 @@
-import { compactCount, formatNotedOn, formatStars, type SourceRating } from '@pcaa/shared';
+import {
+  compactCount,
+  formatNotedOn,
+  formatStars,
+  type FileKind,
+  type SourceRating,
+} from '@pcaa/shared';
 
 const soundNames = { click: '🔊 Click', drums: '🥁 Drums' } as const;
+
+export const fileIcons = {
+  scores: '📄',
+  tracks: '🎧',
+  music: '🎹',
+} as const satisfies Record<FileKind, string>;
 
 export const strings = {
   common: {
@@ -139,6 +151,20 @@ export const strings = {
     badStars: '⚠️ Stars must be a number from 0 to 5, for example 4.8',
     badCount: (what: string) => `⚠️ ${what} must be a whole number such as 120, 15k or 1.2M`,
     saveFailed: (message: string) => `❌ Could not save: ${message}`,
+    forLabel: '🎯 For',
+    forPiece: '🎼 The whole piece',
+    forFile: {
+      scores: (name: string) => `${fileIcons.scores} ${name}`,
+      music: (name: string) => `${fileIcons.music} ${name}`,
+      tracks: (name: string) => `${fileIcons.tracks} ${name}`,
+    } satisfies Record<FileKind, (name: string) => string>,
+    fileLabel: {
+      scores: (name: string) => `${fileIcons.scores} ${name}:`,
+      music: (name: string) => `${fileIcons.music} ${name}:`,
+      tracks: (name: string) => `${fileIcons.tracks} ${name}:`,
+    } satisfies Record<FileKind, (name: string) => string>,
+    removeFileConfirm: (site: string, name: string) =>
+      `🗑️ Remove the link to ${site} and its rating from ${name}?`,
   },
   library: {
     title: '📚 Your library',
@@ -470,6 +496,7 @@ export const tips = {
     open: 'Opens the page this piece came from, in a new tab',
     edit: 'Change the link or the rating',
     add: 'Paste a link to where this piece came from, and what it is rated there',
+    forTarget: 'Whether this link is for the whole piece or for one of its files',
     cardStars: (site: string) => `Rated on ${site}`,
   },
   find: {
