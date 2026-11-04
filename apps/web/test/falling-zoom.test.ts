@@ -3,6 +3,7 @@ import { DEFAULT_LOOK_AHEAD, MAX_LOOK_AHEAD, MIN_LOOK_AHEAD, stepLookAhead } fro
 import { wheelLookAhead } from '../src/score/zoom.ts';
 import {
   drawFalling,
+  CHORD_PX,
   FINGER_COLOUR,
   FINGER_PX,
   SUGGESTED_COLOUR,
@@ -287,5 +288,42 @@ describe('suggested fingering on the falling notes', () => {
     expect(texts.some((t) => t.text === '3')).toBe(false);
     expect(drawn.suggested).toBe(1);
     expect(drawn.fingers).toBe(1);
+  });
+});
+
+describe('chord names on the falling notes', () => {
+  const chords = [
+    { start: 1, name: 'G' },
+    { start: 1.05, name: 'Am' },
+    { start: 2, name: 'C' },
+  ];
+
+  it('draws each chord name at a fixed size at the time it starts, none on top of another', () => {
+    const { ctx, texts } = recordingContext();
+    const drawn = drawFalling(ctx, { ...view(perfOf([]), DEFAULT_LOOK_AHEAD), chords });
+    expect(drawn.chords).toEqual(['G', 'C']);
+    const g = texts.find((t) => t.text === 'G');
+    const c = texts.find((t) => t.text === 'C');
+    expect(fontPx(g?.font ?? '')).toBe(CHORD_PX);
+    expect((g?.y ?? 0) - (c?.y ?? 0)).toBeGreaterThan(CHORD_PX);
+    expect(texts.some((t) => t.text === 'Am')).toBe(false);
+  });
+
+  it('keeps the same size however far you zoom out', () => {
+    const { ctx, texts } = recordingContext();
+    drawFalling(ctx, { ...view(perfOf([]), MAX_LOOK_AHEAD), chords: [{ start: 4, name: 'F/A' }] });
+    expect(fontPx(texts.find((t) => t.text === 'F/A')?.font ?? '')).toBe(CHORD_PX);
+  });
+
+  it('lets a chord go once it has reached the keys, and draws none when there are none', () => {
+    const later = recordingContext();
+    const drawn = drawFalling(later.ctx, {
+      ...view(perfOf([]), DEFAULT_LOOK_AHEAD),
+      position: 1.5,
+      chords,
+    });
+    expect(drawn.chords).toEqual(['C']);
+    const none = recordingContext();
+    expect(drawFalling(none.ctx, view(perfOf([]), DEFAULT_LOOK_AHEAD)).chords).toEqual([]);
   });
 });

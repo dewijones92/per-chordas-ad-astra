@@ -74,6 +74,15 @@ keyboard from above, like the bird's-eye piano videos.
   default) picks Split for piano when you play the piece on piano and the file has no piano staves, and says what it
   chose and why beside the buttons. Every button has hover text and ❓ opens a plain explanation; the same goes for
   🙋 I play on (✨ Auto / 🎹 Piano / 🎸 Guitar). Remembered per file.
+- **👐 I play: 🎧 Nothing / 👐 Both / 🖐️ Right / 🤚 Left** (Dewi, 4 Nov 2026), in the Hands row when the lanes include a
+  hand. Choose the hand you play: it goes quiet but stays on screen to follow, and the app plays the other hand for
+  you; Both silences both, Nothing lets the app play everything. It is a shortcut for each hand's 👁 and 🔊 and reads
+  ⚙️ Custom when you change those yourself; remembered per file with them, separately for By part and By hand
+  ([ADR 0018](../adr/0018-piano-hands-for-guitar-scores.md)). Hover text on each button and ❓ explain.
+- **🎸 Chord names** (off to start with, remembered per file): each new harmony of the left hand is named (G, Am, D7,
+  C/E, Bdim, Gsus4) on a sticker at the left edge of the falling notes where it starts, one chord a bar (a waltz bass
+  and two chords read as one), spelled for the key it now sounds in. Bars that are not a chord show nothing
+  ([ADR 0023](../adr/0023-chord-names.md)).
 - **✂️ Thin octaves** (by hand only, on to start with): where the tune is written in octaves, as guitar music
   often is, the lower copy is left out (not drawn, not played, not on the grand staff), so in Gran Vals bars 18–21
   the right hand plays the tune and the left hand bass then chords instead of the right hand stretching an octave

@@ -1,5 +1,6 @@
 import type { ScoreStaff } from './model.ts';
 import type { PerfNote, Performance } from './performance.ts';
+import { sideFor, type HandSide } from './suggest-fingering.ts';
 
 export type Hand = 'right' | 'left';
 
@@ -211,4 +212,8 @@ export function handLanes(
       return hand === undefined ? LEFT_OUT : hand === 'left' ? 1 : 0;
     },
   };
+}
+
+export function sideOfNote(lanes: Lanes, n: PerfNote): HandSide {
+  return sideFor(lanes.lanes[lanes.laneOf(n)]?.role, n.pitch, MIDDLE_C);
 }

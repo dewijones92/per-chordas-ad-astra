@@ -2,7 +2,7 @@
 title: Piano hands for guitar scores, worked out by the app
 status: accepted
 date: 2026-10-30
-updated: 2026-11-01
+updated: 2026-11-04
 ---
 
 # 0018 · Piano hands for guitar scores: an automatic split, switchable
@@ -63,6 +63,16 @@ in this batch.
   treble and bass, so the guitar's octave clef goes. Performance notes now carry their `source` score note, which
   is how a played note's hand reaches the written note (its first playing decides, for repeats). Highlighting
   still comes from Verovio's own timing, so it works unchanged. Exports keep the file's own layout.
+
+- **👐 I play (4 Nov 2026) is a shortcut onto the lanes' own hide and mute, not a setting of its own.** Dewi: pick
+  the hand you play and the app plays the other. 🖐️ Right mutes every lane whose role is right (still drawn, so you
+  follow it) and unmutes the left, 🤚 Left the other way round, 👐 Both mutes both, 🎧 Nothing unmutes both (the old
+  default, for listening). It also un-hides the two hands and leaves lanes with no hand role alone. The choice is
+  read back from the lanes (`hand-choice.ts`, `handChoiceOf`), so the buttons and the 👁 and 🔊 of each hand can never
+  disagree: change one of those by hand and the row says ⚙️ Custom. Because it lives in the existing `hidden`/`muted`
+  and `handHidden`/`handMuted` lists, it is remembered per file with them and By part and By hand keep their own,
+  and no preference was added. It shows only where some lane has a hand role (a piano score's RH and LH, or the split
+  hands), and is absent for single-staff guitar parts.
 
 ## Consequences
 

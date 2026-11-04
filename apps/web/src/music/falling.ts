@@ -3,9 +3,13 @@ import { keyboardLayout, keyForPitch, type KeyboardLayout } from './keyboard.ts'
 import { noteName, pitchName, type KeyRange } from './keys.ts';
 import type { PerfNote, Performance } from './performance.ts';
 import { noteKey } from './model.ts';
+import type { ChordLabel } from './chords.ts';
 
 export const LABEL_PX = 12;
 export const FINGER_PX = 14;
+export const CHORD_PX = 16;
+export const CHORD_X = 34;
+export const CHORD_COLOUR = '#a87300';
 const MAX_REPORTED_BLOCKS = 64;
 export const FINGER_COLOUR = '#d7263d';
 export const SUGGESTED_COLOUR = '#6f6880';
@@ -32,6 +36,7 @@ export interface FallingView {
   lookAhead: number;
   userFingers?: ReadonlyMap<string, string>;
   suggested?: ReadonlyMap<PerfNote, number>;
+  chords?: readonly ChordLabel[];
   selected?: string | null;
   width: number;
   height: number;
@@ -165,11 +170,30 @@ function drawFinger(
   ctx.textAlign = 'start';
 }
 
+function drawChord(ctx: CanvasRenderingContext2D, text: string, baseline: number): number {
+  ctx.font = `900 ${String(CHORD_PX)}px Nunito Variable, system-ui, sans-serif`;
+  const height = CHORD_PX + 6;
+  const width = Math.max(height, ctx.measureText(text).width + 12);
+  roundRect(ctx, CHORD_X, baseline - height, width, height, 8);
+  ctx.fillStyle = '#fff3cf';
+  ctx.fill();
+  ctx.strokeStyle = CHORD_COLOUR;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#1d1533';
+  ctx.fillText(text, CHORD_X + width / 2, baseline - height / 2);
+  ctx.textAlign = 'start';
+  return baseline - height;
+}
+
 export interface FallingDrawn {
   pressed: ReadonlyMap<number, string>;
   fingers: number;
   suggested: number;
   selected: number;
+  chords: readonly string[];
   blocks: readonly { pitch: number; x: number; y: number }[];
 }
 
@@ -354,6 +378,17 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
     ctx.globalAlpha = 1;
   }
 
+  const chordsDrawn: string[] = [];
+  let chordTop = Infinity;
+  for (const chord of view.chords ?? []) {
+    if (chord.start < position - 0.001) continue;
+    if (chord.start > top + (CHORD_PX + 6) / Math.max(1, pxPerSecond)) break;
+    const baseline = yOf(chord.start) - 2;
+    if (baseline > chordTop - 2) continue;
+    chordTop = drawChord(ctx, chord.name, baseline);
+    chordsDrawn.push(chord.name);
+  }
+
   ctx.fillStyle = '#1d1533';
   ctx.fillRect(0, notesHeight - 2, width, 3);
 
@@ -392,5 +427,12 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
       ctx.stroke();
     }
   }
-  return { pressed, fingers, suggested: suggestedDrawn, selected: selectedDrawn, blocks };
+  return {
+    pressed,
+    fingers,
+    suggested: suggestedDrawn,
+    selected: selectedDrawn,
+    chords: chordsDrawn,
+    blocks,
+  };
 }

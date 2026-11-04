@@ -29,6 +29,7 @@ updated: 2026-11-04
 | [0022](0022-drum-beats.md)                                  | Drum beats instead of the click: pure grooves, synthesised voices, one meter rule         | accepted           |
 | [0020](0020-one-shortcut-table.md)                          | One shortcut table; Space plays whatever is on screen, M runs the metronome               | accepted           |
 | [0012](0012-library-sort-facts.md)                          | Library sorts read recorded facts (edited, opened, pinned)                                | accepted           |
+| [0023](0023-chord-names.md)                                 | Chord names over the left hand: bar windows, exact templates, slash chords                | accepted           |
 
 Format: `NNNN-title.md` with frontmatter (`status`, `date`, `updated`). Change a decision by updating
 its ADR; reverse one by marking it `superseded by NNNN` and writing the new one, in the same commit as

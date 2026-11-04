@@ -194,6 +194,20 @@ export const strings = {
     fewerControls: '🔼 Fewer controls',
     moreControls: '🔽 More controls',
     handNames: { right: '🫱 Right hand', left: '🫲 Left hand' },
+    iPlay: '👐 I play',
+    iPlayModes: {
+      none: '🎧 Nothing',
+      both: '👐 Both',
+      right: '🖐️ Right',
+      left: '🤚 Left',
+    },
+    iPlayCustom: '⚙️ Custom: set by the 👁 and 🔊 buttons',
+    iPlayHelp: [
+      '🖐️ Right: you play the right hand, so it goes quiet but stays on screen to follow, and the app plays the left hand for you. 🤚 Left is the other way round.',
+      '👐 Both: you play both hands, so both go quiet but stay on screen. 🎧 Nothing: the app plays everything, for listening.',
+      '⚙️ This is a shortcut for the 👁 and 🔊 buttons on each hand below; change one of those yourself and it reads Custom.',
+    ],
+    chordNames: '🎸 Chord names',
     notation: '🎼 Notation',
     noteNames: '🔤 Note names',
     suggest: '🤖 Suggested fingering',
@@ -437,6 +451,16 @@ export const tips = {
       guitar: 'You play this on guitar; shows capo hints',
     },
     handNames: { right: 'right hand', left: 'left hand' },
+    iPlay:
+      'Which hand you play yourself; the app plays the other, and yours stays on screen but silent',
+    iPlayModes: {
+      none: 'You play nothing; the app plays both hands',
+      both: 'You play both hands; the app is silent and both hands stay on screen',
+      right: 'You play the right hand; the app plays the left',
+      left: 'You play the left hand; the app plays the right',
+    },
+    chordNames:
+      'Name each new harmony of the left hand (G, Am, D7, C/E) on the falling notes, one chord a bar, spelled for the key it now sounds in',
     thinOctaves:
       'Where the tune is written in octaves, leave out the lower copy (not drawn, not played), so one hand is not stretched over an octave and the other is free for the bass and chords',
     tails:

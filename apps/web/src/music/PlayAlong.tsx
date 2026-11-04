@@ -45,7 +45,9 @@ import { staffColours } from './colours.ts';
 import { drawFalling, geometry, keyUpAt, noteAt, type FallingView } from './falling.ts';
 import { capoFor, fitRange, keyName, noteName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip } from './BarStrip.tsx';
-import { sideFor, suggestBySide } from './suggest-fingering.ts';
+import { suggestBySide } from './suggest-fingering.ts';
+import { chordLabels, type ChordLabel } from './chords.ts';
+import { applyHandChoice, HAND_CHOICES, handChoiceOf, hasHands } from './hand-choice.ts';
 import { checkFile } from './file-check.ts';
 import { FileCheckLine } from './FileCheckLine.tsx';
 import { ResizeHandle } from './ResizeHandle.tsx';
@@ -55,8 +57,8 @@ import {
   assignHands,
   handLanes,
   LEFT_OUT,
-  MIDDLE_C,
   partLanes,
+  sideOfNote,
   thinOctaves,
   type Lanes,
 } from './hands.ts';
@@ -129,6 +131,7 @@ function FallingCanvas({
   onLookAhead,
   userFingers,
   suggested,
+  chords,
   selectedNote,
   onPick,
   pickedLabel,
@@ -146,6 +149,7 @@ function FallingCanvas({
   onLookAhead: Dispatch<SetStateAction<number>>;
   userFingers: ReadonlyMap<string, string>;
   suggested: ReadonlyMap<PerfNote, number> | null;
+  chords: readonly ChordLabel[] | null;
   selectedNote: string | null;
   onPick: (note: PerfNote | null) => void;
   pickedLabel: string | null;
@@ -220,6 +224,7 @@ function FallingCanvas({
         lookAhead: prefs.lookAhead,
         userFingers,
         ...(suggested ? { suggested } : {}),
+        ...(chords ? { chords } : {}),
         selected: selectedNote,
         width: size.width,
         height: size.height,
@@ -228,6 +233,7 @@ function FallingCanvas({
       const drawn = drawFalling(ctx, view);
       el.dataset['selected'] = String(drawn.selected);
       el.dataset['suggested'] = String(drawn.suggested);
+      el.dataset['chords'] = drawn.chords.join(' ');
       el.dataset['blocks'] = playing
         ? ''
         : drawn.blocks.map((b) => `${String(b.pitch)}:${String(b.x)}:${String(b.y)}`).join(' ');
@@ -260,6 +266,7 @@ function FallingCanvas({
     prefs.lookAhead,
     userFingers,
     suggested,
+    chords,
     selectedNote,
   ]);
 
@@ -441,13 +448,24 @@ export function PlayAlong({
   );
   const colours = useMemo(() => (lanes ? staffColours(lanes.lanes) : []), [lanes]);
   const suggestOn = prefs.suggest;
+  const playable = useMemo(
+    () => (perf ? (leftOut ? perf.notes.filter((n) => !leftOut.has(n)) : perf.notes) : null),
+    [perf, leftOut],
+  );
   const suggested = useMemo(() => {
-    if (!perf || !lanes || !suggestOn) return null;
-    const playable = leftOut ? perf.notes.filter((n) => !leftOut.has(n)) : perf.notes;
-    return suggestBySide(playable, (n) =>
-      sideFor(lanes.lanes[lanes.laneOf(n)]?.role, n.pitch, MIDDLE_C),
+    if (!playable || !lanes || !suggestOn) return null;
+    return suggestBySide(playable, (n) => sideOfNote(lanes, n));
+  }, [playable, lanes, suggestOn]);
+  const chordsOn = prefs.chords;
+  const chords = useMemo(() => {
+    if (!perf || !playable || !lanes || !chordsOn) return null;
+    return chordLabels(
+      playable.filter((n) => sideOfNote(lanes, n) === 'left'),
+      perf.bars,
+      transpose,
+      transposeFifths(perf.keyFifths, transpose) < 0,
     );
-  }, [perf, lanes, leftOut, suggestOn]);
+  }, [perf, playable, lanes, chordsOn, transpose]);
   const grandXml = useMemo(() => {
     const score = loaded.data?.score;
     if (!hands || !score?.notation || !prefs.notation) return null;
@@ -457,6 +475,11 @@ export function PlayAlong({
   const notationXml = prefs.notation ? (grandXml ?? sourceXml) : null;
   const hiddenLanes = byHand ? prefs.handHidden : prefs.hidden;
   const mutedLanes = byHand ? prefs.handMuted : prefs.muted;
+  const hiddenKey = byHand ? 'handHidden' : 'hidden';
+  const mutedKey = byHand ? 'handMuted' : 'muted';
+  const handChoice = lanes
+    ? handChoiceOf(lanes.lanes, { hidden: hiddenLanes, muted: mutedLanes })
+    : 'none';
 
   const player = useMemo(() => {
     if (!perf) return null;
@@ -1273,6 +1296,19 @@ export function PlayAlong({
           />
           {strings.playAlong.suggest}
         </label>
+        <label className="playalong-field" title={tips.playAlong.chordNames}>
+          <input
+            type="checkbox"
+            checked={prefs.chords}
+            data-testid="playalong-chords"
+            onChange={(e) => {
+              const chords = e.target.checked;
+              console.info('dewidebug chord names', { on: chords });
+              updatePrefs((p) => ({ ...p, chords }));
+            }}
+          />
+          {strings.playAlong.chordNames}
+        </label>
         <label className="playalong-field" title={tips.playAlong.tails}>
           <input
             type="checkbox"
@@ -1421,12 +1457,36 @@ export function PlayAlong({
             {strings.playAlong.thinOctaves}
           </label>
         )}
+        {lanes && hasHands(lanes.lanes) && (
+          <Choice
+            label={strings.playAlong.iPlay}
+            title={tips.playAlong.iPlay}
+            value={handChoice}
+            options={HAND_CHOICES.map((c) => ({
+              value: c,
+              label: strings.playAlong.iPlayModes[c],
+              tip: tips.playAlong.iPlayModes[c],
+            }))}
+            testId="playalong-i-play"
+            help={strings.playAlong.iPlayHelp}
+            note={handChoice === 'custom' ? strings.playAlong.iPlayCustom : null}
+            onChange={(choice) => {
+              if (choice === 'custom') return;
+              updatePrefs((p) => {
+                const applied = applyHandChoice(lanes.lanes, choice, {
+                  hidden: p[hiddenKey],
+                  muted: p[mutedKey],
+                });
+                console.info('dewidebug i play', { choice, byHand, ...applied });
+                return { ...p, [hiddenKey]: applied.hidden, [mutedKey]: applied.muted };
+              });
+            }}
+          />
+        )}
         {(lanes?.lanes ?? []).map((s) => {
           const colour = colours[s.index];
           const isHidden = hiddenLanes.includes(s.index);
           const isMuted = mutedLanes.includes(s.index);
-          const hiddenKey = byHand ? 'handHidden' : 'hidden';
-          const mutedKey = byHand ? 'handMuted' : 'muted';
           return (
             <span key={s.index} className="playalong-part" data-testid="playalong-part">
               <span className="playalong-swatch" style={{ background: colour?.fill }} />
@@ -1564,6 +1624,7 @@ export function PlayAlong({
         onLookAhead={setLookAhead}
         userFingers={userFingers}
         suggested={suggested}
+        chords={chords}
         selectedNote={picked?.key ?? null}
         onPick={pickNote}
         pickedLabel={picked?.label ?? null}
