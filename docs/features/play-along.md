@@ -33,6 +33,15 @@ keyboard from above, like the bird's-eye piano videos.
   all 88 keys. Sounding keys light up in their part's colour: right hand violet, left hand teal, other
   parts coral, blue, amber. Bar lines carry their numbers. Drag or scroll the notes to move through the
   piece.
+- **🔭 Look ahead** (Dewi, 4 Nov 2026: "zoom out and see quite a lot"): how many seconds the falling notes show, from
+  1 to 20 (3 to start), by − / + on the play bar or Ctrl + scroll over the falling notes, which leaves the PDF's zoom
+  alone. Note names stay 12 px however far you zoom out: on a note too thin to hold one, the name sits just above it,
+  and where two would overlap in one key the later one is left out rather than drawn on top.
+- **More room**: drag the bar under the stave (or focus it and use ↑ ↓) to give the stave or the falling notes more
+  height; double-click it to go back to automatic. **🔼 Fewer controls** folds away the settings rows, keeping play,
+  bars, look ahead and speed. In the Both view at laptop size the settings rows can push the falling notes below the
+  screen, so this is the switch to reach for there. Look ahead, the stave height and folded controls are remembered
+  per file, per person.
 - **Note names**: a toggle prints each note's letter on it, spelled for the key it now sounds in (flats in
   flat keys, sharps in sharp keys), following any transposition. Remembered per file.
 - **Parts**: each staff can be hidden (👁, still heard) or muted (🔊, still shown) on its own, to practise one

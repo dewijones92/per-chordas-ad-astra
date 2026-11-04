@@ -252,3 +252,31 @@
 .choice-help p {
   margin: 2px 0;
 }
+
+.playalong-resize {
+  flex: 0 0 auto;
+  height: 12px;
+  margin-top: -2px;
+  cursor: ns-resize;
+  touch-action: none;
+  background:
+    linear-gradient(var(--ink), var(--ink)) center / 44px 3px no-repeat,
+    var(--bg);
+  border-bottom: 2px solid var(--line);
+}
+
+.playalong-resize:hover,
+.playalong-resize:focus-visible {
+  background:
+    linear-gradient(var(--violet), var(--violet)) center / 64px 4px no-repeat,
+    var(--sun-wash);
+  outline: none;
+}
+
+.playalong.is-compact .playalong-settings {
+  display: none;
+}
+
+.playalong-label {
+  white-space: nowrap;
+}

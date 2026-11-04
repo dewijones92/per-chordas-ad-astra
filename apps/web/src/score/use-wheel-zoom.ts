@@ -5,6 +5,7 @@ export function useWheelZoom(
   target: HTMLElement | Window | null,
   setZoom: Dispatch<SetStateAction<number>>,
   label: string,
+  step: (from: number, deltaY: number, deltaMode: number) => number = wheelZoom,
 ): void {
   useEffect(() => {
     if (!target) return;
@@ -15,7 +16,7 @@ export function useWheelZoom(
       event.preventDefault();
       event.stopPropagation();
       setZoom((from) => {
-        const to = wheelZoom(from, event.deltaY, event.deltaMode);
+        const to = step(from, event.deltaY, event.deltaMode);
         gesture = gesture
           ? { ...gesture, events: gesture.events + 1, to }
           : { events: 1, from, to };
@@ -32,5 +33,5 @@ export function useWheelZoom(
       window.clearTimeout(quiet);
       target.removeEventListener('wheel', onWheel);
     };
-  }, [target, setZoom, label]);
+  }, [target, setZoom, label, step]);
 }

@@ -3,7 +3,7 @@ import { keyboardLayout, keyForPitch, type KeyboardLayout } from './keyboard.ts'
 import { noteName, pitchName, type KeyRange } from './keys.ts';
 import type { PerfNote, Performance } from './performance.ts';
 
-export const LOOKAHEAD_SECONDS = 3;
+export const LABEL_PX = 12;
 export const KEYBOARD_SHARE = 0.2;
 export const MAX_KEYBOARD_HEIGHT = 130;
 export const STRIKE_SECONDS = 0.2;
@@ -24,6 +24,7 @@ export interface FallingView {
   tails: boolean;
   loop: { start: number; end: number } | null;
   names: { flats: boolean } | null;
+  lookAhead: number;
   width: number;
   height: number;
 }
@@ -74,13 +75,15 @@ export interface Geometry {
   layout: KeyboardLayout;
 }
 
-export function geometry(view: Pick<FallingView, 'width' | 'height' | 'range'>): Geometry {
+export function geometry(
+  view: Pick<FallingView, 'width' | 'height' | 'range' | 'lookAhead'>,
+): Geometry {
   const keyboardHeight = Math.min(MAX_KEYBOARD_HEIGHT, Math.max(48, view.height * KEYBOARD_SHARE));
   const notesHeight = Math.max(0, view.height - keyboardHeight);
   return {
     notesHeight,
     keyboardHeight,
-    pxPerSecond: notesHeight / LOOKAHEAD_SECONDS,
+    pxPerSecond: notesHeight / view.lookAhead,
     layout: keyboardLayout(view.range, view.width),
   };
 }
@@ -107,6 +110,29 @@ function roundRect(
   const radius = Math.max(0, Math.min(r, w / 2, h / 2));
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, radius);
+}
+
+function drawLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  centre: number,
+  baseline: number,
+  onBlock: boolean,
+): void {
+  ctx.font = `800 ${String(LABEL_PX)}px Nunito Variable, system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  if (onBlock) {
+    ctx.fillStyle = '#ffffff';
+  } else {
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(text, centre, baseline);
+    ctx.fillStyle = '#1d1533';
+  }
+  ctx.fillText(text, centre, baseline);
+  ctx.textAlign = 'start';
 }
 
 export function drawFalling(
@@ -161,6 +187,7 @@ export function drawFalling(
   }
 
   const notes = visibleNotes(perf.notes, position, top, longest);
+  const labelTops = new Map<number, number>();
   for (const n of notes) {
     if (view.hidden.has(view.laneOf(n))) continue;
     const key = keyForPitch(layout, n.pitch + transpose, range);
@@ -194,14 +221,17 @@ export function drawFalling(
     ctx.strokeStyle = '#1d1533';
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    if (view.names && h >= 13 && w >= 11) {
-      const size = Math.max(8, Math.min(12, Math.floor(w * 0.55)));
-      ctx.font = `800 ${String(size)}px Nunito Variable, system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(pitchName(n.pitch + transpose, view.names.flats), x + w / 2, yBottom - 2);
-      ctx.textAlign = 'start';
+    const onBlock = h >= LABEL_PX + 4 && w >= LABEL_PX;
+    const baseline = onBlock ? yBottom - 2 : yBottom - h - 1;
+    if (view.names && baseline <= (labelTops.get(key.pitch) ?? Infinity) - 1) {
+      drawLabel(
+        ctx,
+        pitchName(n.pitch + transpose, view.names.flats),
+        x + w / 2,
+        baseline,
+        onBlock,
+      );
+      labelTops.set(key.pitch, baseline - LABEL_PX);
     }
     ctx.globalAlpha = 1;
   }

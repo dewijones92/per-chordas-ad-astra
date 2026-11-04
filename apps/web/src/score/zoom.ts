@@ -1,8 +1,11 @@
+import { clampLookAhead } from '@pcaa/shared';
+
 export const MIN_ZOOM = 0.4;
 export const MAX_ZOOM = 2.5;
 export const ZOOM_STEP = 0.1;
 
 const WHEEL_SENSITIVITY = 0.001;
+const LOOK_AHEAD_WHEEL_GAIN = 3;
 const MAX_WHEEL_PIXELS = 100;
 const LINE_PIXELS = 16;
 const PAGE_PIXELS = 800;
@@ -24,10 +27,18 @@ export function stepZoom(zoom: number, direction: 1 | -1): number {
   return clampZoom(Math.round((zoom + direction * ZOOM_STEP) * 10) / 10);
 }
 
-export function wheelZoom(zoom: number, deltaY: number, deltaMode: number): number {
+export function wheelFactor(deltaY: number, deltaMode: number): number {
   const scale = deltaMode === 1 ? LINE_PIXELS : deltaMode === 2 ? PAGE_PIXELS : 1;
   const pixels = Math.max(-MAX_WHEEL_PIXELS, Math.min(MAX_WHEEL_PIXELS, deltaY * scale));
-  return clampZoom(zoom * Math.exp(-pixels * WHEEL_SENSITIVITY));
+  return Math.exp(-pixels * WHEEL_SENSITIVITY);
+}
+
+export function wheelZoom(zoom: number, deltaY: number, deltaMode: number): number {
+  return clampZoom(zoom * wheelFactor(deltaY, deltaMode));
+}
+
+export function wheelLookAhead(seconds: number, deltaY: number, deltaMode: number): number {
+  return clampLookAhead(seconds / Math.pow(wheelFactor(deltaY, deltaMode), LOOK_AHEAD_WHEEL_GAIN));
 }
 
 export function zoomKeyOf(e: ZoomKeyEvent): ZoomKey | null {

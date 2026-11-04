@@ -2,7 +2,7 @@
 title: Play-along reads MuseScore and MusicXML with our own parser, plays a sampled piano
 status: accepted
 date: 2026-10-24
-updated: 2026-10-24
+updated: 2026-11-04
 ---
 
 # 0014 · Our own score reader, MuseScore's repeat tests as the oracle, Salamander piano
@@ -30,7 +30,7 @@ MuseScore writes today.
   `tools/build-piano-samples.sh` rebuilds the 90 Opus files (30 pitches in minor thirds, three
   loudnesses, trimmed and faded, mono) from the original archive, checking its SHA-256. Opus because
   Chromium (CI's browser) decodes it and its pre-skip is honoured, so note onsets are not delayed.
-- **Drawing**: a 2D canvas. WebGPU was considered; a few hundred rectangles a frame do not need it, and it
+- **Drawing**: a 2D canvas, showing 1–20 s ahead (🔭 Look ahead, 3 s by default; labels a fixed 12 px whatever the zoom, 4 Nov 2026). WebGPU was considered; a few hundred rectangles a frame do not need it, and it
   is unreliable on Dewi's WSL.
 - **Scheduling**: the audio clock is the truth. A pure `Transport` maps audio time to song time through
   anchors, schedules 150 ms ahead, and wraps loops without a gap; the canvas reads the same clock.

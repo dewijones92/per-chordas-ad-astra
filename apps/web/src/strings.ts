@@ -152,6 +152,9 @@ export const strings = {
     ],
     tails: '🔔 Ringing tails',
     thinOctaves: '✂️ Thin octaves',
+    lookAhead: '🔭 Look ahead',
+    fewerControls: '🔼 Fewer controls',
+    moreControls: '🔽 More controls',
     handNames: { right: '🫱 Right hand', left: '🫲 Left hand' },
     notation: '🎼 Notation',
     noteNames: '🔤 Note names',
@@ -328,6 +331,13 @@ export const tips = {
   },
   playAlong: {
     panel: 'Play-along',
+    lookAhead:
+      'How many seconds of music the falling notes show; Ctrl + scroll over the falling notes zooms too, and the names and finger numbers stay the same size',
+    lookAheadLess: 'Show fewer seconds, with bigger notes',
+    lookAheadMore: 'Show more seconds, to see further ahead',
+    resize:
+      'Drag to give the stave or the falling notes more room; double-click to go back to automatic',
+    compact: 'Hide or show the settings rows, to give the falling notes more room',
     barStrip: 'Bars: click to jump, drag across bars to loop them',
     play: 'Play or pause (K)',
     toStart: 'Back to the start',
@@ -491,6 +501,7 @@ export const names = {
 } as const;
 
 export const units = {
+  seconds: (n: number) => `${String(n)} s`,
   loopBars: (from: number, to: number) => `bars ${String(from)}–${String(to)}`,
   ago: {
     justNow: 'just now',

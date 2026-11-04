@@ -1,4 +1,5 @@
 import {
+  clampLookAhead,
   MAX_TRANSPOSE,
   INSTRUMENTS,
   PLAY_ALONG_MAX_SPEED,
@@ -9,11 +10,20 @@ import {
   newId,
   roundSpeed,
   speedPercent,
+  stepLookAhead,
   type HardBit,
   type MusicRef,
   type PlayAlongPrefs,
 } from '@pcaa/shared';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import { api } from '../api/client.ts';
 import { DrawingStatus } from '../annotate/DrawingStatus.tsx';
 import { Toolbar } from '../annotate/Toolbar.tsx';
@@ -21,6 +31,9 @@ import { shortcutOf } from '../ui/shortcuts.ts';
 import { useAnnotations } from '../annotate/use-annotations.ts';
 import { claimDrawing, useDrawing } from '../annotate/use-drawing.ts';
 import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
+import { useWheelZoom } from '../score/use-wheel-zoom.ts';
+import { wheelLookAhead } from '../score/zoom.ts';
+import { ZoomControl } from '../score/ZoomControl.tsx';
 import { strings, tips, units } from '../strings.ts';
 import { Choice } from '../ui/Choice.tsx';
 import { LoopSwitch } from '../ui/LoopSwitch.tsx';
@@ -31,6 +44,7 @@ import { staffColours } from './colours.ts';
 import { drawFalling, geometry, keyUpAt } from './falling.ts';
 import { capoFor, fitRange, keyName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip } from './BarStrip.tsx';
+import { ResizeHandle } from './ResizeHandle.tsx';
 import { parseScoreText, unpackScore } from './load.ts';
 import { instrumentFor } from './model.ts';
 import { assignHands, handLanes, LEFT_OUT, partLanes, thinOctaves, type Lanes } from './hands.ts';
@@ -99,6 +113,7 @@ function FallingCanvas({
   hiddenLanes,
   mutedLanes,
   onScrub,
+  onLookAhead,
 }: {
   perf: Performance;
   player: PianoPlayer | null;
@@ -110,8 +125,15 @@ function FallingCanvas({
   hiddenLanes: readonly number[];
   mutedLanes: readonly number[];
   onScrub: (seconds: number) => void;
+  onLookAhead: Dispatch<SetStateAction<number>>;
 }) {
-  const canvas = useRef<HTMLCanvasElement>(null);
+  const canvas = useRef<HTMLCanvasElement | null>(null);
+  const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
+  const canvasRef = useCallback((el: HTMLCanvasElement | null) => {
+    canvas.current = el;
+    setCanvasEl(el);
+  }, []);
+  useWheelZoom(canvasEl, onLookAhead, 'falling notes look-ahead', wheelLookAhead);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const range = useMemo(
     () => fitRange(perf.lowest + transpose, perf.highest + transpose, prefs.full),
@@ -171,6 +193,7 @@ function FallingCanvas({
         tails: prefs.tails,
         loop,
         names,
+        lookAhead: prefs.lookAhead,
         width: size.width,
         height: size.height,
       });
@@ -199,17 +222,24 @@ function FallingCanvas({
     names,
     size,
     prefs.position,
+    prefs.lookAhead,
   ]);
 
   const drag = useRef<{ y: number; position: number } | null>(null);
-  const pxPerSecond = geometry({ width: size.width, height: size.height, range }).pxPerSecond;
+  const pxPerSecond = geometry({
+    width: size.width,
+    height: size.height,
+    range,
+    lookAhead: prefs.lookAhead,
+  }).pxPerSecond;
 
   return (
     <div className="playalong-stage">
       <canvas
-        ref={canvas}
+        ref={canvasRef}
         className="playalong-canvas"
         data-testid="playalong-canvas"
+        data-look-ahead={prefs.lookAhead}
         style={{ width: `${String(size.width)}px`, height: `${String(size.height)}px` }}
         onWheel={(e) => {
           const position = player?.position() ?? prefs.position;
@@ -298,6 +328,21 @@ export function PlayAlong({
     },
     [key],
   );
+
+  const setLookAhead = useCallback(
+    (action: SetStateAction<number>) => {
+      updatePrefs((p) => {
+        const to =
+          Math.round(
+            clampLookAhead(typeof action === 'function' ? action(p.lookAhead) : action) * 10,
+          ) / 10;
+        return to === p.lookAhead ? p : { ...p, lookAhead: to };
+      });
+    },
+    [updatePrefs],
+  );
+  const [dragHeight, setDragHeight] = useState<number | null>(null);
+  const notationHeight = dragHeight ?? prefs.notationHeight;
 
   const byHand =
     prefs.byHand ??
@@ -621,7 +666,7 @@ export function PlayAlong({
 
   return (
     <section
-      className={`playalong${drawMode ? ' is-drawing' : ''}`}
+      className={`playalong${drawMode ? ' is-drawing' : ''}${prefs.compact ? ' is-compact' : ''}`}
       aria-label={tips.playAlong.panel}
       data-testid="playalong"
     >
@@ -672,8 +717,30 @@ export function PlayAlong({
         </button>
         <span className="playalong-readout" ref={readout} data-testid="playalong-position" />
         <span className="spacer" />
+        <span
+          className="playalong-field"
+          title={tips.playAlong.lookAhead}
+          data-testid="playalong-look-ahead"
+        >
+          <span className="playalong-label">{strings.playAlong.lookAhead}</span>
+          <ZoomControl
+            zoom={prefs.lookAhead}
+            onZoom={(seconds) => {
+              console.info('dewidebug look-ahead by button', {
+                from: prefs.lookAhead,
+                to: seconds,
+              });
+              setLookAhead(seconds);
+            }}
+            step={stepLookAhead}
+            format={units.seconds}
+            less={tips.playAlong.lookAheadLess}
+            more={tips.playAlong.lookAheadMore}
+            testId="playalong-look-ahead-value"
+          />
+        </span>
         <span className="playalong-field playalong-speed" title={tips.playAlong.speed}>
-          <span>{strings.common.speed}</span>
+          <span className="playalong-label">{strings.common.speed}</span>
           <button
             type="button"
             className="btn small icon"
@@ -717,6 +784,19 @@ export function PlayAlong({
             onChange={setSpeed}
           />
         </span>
+        <button
+          type="button"
+          className="btn small ghost"
+          aria-pressed={prefs.compact}
+          title={tips.playAlong.compact}
+          data-testid="playalong-compact"
+          onClick={() => {
+            console.info('dewidebug play-along controls', { compact: !prefs.compact });
+            updatePrefs((p) => ({ ...p, compact: !p.compact }));
+          }}
+        >
+          {prefs.compact ? strings.playAlong.moreControls : strings.playAlong.fewerControls}
+        </button>
       </div>
       <div className="playalong-bar playalong-settings">
         <span className="playalong-field" data-testid="playalong-transpose">
@@ -1255,26 +1335,40 @@ export function PlayAlong({
         </>
       )}
       {notationXml && loaded.data && (
-        <Notation
-          xml={notationXml}
-          transpose={transpose}
-          perf={perf}
-          measures={loaded.data.score.measures}
-          playing={playing}
-          position={notationPosition}
-          onSeek={seekTo}
-          zoom={notationZoom}
-          onZoom={setNotationZoom}
-          drawing={drawMode}
-          marks={{
-            history: notationMarks.history,
-            dispatch: notationMarks.dispatch,
-            tools: drawing.tools,
-            selected: drawMode ? drawing.selected : null,
-            onSelect: drawing.setSelected,
-            editable: notationMarks.load === 'ready',
-          }}
-        />
+        <>
+          <Notation
+            xml={notationXml}
+            transpose={transpose}
+            perf={perf}
+            measures={loaded.data.score.measures}
+            playing={playing}
+            position={notationPosition}
+            onSeek={seekTo}
+            zoom={notationZoom}
+            onZoom={setNotationZoom}
+            height={drawMode ? null : notationHeight}
+            drawing={drawMode}
+            marks={{
+              history: notationMarks.history,
+              dispatch: notationMarks.dispatch,
+              tools: drawing.tools,
+              selected: drawMode ? drawing.selected : null,
+              onSelect: drawing.setSelected,
+              editable: notationMarks.load === 'ready',
+            }}
+          />
+          {!drawMode && (
+            <ResizeHandle
+              label={tips.playAlong.resize}
+              testId="playalong-resize"
+              onDrag={setDragHeight}
+              onDone={(height) => {
+                setDragHeight(null);
+                updatePrefs((p) => ({ ...p, notationHeight: height }));
+              }}
+            />
+          )}
+        </>
       )}
       <BarStrip
         bars={perf.bars}
@@ -1303,6 +1397,7 @@ export function PlayAlong({
         hiddenLanes={hiddenLanes}
         mutedLanes={mutedLanes}
         onScrub={seekTo}
+        onLookAhead={setLookAhead}
       />
     </section>
   );

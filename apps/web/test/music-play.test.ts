@@ -400,7 +400,7 @@ describe('falling notes geometry', () => {
   });
 
   it('keeps the keyboard a sensible share of the height', () => {
-    const g = geometry({ width: 800, height: 600, range: { low: 48, high: 83 } });
+    const g = geometry({ width: 800, height: 600, range: { low: 48, high: 83 }, lookAhead: 3 });
     expect(g.keyboardHeight).toBe(120);
     expect(g.notesHeight).toBe(480);
     expect(g.pxPerSecond).toBe(160);

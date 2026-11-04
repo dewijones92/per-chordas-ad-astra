@@ -123,6 +123,7 @@ export function Notation({
   onSeek,
   zoom,
   onZoom,
+  height,
   drawing,
   marks,
 }: {
@@ -135,6 +136,7 @@ export function Notation({
   onSeek: (seconds: number) => void;
   zoom: number;
   onZoom: Dispatch<SetStateAction<number>>;
+  height: number | null;
   drawing: boolean;
   marks: NotationMarks;
 }) {
@@ -263,7 +265,11 @@ export function Notation({
   }
 
   return (
-    <div className={`notation-frame${drawing ? ' is-drawing' : ''}`}>
+    <div
+      className={`notation-frame${drawing ? ' is-drawing' : ''}`}
+      data-testid="notation-frame"
+      style={height === null ? undefined : { height: `${String(height)}px`, maxHeight: 'none' }}
+    >
       {!drawing && (
         <span className="notation-zoom" title={tips.notation.zoom}>
           <ZoomControl zoom={zoom} onZoom={onZoom} testId="notation-zoom-level" />

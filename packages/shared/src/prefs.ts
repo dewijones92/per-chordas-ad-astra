@@ -51,6 +51,24 @@ export const RAMP_TARGET = 1;
 export const RAMP_MIN_STEP = 0.005;
 export const RAMP_MAX_STEP = 0.2;
 
+export const MIN_LOOK_AHEAD = 1;
+export const MAX_LOOK_AHEAD = 20;
+export const DEFAULT_LOOK_AHEAD = 3;
+export const LOOK_AHEAD_STEPS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20] as const;
+
+export function clampLookAhead(seconds: number): number {
+  return Math.min(MAX_LOOK_AHEAD, Math.max(MIN_LOOK_AHEAD, seconds));
+}
+
+export function stepLookAhead(seconds: number, direction: 1 | -1): number {
+  const steps: readonly number[] = LOOK_AHEAD_STEPS;
+  const next =
+    direction > 0
+      ? steps.find((s) => s > seconds + 1e-9)
+      : [...steps].reverse().find((s) => s < seconds - 1e-9);
+  return clampLookAhead(next ?? seconds);
+}
+
 export function roundSpeed(speed: number): number {
   return Math.round(speed / PLAY_ALONG_SPEED_STEP) / (1 / PLAY_ALONG_SPEED_STEP);
 }
@@ -81,6 +99,9 @@ export const PlayAlongPrefs = z.object({
   handMuted: z.array(z.int().min(0).max(1)).max(2).default([]),
   tails: z.boolean().default(false),
   thinOctaves: z.boolean().default(true),
+  lookAhead: z.number().min(MIN_LOOK_AHEAD).max(MAX_LOOK_AHEAD).default(DEFAULT_LOOK_AHEAD),
+  notationHeight: z.int().min(40).max(4000).nullable().default(null),
+  compact: z.boolean().default(false),
 });
 export type PlayAlongPrefs = z.output<typeof PlayAlongPrefs>;
 export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
@@ -105,6 +126,9 @@ export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
   handMuted: [],
   tails: false,
   thinOctaves: true,
+  lookAhead: DEFAULT_LOOK_AHEAD,
+  notationHeight: null,
+  compact: false,
 };
 
 export const VIEW_MODES = ['page', 'spread', 'width'] as const;

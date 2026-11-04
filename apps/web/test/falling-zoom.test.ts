@@ -1,0 +1,135 @@
+import { describe, expect, it } from 'vitest';
+import { DEFAULT_LOOK_AHEAD, MAX_LOOK_AHEAD, MIN_LOOK_AHEAD, stepLookAhead } from '@pcaa/shared';
+import { wheelLookAhead } from '../src/score/zoom.ts';
+import { drawFalling, geometry, LABEL_PX, type FallingView } from '../src/music/falling.ts';
+import type { PerfNote, Performance } from '../src/music/performance.ts';
+
+interface Text {
+  text: string;
+  x: number;
+  y: number;
+  font: string;
+}
+
+function recordingContext(): { ctx: CanvasRenderingContext2D; texts: Text[] } {
+  const texts: Text[] = [];
+  const state: Record<string, unknown> = { font: '' };
+  const ctx = new Proxy(state, {
+    get(target, prop: string) {
+      if (prop === 'fillText')
+        return (text: string, x: number, y: number) => {
+          texts.push({ text, x, y, font: String(target['font']) });
+        };
+      if (prop in target) return target[prop];
+      return () => undefined;
+    },
+    set(target, prop: string, value: unknown) {
+      target[prop] = value;
+      return true;
+    },
+  }) as unknown as CanvasRenderingContext2D;
+  return { ctx, texts };
+}
+
+const note = (pitch: number, start: number, end: number): PerfNote => ({
+  pitch,
+  start,
+  end,
+  staff: 0,
+  velocity: 80,
+  bar: 0,
+  grace: false,
+});
+
+function perfOf(notes: PerfNote[]): Performance {
+  return {
+    title: 't',
+    notes,
+    bars: [],
+    clicks: [],
+    staves: [],
+    duration: 30,
+    lowest: 48,
+    highest: 84,
+    keyFifths: 0,
+    keyMinor: false,
+    baseBpm: null,
+    warnings: [],
+  };
+}
+
+function view(perf: Performance, lookAhead: number): FallingView {
+  return {
+    perf,
+    position: 0,
+    transpose: 0,
+    range: { low: 48, high: 84 },
+    hidden: new Set(),
+    muted: new Set(),
+    colours: [{ fill: '#6d3df2', edge: '#4b22c9', glow: '#ece5ff' }],
+    laneOf: () => 0,
+    tails: false,
+    loop: null,
+    names: { flats: false },
+    lookAhead,
+    width: 1000,
+    height: 600,
+  };
+}
+
+const fontPx = (font: string) => Number(/(\d+)px/.exec(font)?.[1] ?? 0);
+
+describe('look ahead', () => {
+  it('shows more seconds in the same height when zoomed out', () => {
+    const base = { width: 800, height: 600, range: { low: 48, high: 83 } };
+    expect(geometry({ ...base, lookAhead: DEFAULT_LOOK_AHEAD }).pxPerSecond).toBe(160);
+    expect(geometry({ ...base, lookAhead: 12 }).pxPerSecond).toBe(40);
+  });
+
+  it('steps along a ladder and stops at the ends', () => {
+    expect(stepLookAhead(3, 1)).toBe(4);
+    expect(stepLookAhead(3, -1)).toBe(2);
+    expect(stepLookAhead(MAX_LOOK_AHEAD, 1)).toBe(MAX_LOOK_AHEAD);
+    expect(stepLookAhead(MIN_LOOK_AHEAD, -1)).toBe(MIN_LOOK_AHEAD);
+    expect(stepLookAhead(3.4, 1)).toBe(4);
+    expect(stepLookAhead(3.4, -1)).toBe(3);
+  });
+
+  it('zooms out on a wheel down and in on a wheel up, within the limits', () => {
+    expect(wheelLookAhead(3, 100, 0)).toBeGreaterThan(3);
+    expect(wheelLookAhead(3, -100, 0)).toBeLessThan(3);
+    expect(wheelLookAhead(MAX_LOOK_AHEAD, 100, 0)).toBe(MAX_LOOK_AHEAD);
+    expect(wheelLookAhead(MIN_LOOK_AHEAD, -100, 0)).toBe(MIN_LOOK_AHEAD);
+  });
+});
+
+describe('labels when zoomed out', () => {
+  const run = Array.from({ length: 40 }, (_, i) => note(60, i * 0.25, i * 0.25 + 0.2));
+  const chord = [note(64, 0, 0.2), note(67, 0, 0.2)];
+
+  it('keeps note names a readable size however thin the notes get', () => {
+    const { ctx, texts } = recordingContext();
+    drawFalling(ctx, view(perfOf([...run, ...chord]), MAX_LOOK_AHEAD));
+    const names = texts.filter((t) => /^[A-G][♯♭]?$/.test(t.text));
+    expect(names.length).toBeGreaterThan(3);
+    for (const t of names) expect(fontPx(t.font)).toBeGreaterThanOrEqual(LABEL_PX);
+    expect(names.map((t) => t.text)).toEqual(expect.arrayContaining(['C', 'E', 'G']));
+  });
+
+  it('never stacks two labels on top of each other in one key', () => {
+    const { ctx, texts } = recordingContext();
+    drawFalling(ctx, view(perfOf(run), MAX_LOOK_AHEAD));
+    const ys = texts
+      .filter((t) => t.text === 'C')
+      .map((t) => t.y)
+      .sort((a, b) => b - a);
+    for (let i = 1; i < ys.length; i++)
+      expect((ys[i - 1] ?? 0) - (ys[i] ?? 0)).toBeGreaterThanOrEqual(LABEL_PX);
+  });
+
+  it('labels every note when there is room', () => {
+    const { ctx, texts } = recordingContext();
+    drawFalling(ctx, view(perfOf(run.slice(0, 8)), MIN_LOOK_AHEAD * 2));
+    expect(texts.filter((t) => t.text === 'C')).toHaveLength(8);
+  });
+});
