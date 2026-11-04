@@ -35,6 +35,7 @@ interface Props {
   readOnly?: boolean;
   originY?: number;
   sizeScale?: number;
+  groupOf?: (id: string) => string;
   testId?: string;
   className?: string;
 }
@@ -177,6 +178,7 @@ export function AnnotationLayer(props: Props) {
     props;
   const originY = props.originY ?? 0;
   const sizeScale = props.sizeScale ?? 1;
+  const groupOf = props.groupOf ?? ((id: string) => id);
   const svgRef = useRef<SVGSVGElement>(null);
   const gesture = useRef<Gesture>(null);
   const [draft, setDraft] = useState<AnnotationItem | null>(null);
@@ -253,7 +255,7 @@ export function AnnotationLayer(props: Props) {
       }
       case 'select': {
         const hit = topHit(items, p, tolerance);
-        onSelect(hit?.id ?? null);
+        onSelect(hit ? groupOf(hit.id) : null);
         if (hit)
           gesture.current = {
             kind: 'move',
@@ -364,7 +366,7 @@ export function AnnotationLayer(props: Props) {
       data-items={items.length}
     >
       {items.map((item) => (
-        <ItemView key={item.id} item={item} selected={item.id === selected} />
+        <ItemView key={item.id} item={item} selected={groupOf(item.id) === selected} />
       ))}
       {draft && <ItemView item={draft} />}
     </svg>

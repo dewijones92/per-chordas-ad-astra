@@ -34,6 +34,7 @@ updated: 2026-11-04
 | [0023](0023-chord-names.md)                                 | Chord names over the left hand: bar windows, exact templates, slash chords                | accepted           |
 | [0024](0024-wait-for-me.md)                                 | Wait for me: stop at your notes until played; MIDI, screen and computer keys              | accepted           |
 | [0029](0029-hands-over-the-keyboard.md)                     | Two see-through hands over the keyboard, driven by the fingering the notes already show   | accepted           |
+| [0027](0027-drawing-on-the-falling-notes.md)                | Drawing on the falling notes: pinned to a written pitch and a bar, falling with it        | accepted           |
 
 Format: `NNNN-title.md` with frontmatter (`status`, `date`, `updated`). Change a decision by updating
 its ADR; reverse one by marking it `superseded by NNNN` and writing the new one, in the same commit as

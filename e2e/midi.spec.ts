@@ -31,7 +31,7 @@ test('a MIDI file plays as falling notes, says what it was written for, shows no
   await expect(check).toContainText(strings.fileCheck.layout.grand);
 
   await expect(page.getByTestId('playalong-notation')).toHaveCount(0);
-  await expect(page.getByTestId('notation-draw')).toHaveCount(0);
+  await expect(page.getByTestId('notation-draw')).toBeVisible();
   await expect(page.getByTestId('notation-frame')).toHaveCount(0);
   await expect(
     page.getByTestId('playalong-export').getByRole('button', { name: strings.playAlong.exportXml }),

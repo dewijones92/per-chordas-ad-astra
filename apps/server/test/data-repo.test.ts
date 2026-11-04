@@ -115,6 +115,52 @@ describe('DataRepo', () => {
     expect((await repo.getAnnotations(piece.id, ref.file)).pages).toEqual({});
   });
 
+  it('keeps drawings on the falling notes apart from the notation, names the bar, and drops them with the file', async () => {
+    const piece = await repo.createPiece({ title: 'Vals' });
+    const xml = makeMusicXml(PIANO_WALTZ);
+    const ref = await repo.addMusic(piece.id, 'vals.musicxml', new Blob([xml]));
+    const notation: Annotations = {
+      version: 1,
+      pages: {
+        '1': [{ kind: 'stamp', id: 'n1', colour: '#ff0000', glyph: '2', x: 4, y: -10, size: 50 }],
+      },
+    };
+    const falling: Annotations = {
+      version: 1,
+      pages: {
+        '3': [
+          { kind: 'stamp', id: 'f1', colour: '#0000ff', glyph: '1', x: 64.5, y: 0.25, size: 21 },
+        ],
+      },
+    };
+    expect(await repo.getFallingDrawings(piece.id, ref.file)).toEqual(emptyAnnotations());
+    await repo.putAnnotations(piece.id, ref.file, notation);
+    await repo.putFallingDrawings(piece.id, ref.file, falling);
+    await repo.putFallingDrawings(piece.id, ref.file, falling);
+    expect(changes.descriptions.at(-1)).toBe(
+      "Draw on the falling notes in 'Vals' (vals.musicxml bar 3)",
+    );
+    expect(changes.descriptions.filter((d) => d.startsWith('Draw on the falling'))).toHaveLength(1);
+    expect(await repo.getFallingDrawings(piece.id, ref.file)).toEqual(falling);
+    expect(await repo.getAnnotations(piece.id, ref.file)).toEqual(notation);
+    expect(await readdir(join(dir, 'pieces', piece.id, 'annotations'))).toEqual([
+      'vals.musicxml.falling.json',
+      'vals.musicxml.json',
+    ]);
+    await repo.removeFile(piece.id, ref.file);
+    await repo.addMusic(piece.id, 'vals.musicxml', new Blob([xml]));
+    expect((await repo.getFallingDrawings(piece.id, ref.file)).pages).toEqual({});
+  });
+
+  it('only music has falling notes to draw on', async () => {
+    const piece = await repo.createPiece({ title: 'Air' });
+    const ref = await repo.addScore(piece.id, 'air.pdf', new Blob([pdf]));
+    await expect(repo.getFallingDrawings(piece.id, ref.file)).rejects.toBeInstanceOf(RejectedError);
+    await expect(
+      repo.putFallingDrawings(piece.id, ref.file, emptyAnnotations()),
+    ).rejects.toBeInstanceOf(RejectedError);
+  });
+
   it('imports PDF marks once, beneath drawings already made, and keeps the marker on later saves', async () => {
     const piece = await repo.createPiece({ title: 'Air' });
     const ref = await repo.addScore(piece.id, 'air.pdf', new Blob([pdf]));

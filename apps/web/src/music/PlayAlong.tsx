@@ -31,13 +31,15 @@ import { DrawingStatus } from '../annotate/DrawingStatus.tsx';
 import { Toolbar } from '../annotate/Toolbar.tsx';
 import { fingerKeyOf, shortcutOf } from '../ui/shortcuts.ts';
 import { useAnnotations } from '../annotate/use-annotations.ts';
-import { claimDrawing, useDrawing } from '../annotate/use-drawing.ts';
+import { claimDrawing, useDrawing, type DrawingSurface } from '../annotate/use-drawing.ts';
+import { defaultToolState, type ToolState } from '../annotate/tools.ts';
 import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
 import { useWheelZoom } from '../score/use-wheel-zoom.ts';
 import { wheelLookAhead } from '../score/zoom.ts';
 import { ZoomControl } from '../score/ZoomControl.tsx';
 import { strings, tips, units } from '../strings.ts';
 import { Choice } from '../ui/Choice.tsx';
+import { useHelp } from '../ui/Help.tsx';
 import { LoopSwitch } from '../ui/LoopSwitch.tsx';
 import { PercentInput } from '../ui/PercentInput.tsx';
 import { rememberPlayAlong, savedPlayAlong, scoreKey } from '../resume/resume.ts';
@@ -54,6 +56,7 @@ import {
 } from './falling.ts';
 import { capoFor, fitRange, keyName, noteName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip } from './BarStrip.tsx';
+import { FallingMarks, type FallingMarksState } from './FallingMarks.tsx';
 import { suggestBySide } from './suggest-fingering.ts';
 import { chordLabels, type ChordLabel } from './chords.ts';
 import { applyHandChoice, HAND_CHOICES, handChoiceOf, hasHands } from './hand-choice.ts';
@@ -155,6 +158,7 @@ function FallingCanvas({
   onKeyDown,
   onKeyUp,
   overlay,
+  marks,
 }: {
   perf: Performance;
   player: PianoPlayer | null;
@@ -180,6 +184,7 @@ function FallingCanvas({
   onKeyDown: ((pitch: number) => void) | null;
   onKeyUp: (pitch: number) => void;
   overlay: ReactNode;
+  marks: FallingMarksState;
 }) {
   const lastView = useRef<FallingView | null>(null);
   const canvas = useRef<HTMLCanvasElement | null>(null);
@@ -365,6 +370,10 @@ function FallingCanvas({
     keyHeld.current = null;
     if (held !== null) onKeyUp(held);
   };
+  const positionNow = useCallback(
+    () => player?.position() ?? prefs.position,
+    [player, prefs.position],
+  );
   const pxPerSecond = geometry({
     width: size.width,
     height: size.height,
@@ -442,6 +451,19 @@ function FallingCanvas({
           onPick(hit);
         }}
       />
+      <FallingMarks
+        perf={perf}
+        transpose={transpose}
+        range={range}
+        width={size.width}
+        height={size.height}
+        lookAhead={prefs.lookAhead}
+        position={positionNow}
+        playing={playing}
+        marks={marks}
+        onScrub={onScrub}
+        onLookAhead={onLookAhead}
+      />
     </div>
   );
 }
@@ -463,16 +485,30 @@ export function PlayAlong({
   const [samples, setSamples] = useState<string | null>(null);
   const [barIndex, setBarIndex] = useState(0);
   const [drawMode, setDrawMode] = useState(false);
+  const suggestHelp = useHelp(
+    tips.playAlong.suggestName,
+    'playalong-suggest',
+    strings.playAlong.suggestHelp,
+  );
   const [notationZoom, setNotationZoom] = useRememberedZoom(key);
+  const sharedTools = useState<ToolState>(defaultToolState);
+  const [drawSurface, chooseDrawSurface] = useState<Exclude<DrawingSurface, 'score'>>('notation');
   const notationMarks = useAnnotations(pieceId, music.file);
-  const drawing = useDrawing('notation', notationMarks.history, notationMarks.dispatch, drawMode);
-  useEffect(() => {
-    if (!drawMode) return;
-    claimDrawing('notation');
-    return () => {
-      claimDrawing(null);
-    };
-  }, [drawMode]);
+  const fallingMarks = useAnnotations(pieceId, music.file, 'falling');
+  const drawing = useDrawing(
+    'notation',
+    notationMarks.history,
+    notationMarks.dispatch,
+    drawMode,
+    sharedTools,
+  );
+  const fallingDrawing = useDrawing(
+    'falling',
+    fallingMarks.history,
+    fallingMarks.dispatch,
+    drawMode,
+    sharedTools,
+  );
   const hardBits = useAsync(() => api.getHardBits(pieceId), `hard-bits:${pieceId}`);
   const bitsLoaded = hardBits.data !== undefined;
   const bits = useMemo(() => hardBits.data?.files[music.file] ?? [], [hardBits.data, music.file]);
@@ -602,6 +638,14 @@ export function PlayAlong({
   }, [loaded.data, sourceXml, userFingers]);
   const notationXml = prefs.notation ? (grandXml ?? fingeredSourceXml) : null;
   const notationXmlKey = `${music.file}:${grandXml ? 'hands' : 'file'}`;
+  const activeSurface = notationXml ? drawSurface : 'falling';
+  useEffect(() => {
+    if (!drawMode) return;
+    claimDrawing(activeSurface);
+    return () => {
+      claimDrawing(null);
+    };
+  }, [drawMode, activeSurface]);
   const hiddenLanes = byHand ? prefs.handHidden : prefs.hidden;
   const mutedLanes = byHand ? prefs.handMuted : prefs.muted;
   const hiddenKey = byHand ? 'handHidden' : 'hidden';
@@ -1402,45 +1446,45 @@ export function PlayAlong({
           </label>
         )}
         {notatable && (
-          <>
-            <label className="playalong-field">
-              <input
-                type="checkbox"
-                checked={prefs.notation}
-                data-testid="playalong-notation"
-                onChange={(e) => {
-                  const notation = e.target.checked;
-                  updatePrefs((p) => ({ ...p, notation }));
-                }}
-              />
-              {strings.playAlong.notation}
-            </label>
-            <button
-              type="button"
-              className="btn small ghost"
-              data-testid="notation-draw"
-              aria-pressed={drawMode}
-              title={tips.notation.draw}
-              onClick={() => {
-                if (drawMode) {
-                  console.info('dewidebug notation draw mode off');
-                  setDrawMode(false);
-                  return;
-                }
-                if (player?.active || player?.starting) toggle();
-                if (!prefs.notation) updatePrefs((p) => ({ ...p, notation: true }));
-                console.info('dewidebug notation draw mode on', {
-                  file: music.file,
-                  zoom: notationZoom,
-                });
-                setNotationZoom((z) => Math.max(z, DRAW_MIN_ZOOM));
-                setDrawMode(true);
+          <label className="playalong-field">
+            <input
+              type="checkbox"
+              checked={prefs.notation}
+              data-testid="playalong-notation"
+              onChange={(e) => {
+                const notation = e.target.checked;
+                updatePrefs((p) => ({ ...p, notation }));
               }}
-            >
-              {strings.notation.draw}
-            </button>
-          </>
+            />
+            {strings.playAlong.notation}
+          </label>
         )}
+        <button
+          type="button"
+          className="btn small ghost"
+          data-testid="notation-draw"
+          aria-pressed={drawMode}
+          title={tips.notation.draw}
+          onClick={() => {
+            if (drawMode) {
+              console.info('dewidebug draw mode off');
+              setDrawMode(false);
+              return;
+            }
+            if (player?.active || player?.starting) toggle();
+            if (notatable && !prefs.notation) updatePrefs((p) => ({ ...p, notation: true }));
+            console.info('dewidebug draw mode on', {
+              file: music.file,
+              zoom: notationZoom,
+              notatable,
+            });
+            if (notatable) setNotationZoom((z) => Math.max(z, DRAW_MIN_ZOOM));
+            chooseDrawSurface(notatable ? 'notation' : 'falling');
+            setDrawMode(true);
+          }}
+        >
+          {strings.notation.draw}
+        </button>
         <label className="playalong-field">
           <input
             type="checkbox"
@@ -1465,6 +1509,8 @@ export function PlayAlong({
           />
           {strings.playAlong.suggest}
         </label>
+        {suggestHelp.button}
+        {suggestHelp.text}
         {pianoPlay && (
           <label className="playalong-field" title={tips.playAlong.showHands}>
             <input
@@ -1718,7 +1764,7 @@ export function PlayAlong({
       {drawMode && (
         <>
           <Toolbar
-            {...drawing.toolbar}
+            {...(activeSurface === 'falling' ? fallingDrawing : drawing).toolbar}
             zoom={notationZoom}
             onZoom={setNotationZoom}
             extra={
@@ -1739,6 +1785,11 @@ export function PlayAlong({
             load={notationMarks.load}
             error={notationMarks.error}
             reload={notationMarks.reload}
+          />
+          <DrawingStatus
+            load={fallingMarks.load}
+            error={fallingMarks.error}
+            reload={fallingMarks.reload}
           />
         </>
       )}
@@ -1767,6 +1818,9 @@ export function PlayAlong({
               selected: drawMode ? drawing.selected : null,
               onSelect: drawing.setSelected,
               editable: notationMarks.load === 'ready',
+              onClaim: () => {
+                chooseDrawSurface('notation');
+              },
             }}
           />
           {!drawMode && (
@@ -1834,6 +1888,17 @@ export function PlayAlong({
             />
           )
         }
+        marks={{
+          history: fallingMarks.history,
+          dispatch: fallingMarks.dispatch,
+          tools: fallingDrawing.tools,
+          selected: drawMode ? fallingDrawing.selected : null,
+          onSelect: fallingDrawing.setSelected,
+          editable: drawMode && fallingMarks.load === 'ready',
+          onClaim: () => {
+            chooseDrawSurface('falling');
+          },
+        }}
       />
     </section>
   );

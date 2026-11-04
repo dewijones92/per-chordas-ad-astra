@@ -404,6 +404,9 @@ export class DataRepo {
         await rm(this.path('pieces', id, 'annotations', `${file}.json`), { force: true });
       }
       if (kind === 'music') {
+        await rm(this.path('pieces', id, 'annotations', `${file}.falling.json`), { force: true });
+      }
+      if (kind === 'music') {
         const fingering = await this.readFingering(id);
         if (fingering.files[file]) {
           const { [file]: _gone, ...kept } = fingering.files;
@@ -464,6 +467,36 @@ export class DataRepo {
           ? `bar${pages.length > 1 ? 's' : ''} ${pages.join(', ')}`
           : pages.map((p) => `p.${String(p)}`).join(', ');
       this.changes.markDirty(`Annotate ${quote(piece.title)} (${file} ${where})`);
+      return next;
+    });
+  }
+
+  private async fallingPath(id: Slug, file: FileName): Promise<string> {
+    await this.filePath(id, file);
+    if (kindOf(file) !== 'music')
+      throw new RejectedError('Only music has falling notes to draw on');
+    return this.path('pieces', id, 'annotations', `${file}.falling.json`);
+  }
+
+  async getFallingDrawings(id: Slug, file: FileName): Promise<Annotations> {
+    return readJson(await this.fallingPath(id, file), Annotations, emptyAnnotations);
+  }
+
+  async putFallingDrawings(id: Slug, file: FileName, input: unknown): Promise<Annotations> {
+    const parsed = Annotations.parse(input);
+    return this.locked(`piece:${id}`, async () => {
+      const piece = await this.getPiece(id);
+      const path = await this.fallingPath(id, file);
+      const before = await readJson(path, Annotations, emptyAnnotations);
+      const next: Annotations = { version: parsed.version, pages: parsed.pages };
+      const bars = changedPages(before, next);
+      if (bars.length === 0) return next;
+      await this.writeJson(path, next);
+      await this.touch(piece, 'falling drawing');
+      const where = `bar${bars.length > 1 ? 's' : ''} ${bars.join(', ')}`;
+      this.changes.markDirty(
+        `Draw on the falling notes in ${quote(piece.title)} (${file} ${where})`,
+      );
       return next;
     });
   }

@@ -1,6 +1,6 @@
 import { emptyAnnotations, type Annotations } from '@pcaa/shared';
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
-import { api } from '../api/client.ts';
+import { api, type AnnotationLayer } from '../api/client.ts';
 import { historyReducer, initialHistory, type HistoryAction } from './history.ts';
 
 const SAVE_DEBOUNCE_MS = 800;
@@ -8,9 +8,9 @@ const RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000];
 
 export type LoadState = 'loading' | 'ready' | 'error';
 
-export function useAnnotations(pieceId: string, file: string) {
+export function useAnnotations(pieceId: string, file: string, layer: AnnotationLayer = 'notation') {
   const [history, dispatch] = useReducer(historyReducer, emptyAnnotations(), initialHistory);
-  const key = `${pieceId}/${file}`;
+  const key = `${pieceId}/${file}/${layer}`;
   const [loadNonce, setLoadNonce] = useState(0);
   const [loaded, setLoaded] = useState<{ key: string; error: string | null } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -26,7 +26,7 @@ export function useAnnotations(pieceId: string, file: string) {
   useEffect(() => {
     let cancelled = false;
     confirmed.current = null;
-    api.getAnnotations(pieceId, file).then(
+    api.getAnnotations(pieceId, file, layer).then(
       (doc) => {
         if (cancelled) return;
         confirmed.current = doc;
@@ -46,7 +46,7 @@ export function useAnnotations(pieceId: string, file: string) {
     return () => {
       cancelled = true;
     };
-  }, [pieceId, file, key, loadNonce]);
+  }, [pieceId, file, layer, key, loadNonce]);
 
   const load: LoadState = loaded?.key !== key ? 'loading' : loaded.error ? 'error' : 'ready';
   const loadError = loaded?.key === key ? loaded.error : null;
@@ -57,12 +57,12 @@ export function useAnnotations(pieceId: string, file: string) {
       if (confirmed.current === null) return;
       if (doc === confirmed.current || doc === inFlight.current) return;
       inFlight.current = doc;
-      api.putAnnotations(pieceId, file, doc, keepalive).then(
+      api.putAnnotations(pieceId, file, doc, keepalive, layer).then(
         () => {
           if (inFlight.current === doc) inFlight.current = null;
           confirmed.current = doc;
           if (failures.current > 0)
-            console.info('dewidebug annotations save recovered', { pieceId, file });
+            console.info('dewidebug annotations save recovered', { pieceId, file, layer });
           failures.current = 0;
           setSaveError(null);
         },
@@ -74,6 +74,7 @@ export function useAnnotations(pieceId: string, file: string) {
           console.warn('dewidebug annotations save failed; will retry', {
             pieceId,
             file,
+            layer,
             attempt: failures.current,
             delay,
             error: String(e),
@@ -85,7 +86,7 @@ export function useAnnotations(pieceId: string, file: string) {
         },
       );
     },
-    [pieceId, file],
+    [pieceId, file, layer],
   );
 
   useEffect(() => {

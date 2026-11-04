@@ -261,6 +261,41 @@ describe('HTTP API', () => {
     expect(((await flushed.json()) as { phase: string }).phase).toBe('clean');
   });
 
+  it('round-trips drawings on the falling notes of music, and refuses them for a PDF', async () => {
+    const piece = await createPieceWithScore();
+    const music = await app.request(`/api/pieces/${piece.id}/music`, {
+      method: 'POST',
+      headers: { 'x-file-name': 'waltz.mscz' },
+      body: zipScore('waltz.mscx', makeMscx(PIANO_WALTZ, '4.50')),
+    });
+    expect(music.status).toBe(201);
+    const doc = {
+      version: 1,
+      pages: {
+        '2': [
+          { kind: 'stamp', id: 'a', colour: '#123456', glyph: 'P', x: 64.5, y: 0.25, size: 21 },
+        ],
+      },
+    };
+    const url = `/api/pieces/${piece.id}/annotations/waltz.mscz/falling`;
+    expect(
+      (
+        await app.request(url, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(doc),
+        })
+      ).status,
+    ).toBe(200);
+    expect(await (await app.request(url)).json()).toEqual(doc);
+    expect(
+      await (await app.request(`/api/pieces/${piece.id}/annotations/waltz.mscz`)).json(),
+    ).toEqual({ version: 1, pages: {} });
+    expect(
+      (await app.request(`/api/pieces/${piece.id}/annotations/romanza.pdf/falling`)).status,
+    ).toBe(422);
+  });
+
   it('records and lists practice sessions', async () => {
     const piece = await createPieceWithScore();
     const res = await app.request(

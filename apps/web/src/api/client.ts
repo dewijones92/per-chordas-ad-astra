@@ -82,6 +82,11 @@ function tracked<T>(label: string, promise: Promise<T>): Promise<T> {
 
 const enc = encodeURIComponent;
 
+export type AnnotationLayer = 'notation' | 'falling';
+
+const annotationsUrl = (id: string, file: string, layer: AnnotationLayer): string =>
+  `/api/pieces/${enc(id)}/annotations/${enc(file)}${layer === 'falling' ? '/falling' : ''}`;
+
 export const api = {
   listPieces: () => request('/api/pieces', z.array(Piece)),
   getPiece: (id: string) => request(`/api/pieces/${enc(id)}`, Piece),
@@ -103,16 +108,18 @@ export const api = {
       request(`/api/pieces/${enc(id)}/files/${enc(file)}`, Piece, { method: 'DELETE' }),
     ),
   fileUrl: (id: string, file: string) => `/api/pieces/${enc(id)}/files/${enc(file)}`,
-  getAnnotations: (id: string, file: string) =>
-    request(`/api/pieces/${enc(id)}/annotations/${enc(file)}`, Annotations),
-  putAnnotations: (id: string, file: string, doc: Annotations, keepalive = false) =>
+  getAnnotations: (id: string, file: string, layer: AnnotationLayer = 'notation') =>
+    request(annotationsUrl(id, file, layer), Annotations),
+  putAnnotations: (
+    id: string,
+    file: string,
+    doc: Annotations,
+    keepalive = false,
+    layer: AnnotationLayer = 'notation',
+  ) =>
     tracked(
       'drawing',
-      request(
-        `/api/pieces/${enc(id)}/annotations/${enc(file)}`,
-        Annotations,
-        jsonInit('PUT', doc, keepalive),
-      ),
+      request(annotationsUrl(id, file, layer), Annotations, jsonInit('PUT', doc, keepalive)),
     ),
   importPdfMarks: (id: string, file: string, marks: PdfImportRequest) =>
     tracked(

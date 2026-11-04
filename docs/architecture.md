@@ -72,4 +72,7 @@ pushing → clean | push-failed`.
   `transport.ts` can hold at a limit and `player.ts` takes a gate and plays live keys. Notation (ADR 0015): `to-musicxml.ts` converts MuseScore to MusicXML, `notation.worker.ts`
   runs Verovio, `Notation.tsx` shows it and colours what is playing; `keys.ts` `intervalFor` keeps
   Verovio's key the same as ours.
+  Drawing on the falling notes (ADR 0027): `falling-marks.ts` (pure) turns a mark's written pitch and bar fraction into
+  screen places and back, `FallingMarks.tsx` hosts the shared `AnnotationLayer` over the canvas; saved apart from the
+  stave's drawings as `annotations/<file>.falling.json`.
 - `tuner/`, `looper/`, `practice/`, `library/`, `sync/`.

@@ -305,6 +305,10 @@ export const strings = {
       again: '🔄 Start again',
     },
     showHands: '🖐️ Show hands',
+    suggestHelp: [
+      "🤖 The grey numbers are the app's guess. Click a falling note and press 1 to 5 to put your own there; yours are red and always win over the guess.",
+      '🧹 With a note picked, 0, Backspace or Delete takes your number off again, and Esc lets go of the note.',
+    ],
     hardBits: '📌 Hard bits',
     hardBitsFailed: '❌ Saved hard bits could not be loaded:',
     hardBitsEmpty: '💡 Loop a passage, then save it here to come back to it.',
@@ -522,6 +526,7 @@ export const tips = {
     waitInputs: 'Where your playing comes from',
     showHands:
       'Two see-through hands drawn over the keyboard that glide to each new position, with the finger numbers on the fingertips, and a finger that dips and lights up when it presses; the fingers are the same ones as the numbers on the falling notes',
+    suggestName: 'Suggested fingering',
     suggest:
       'Grey finger numbers worked out by the app wherever neither the file nor you has given one; red numbers always win',
     learnKey:
@@ -705,7 +710,7 @@ export const tips = {
     switch: 'Loop on or off; switching it off keeps the loop for later',
   },
   notation: {
-    draw: 'Draw on the notation (pauses playback)',
+    draw: 'Draw on the notation and the falling notes (pauses playback)',
     zoom: 'Zoom the notation (Ctrl+scroll or pinch over it)',
   },
 } as const;

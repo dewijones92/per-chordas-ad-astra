@@ -64,6 +64,7 @@ export interface NotationMarks {
   selected: string | null;
   onSelect: (id: string | null) => void;
   editable: boolean;
+  onClaim: () => void;
 }
 
 interface Boxes {
@@ -364,6 +365,7 @@ export function Notation({
               <div
                 className={`notation-marks${drawing && marks.editable ? ' is-editable' : ''}`}
                 data-testid="notation-marks"
+                onPointerDownCapture={drawing && marks.editable ? marks.onClaim : undefined}
               >
                 {bars.bars.map((b) => (
                   <div

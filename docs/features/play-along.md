@@ -25,7 +25,7 @@ keyboard from above, like the bird's-eye piano videos.
   tempo and key from their meta events, the title from a track that has no notes (a placeholder such as
   "Track 0" is ignored, and then the file name is used). The General MIDI program names the instrument for the
   file check: 0–7 piano, 24–31 guitar, anything else is "other". Each note keeps its own velocity. A MIDI file has
-  no engraving, so there is no 🎼 Notation strip, no ✏️ Draw and 💾 MusicXML is disabled; 💾 MIDI still exports.
+  no engraving, so there is no 🎼 Notation strip, no stave to draw on and 💾 MusicXML is disabled; 💾 MIDI still exports, and ✏️ Draw still draws on the falling notes.
 - **Views** (top of the piece page, only when the piece has a music file): **📄 Score** (the PDF),
   **📄🎹 Both** (PDF on the left, falling notes on the right) and **🎹 Notes** (falling notes only). A piece
   with music but no PDF opens in Notes. The view is remembered per piece, on every device.
@@ -41,6 +41,16 @@ keyboard from above, like the bird's-eye piano videos.
   150%. Scroll sideways to any bar and draw; **✅ Done** shrinks it back, and the marks scroll with the music
   while you play. Marks are pinned to bars, so they stay on the right notes when you transpose or zoom.
   Saved per music file in the data repo (ADR 0016).
+- **✏️ Draw on the falling notes** (4 Nov 2026, ADR 0027): the same ✏️ Draw mode, toolbar and keys also draw on the
+  falling notes, so a mark can be put where the music will be: a circle round a chord, a word over a bar, an arrow
+  to a jump. Press where you want to draw (the stave or the falling notes) and the keys and ↩️ Undo follow that
+  surface. Marks fall with the music, so to reach the bar you want scroll the notes with the mouse wheel (and
+  `Ctrl`+wheel to zoom them) or click the bar strip; a drag draws instead of scrubbing. Each mark is pinned to a written pitch and a bar: it
+  stays on its notes through a transposition, a different 🔭 look-ahead, a speed change and a different keyboard
+  size, and shows on every pass of a repeated bar. Pen width, text and stamps keep their size on screen. The marks
+  show outside Draw mode too, and do not take clicks: a click on a note still picks it for fingering. Marks are
+  drawn only, never played. Saved per music file, apart from the stave's, in the data repo; the notes area gets
+  half the pane in Draw mode when the stave is showing. MIDI files can be drawn on too.
 - **Falling notes**: notes fall onto a keyboard fitted to the piece in whole octaves (at least three), or
   all 88 keys. Sounding keys light up in their part's colour: right hand violet, left hand teal, other
   parts coral, blue, amber. Bar lines carry their numbers. Drag or scroll the notes to move through the
@@ -58,6 +68,7 @@ keyboard from above, like the bird's-eye piano videos.
   ([ADR 0021](../adr/0021-fingering.md)).
 - **🤖 Suggested fingering** (on by default): grey finger numbers worked out by the app where neither the file nor you
   has given one; red always wins. Untick to hide them; remembered per file ([ADR 0021](../adr/0021-fingering.md)).
+  A ❓ beside it says how to put your own number over a grey one (click a falling note, press 1–5).
 - **🔭 Look ahead** (Dewi, 4 Nov 2026: "zoom out and see quite a lot"): how many seconds the falling notes show, from
   1 to 20 (3 to start), by − / + on the play bar or Ctrl + scroll over the falling notes, which leaves the PDF's zoom
   alone. Note names stay 12 px however far you zoom out: on a note too thin to hold one, the name sits just above it,

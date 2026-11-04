@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import type { History, HistoryAction } from './history.ts';
 import { ownsKey } from '../ui/shortcuts.ts';
 import { defaultToolState, TOOL_KEYS, type ToolState } from './tools.ts';
 
-export type DrawingSurface = 'score' | 'notation';
+export type DrawingSurface = 'score' | 'notation' | 'falling';
+
+export type SharedTools = readonly [ToolState, Dispatch<SetStateAction<ToolState>>];
 
 let claimed: DrawingSurface | null = null;
 
@@ -22,8 +24,10 @@ export function useDrawing(
   history: History,
   dispatch: (action: HistoryAction) => void,
   enabled = true,
+  shared?: SharedTools,
 ) {
-  const [tools, setTools] = useState<ToolState>(defaultToolState);
+  const own = useState<ToolState>(defaultToolState);
+  const [tools, setTools] = shared ?? own;
   const [selected, setSelected] = useState<string | null>(null);
 
   const selectedPage = selected
@@ -73,7 +77,7 @@ export function useDrawing(
     return () => {
       window.removeEventListener('keydown', onKey);
     };
-  }, [surface, enabled, dispatch, deleteSelected]);
+  }, [surface, enabled, dispatch, deleteSelected, setTools]);
 
   const toolbar = {
     tools,
