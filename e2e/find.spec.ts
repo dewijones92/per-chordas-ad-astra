@@ -87,6 +87,60 @@ test('finds the Op. 9 No. 1 nocturne, shows its File check, imports it and opens
   expect(calls.filter((c) => c === `${MUTOPIA_OP9_PATH}.mid`)).toHaveLength(1);
 });
 
+test('says plainly which sites it cannot search, with buttons to search them yourself', async ({
+  page,
+}) => {
+  const panel = await openFinder(page);
+  const notice = panel.getByTestId('find-cannot-search');
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText(strings.find.museScoreWhy);
+  await expect(notice).toContainText(strings.find.imslpWhy);
+  await expect(notice).toContainText(strings.find.thenSource);
+
+  const muse = notice.getByRole('link', { name: strings.find.searchMuseScore });
+  const imslp = notice.getByRole('link', { name: strings.find.searchImslp });
+  await expect(muse).toHaveAttribute('href', 'https://musescore.com/sheetmusic');
+  await panel.getByTestId('find-query').fill('chopin nocturne');
+  await expect(muse).toHaveAttribute(
+    'href',
+    'https://musescore.com/sheetmusic?text=chopin+nocturne',
+  );
+  await expect(imslp).toHaveAttribute('href', 'https://imslp.org/index.php?search=chopin+nocturne');
+  for (const link of [muse, imslp]) {
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noreferrer');
+  }
+  expect((await stubCalls()).filter((c) => /musescore|imslp/.test(c))).toEqual([]);
+});
+
+test('a found score keeps its licence when its rating is added on the piece page', async ({
+  page,
+}) => {
+  const panel = await openFinder(page);
+  await search(page, panel, 'chopin nocturne');
+  await panel
+    .locator('[data-testid="find-result"][data-id="mutopia:582"]')
+    .getByTestId('find-choose')
+    .click();
+  await panel.getByTestId('find-chosen').getByTestId('find-import').click();
+  await expect(page).toHaveURL(/\/piece\//);
+  const box = page.getByTestId('piece-source');
+  await expect(box).toContainText(strings.find.fromSite('Mutopia Project'));
+
+  await box.getByTestId('piece-source-edit').click();
+  const form = page.getByTestId('source-form');
+  await form.getByTestId('source-stars').fill('4.5');
+  await form.getByTestId('source-save').click();
+  await expect(box.getByTestId('piece-source-rating')).toContainText('⭐ 4.5');
+  await expect(box).toContainText(
+    strings.find.attribution('Creative Commons Attribution-ShareAlike 2.5'),
+  );
+  await expect(box.getByTestId('piece-source-link')).toHaveAttribute(
+    'href',
+    /piece-info\.cgi\?id=582$/,
+  );
+});
+
 test('a PDF-only result says it has no File check or Play-along, and imports as a score with its licence', async ({
   page,
 }) => {

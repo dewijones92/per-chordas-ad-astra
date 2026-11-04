@@ -21,10 +21,44 @@
   min-width: 0;
 }
 
+.piece-title {
+  flex-wrap: wrap;
+}
+
+.piece-source-line {
+  flex-basis: 100%;
+}
+
 .piece-source {
   display: inline-flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+.source-form {
+  max-width: 720px;
+  padding: 10px 12px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.source-fields {
+  align-items: flex-end;
+}
+
+.source-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 110px;
+}
+
+.source-field-wide {
+  flex: 1;
+  min-width: 260px;
+  width: auto;
 }
 
 .piece-title h1 {

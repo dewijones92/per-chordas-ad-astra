@@ -89,6 +89,7 @@ export function sourceOf(result: FoundScore): PieceSource {
     url: result.pageUrl,
     licence: result.licence,
     licenceUrl: result.licenceUrl,
+    rating: null,
   };
 }
 

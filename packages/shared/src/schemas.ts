@@ -60,13 +60,43 @@ export const Bookmark = z.object({
 });
 export type Bookmark = z.infer<typeof Bookmark>;
 
+export const HttpUrl = z.url({ protocol: /^https?$/ });
+
+const Stars = z
+  .number()
+  .min(0)
+  .max(5)
+  .refine((n) => Math.abs(n * 10 - Math.round(n * 10)) < 1e-9, 'stars come in tenths');
+const Count = z.int().min(0).max(1_000_000_000);
+
+const SourceRatingFacts = z.object({
+  stars: Stars.nullable(),
+  ratings: Count.nullable(),
+  views: Count.nullable(),
+});
+const hasAFigure = (r: { stars: number | null; ratings: number | null; views: number | null }) =>
+  r.stars !== null || r.ratings !== null || r.views !== null;
+const NEEDS_A_FIGURE = 'A rating needs at least one of stars, ratings or views';
+
+export const SourceRatingInput = SourceRatingFacts.refine(hasAFigure, NEEDS_A_FIGURE);
+export type SourceRatingInput = z.infer<typeof SourceRatingInput>;
+
+export const SourceRating = SourceRatingFacts.extend({
+  notedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+}).refine(hasAFigure, NEEDS_A_FIGURE);
+export type SourceRating = z.infer<typeof SourceRating>;
+
 export const PieceSource = z.object({
   name: z.string().trim().min(1).max(60),
-  url: z.url(),
-  licence: z.string().trim().min(1).max(100),
-  licenceUrl: z.url().nullable(),
+  url: HttpUrl,
+  licence: z.string().trim().min(1).max(100).nullable().default(null),
+  licenceUrl: HttpUrl.nullable().default(null),
+  rating: SourceRating.nullable().default(null),
 });
 export type PieceSource = z.infer<typeof PieceSource>;
+
+export const SourceEdit = z.object({ url: HttpUrl, rating: SourceRatingInput.nullable() });
+export type SourceEdit = z.infer<typeof SourceEdit>;
 
 export const Piece = z.object({
   id: Slug,
@@ -108,6 +138,7 @@ export const PiecePatch = z
     music: z.array(MusicRef),
     bookmarks: z.array(Bookmark),
     pinned: z.boolean(),
+    source: SourceEdit.nullable(),
   })
   .partial()
   .strict();

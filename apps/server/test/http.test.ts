@@ -147,6 +147,29 @@ describe('HTTP API', () => {
     expect((await app.request(`/api/pieces/${piece.id}`)).status).toBe(404);
   });
 
+  it('answers 400 for a source link that is not a web address and saves a good one', async () => {
+    const created = await app.request('/api/pieces', json({ title: 'Lonely Waltz' }));
+    const piece = (await created.json()) as Piece;
+    const patch = (body: unknown) =>
+      app.request(`/api/pieces/${piece.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    expect((await patch({ source: { url: 'javascript:alert(1)', rating: null } })).status).toBe(
+      400,
+    );
+    expect((await patch({ source: { url: 'not a link', rating: null } })).status).toBe(400);
+    const ok = await patch({
+      source: { url: 'https://musescore.com/user/1/scores/2', rating: null },
+    });
+    expect(ok.status).toBe(200);
+    expect(((await ok.json()) as Piece).source?.name).toBe('MuseScore');
+    expect(
+      ((await (await app.request(`/api/pieces/${piece.id}`)).json()) as Piece).source?.url,
+    ).toBe('https://musescore.com/user/1/scores/2');
+  });
+
   it('maps validation failures to 400 and business rejections to 422', async () => {
     expect((await app.request('/api/pieces', json({ title: '' }))).status).toBe(400);
     expect((await app.request('/api/pieces/Not A Slug')).status).toBe(400);

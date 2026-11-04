@@ -149,6 +149,22 @@
   margin-bottom: 10px;
 }
 
+.find-cannot-search {
+  padding: 10px 12px;
+  border: 2px dashed var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--sun-wash);
+}
+
+.find-cannot-search p,
+.find-cannot-list {
+  margin: 0;
+}
+
+.find-cannot-list {
+  padding-left: 20px;
+}
+
 .find-query {
   flex: 1;
   min-width: 180px;

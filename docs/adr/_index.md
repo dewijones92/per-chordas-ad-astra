@@ -28,6 +28,7 @@ updated: 2026-11-04
 | [0021](0021-fingering.md)                                   | Fingering read from the file and shown in red; a File check says what a file is for       | accepted           |
 | [0022](0022-drum-beats.md)                                  | Drum beats instead of the click: pure grooves, synthesised voices, one meter rule         | accepted           |
 | [0026](0026-find-a-score.md)                                | Find a score: free sources searched from New piece, File check, licence kept              | accepted           |
+| [0028](0028-piece-sources-and-ratings.md)                   | Every piece can say where it came from: an editable link and a rating typed once          | accepted           |
 | [0020](0020-one-shortcut-table.md)                          | One shortcut table; Space plays whatever is on screen, M runs the metronome               | accepted           |
 | [0012](0012-library-sort-facts.md)                          | Library sorts read recorded facts (edited, opened, pinned)                                | accepted           |
 | [0023](0023-chord-names.md)                                 | Chord names over the left hand: bar windows, exact templates, slash chords                | accepted           |

@@ -19,9 +19,20 @@ updated: 2026-11-04
   licence (a link), its files (PDF, MIDI) and a link to the source page. Choosing one runs the 🔎 File check on its
   music file, then **⬇️ Import** makes a piece with the PDF for the score view and the music file for Play-along.
   A PDF-only result says it has no check. A site that is down or has nothing is said plainly, per site. The piece keeps
-  its licence and source page (`piece.source`), shown in the piece header as attribution; editing the piece cannot
-  change it. If one file cannot be fetched the piece keeps the other and says what was skipped; if none can be stored
+  its licence and source page (`piece.source`), shown in the piece header as attribution. If one file cannot be fetched the piece keeps the other and says what was skipped; if none can be stored
   nothing is created. Search results are remembered for ten minutes and requests are spaced a second apart.
+- **Sites it cannot search**: a notice above the Find search box (always visible) says MuseScore.com ("its robots.txt
+  asks automated tools to stay out of search and downloads, and it blocks them") and IMSLP ("blocks automated
+  downloads") are not searched, and gives **🔎 Search MuseScore.com ↗** and **🔎 Search IMSLP ↗** buttons that open
+  the site's own search, with what you typed, in a new tab. The app never fetches either site.
+- **🔗 Source on every piece** (ADR [0028](../adr/0028-piece-sources-and-ratings.md)): under the title of a piece,
+  **🔗 Add a source link** (or **✏️ Edit** beside an existing one) takes a pasted link (MuseScore, IMSLP, a YouTube
+  tutorial, anything `http(s)`; `https://` is added if left off) and, optionally, what the page shows: ⭐ stars (0 to 5,
+  one decimal), 🗳️ ratings and 👀 views (`120`, `15k`, `1.2M`). The site name comes from the host. The header shows
+  🔗 From MuseScore (a link to the page, new tab), the licence if Find a score recorded one, and
+  `⭐ 4.8 (120 ratings) · 15k views · noted 4 Nov 2026`; the date is when the numbers were saved and stays until they
+  change. The library card shows `⭐ 4.8` beside its counts. 🗑️ Remove clears the whole source. Saving writes only the
+  source (`Source for 'X': MuseScore ⭐ 4.8` in the commit). A piece has one source, not one per file.
 - **Search** (`/` focuses it): MiniSearch over title, artist, tags and notes, with prefix matching and
   small typos forgiven; title matches rank first.
 - **Tag chips**: a piece must have every selected tag.
@@ -45,6 +56,8 @@ updated: 2026-11-04
 Files: `apps/web/src/library/*` (`sort.ts` is the pure sort/stats/pick module), `rememberOpened` and
 `lastOpenedAt` in `apps/web/src/resume/resume.ts`, `DataRepo.createPiece/updatePiece/deletePiece/putSetlists`.
 `apps/server/src/find/*` (the sites, the polite client, the service), `apps/web/src/library/FindScore.tsx`.
-Tests: `apps/web/test/search.test.ts`, `apps/web/test/library-sort.test.ts`,
+`apps/web/src/piece/SourceLine.tsx`, `packages/shared/src/source.ts` (site names, link and number parsing, `applySourceEdit`).
+Tests: `packages/shared/test/source.test.ts`, `apps/web/test/rating-line.test.ts`, `e2e/source.spec.ts`,
+`apps/web/test/search.test.ts`, `apps/web/test/library-sort.test.ts`,
 `apps/server/test/data-repo.test.ts`, `e2e/library.spec.ts`, `apps/server/test/find-*.test.ts`,
 `apps/web/test/find-view.test.ts`, `e2e/find.spec.ts`.

@@ -19,6 +19,8 @@ import {
   type FileFingering,
   FingerChange,
   Fingering,
+  applySourceEdit,
+  formatStars,
   HardBits,
   HardBitBest,
   speedPercent,
@@ -128,6 +130,13 @@ export function describeHardBits(before: readonly HardBit[], after: readonly Har
   return 'Update hard bits';
 }
 const audioList = AUDIO_EXTENSIONS.join(', ');
+
+function describeSource(piece: Piece): string {
+  if (!piece.source) return `Remove the source of ${quote(piece.title)}`;
+  const stars = piece.source.rating?.stars;
+  const rated = stars === null || stars === undefined ? '' : ` ⭐ ${formatStars(stars)}`;
+  return `Source for ${quote(piece.title)}: ${piece.source.name}${rated}`;
+}
 
 function quote(title: string): string {
   return `'${title}'`;
@@ -281,22 +290,41 @@ export class DataRepo {
       }
       const pinOnly = patch.pinned !== undefined && Object.keys(patch).length === 1;
       const transposed = describeTransposition(current.music, patch);
+      const { source: sourceEdit, ...rest } = patch;
+      const now = this.now().toISOString();
+      const source =
+        sourceEdit === undefined
+          ? current.source
+          : sourceEdit === null
+            ? undefined
+            : applySourceEdit(current.source, sourceEdit, now.slice(0, 10));
       const next = Piece.parse({
         ...current,
-        ...patch,
-        updatedAt: pinOnly ? current.updatedAt : this.now().toISOString(),
+        ...rest,
+        source,
+        updatedAt: pinOnly ? current.updatedAt : now,
       });
       await this.writeJson(this.path('pieces', id, 'piece.json'), next);
       this.log.info(
-        { id, fields: Object.keys(patch), pinOnly, pinned: next.pinned },
+        {
+          id,
+          fields: Object.keys(patch),
+          pinOnly,
+          pinned: next.pinned,
+          source: next.source
+            ? { name: next.source.name, rated: next.source.rating !== null }
+            : null,
+        },
         'dewidebug repo piece patched',
       );
       this.changes.markDirty(
         pinOnly
           ? `${next.pinned ? 'Pin' : 'Unpin'} ${quote(next.title)}`
-          : transposed
-            ? `${transposed} in ${quote(next.title)}`
-            : `Edit ${quote(next.title)}`,
+          : sourceEdit !== undefined && Object.keys(patch).length === 1
+            ? describeSource(next)
+            : transposed
+              ? `${transposed} in ${quote(next.title)}`
+              : `Edit ${quote(next.title)}`,
       );
       return next;
     });

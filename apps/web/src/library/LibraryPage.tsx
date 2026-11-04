@@ -2,6 +2,7 @@ import { LearnKeyToggle, useLearnKey } from '../music/LearnKeyToggle.tsx';
 import { startInLearnKey } from '../music/learn-key.ts';
 import {
   LIBRARY_SORTS,
+  formatStars,
   LibrarySort,
   MUSIC_ACCEPT,
   newId,
@@ -267,6 +268,7 @@ function PieceCard({
   onRemove: () => void;
 }) {
   const context = sortContext(sort, piece, stats, now);
+  const stars = piece.source?.rating?.stars ?? null;
   return (
     <li className={`piece-card card${piece.pinned ? ' pinned' : ''}`} data-testid="piece-card">
       <button
@@ -291,6 +293,11 @@ function PieceCard({
           )}
           {piece.targetBpm !== null && (
             <span title={tips.library.target}>🎯 {piece.targetBpm}</span>
+          )}
+          {stars !== null && piece.source && (
+            <span title={tips.source.cardStars(piece.source.name)} data-testid="piece-card-stars">
+              ⭐ {formatStars(stars)}
+            </span>
           )}
         </div>
         {practiceKnown && (

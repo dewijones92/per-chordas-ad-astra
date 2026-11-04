@@ -54,7 +54,8 @@ name, caching, no bursts.
   the score view and the richest music file (MusicXML, MuseScore, then MIDI) for Play-along. If one file fails the
   piece keeps the other and the dialog says what was skipped; if none can be stored the new piece is removed again.
 - **The licence stays with the piece.** `piece.json` gains an optional `source` (`name`, page `url`, `licence`,
-  `licenceUrl`), set when a piece is imported, kept through edits (the patch cannot change it), and shown in the piece
+  `licenceUrl`), set when a piece is imported, kept through edits (it can now be changed by a source edit alone, see
+  [ADR 0028](0028-piece-sources-and-ratings.md)), and shown in the piece
   header as "From Mutopia Project · Shared under Creative Commons Attribution-ShareAlike 2.5", each a link. This is the
   attribution CC BY and CC BY-SA require. It is a field, not a line of notes, so editing notes cannot lose it. The
   licence text comes from the result the browser sends back; the app is single-user behind the gate, so a forged

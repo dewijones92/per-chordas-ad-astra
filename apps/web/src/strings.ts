@@ -1,3 +1,5 @@
+import { compactCount, formatNotedOn, formatStars, type SourceRating } from '@pcaa/shared';
+
 const soundNames = { click: '🔊 Click', drums: '🥁 Drums' } as const;
 
 export const strings = {
@@ -106,6 +108,35 @@ export const strings = {
     open: '➡️ Open the piece',
     attribution: (licence: string) => `📜 Shared under ${licence}`,
     fromSite: (name: string) => `🔗 From ${name}`,
+    cannotSearch: '🚫 Sites this app cannot search',
+    cannotSearchIntro:
+      '💡 These sites do not let automated tools in, so the app leaves them alone. Search them yourself:',
+    museScoreWhy:
+      '🎼 MuseScore.com: its robots.txt asks automated tools to stay out of search and downloads, and it blocks them.',
+    imslpWhy: '📚 IMSLP: it blocks automated downloads.',
+    searchMuseScore: '🔎 Search MuseScore.com ↗',
+    searchImslp: '🔎 Search IMSLP ↗',
+    thenSource:
+      '🔗 Found one there? Download it, add it as a New piece, then paste its link under 🔗 Source on the piece page and type the stars you saw.',
+  },
+  source: {
+    add: '🔗 Add a source link',
+    edit: '✏️ Edit',
+    urlLabel: '🔗 Link',
+    starsLabel: '⭐ Stars',
+    ratingsLabel: '🗳️ Ratings',
+    viewsLabel: '👀 Views',
+    hint: '💡 Type what the page shows, once. The day you save it is kept with the numbers.',
+    save: '✅ Save',
+    saving: '⏳ Saving…',
+    cancel: '✖️ Cancel',
+    remove: '🗑️ Remove',
+    removeConfirm: (site: string) =>
+      `🗑️ Remove the link to ${site} and its rating from this piece?`,
+    badLink: '⚠️ That is not a web link. Paste an address that starts with https://',
+    badStars: '⚠️ Stars must be a number from 0 to 5, for example 4.8',
+    badCount: (what: string) => `⚠️ ${what} must be a whole number such as 120, 15k or 1.2M`,
+    saveFailed: (message: string) => `❌ Could not save: ${message}`,
   },
   library: {
     title: '📚 Your library',
@@ -415,6 +446,17 @@ export const tips = {
   common: {
     help: (what: string) => `Explain: ${what}`,
   },
+  source: {
+    urlPlaceholder: 'https://musescore.com/user/…/scores/…',
+    starsPlaceholder: '4.8',
+    ratingsPlaceholder: '120',
+    viewsPlaceholder: '15k',
+    form: 'Where this piece came from',
+    open: 'Opens the page this piece came from, in a new tab',
+    edit: 'Change the link or the rating',
+    add: 'Paste a link to where this piece came from, and what it is rated there',
+    cardStars: (site: string) => `Rated on ${site}`,
+  },
   find: {
     placeholder: 'chopin nocturne',
     searchLabel: 'Search free scores by composer or title',
@@ -707,4 +749,23 @@ export const units = {
   },
   by: 'by',
   percent: '%',
+  source: {
+    ratings: (n: number) => (n === 1 ? '1 rating' : `${compactCount(n)} ratings`),
+    views: (n: number) => (n === 1 ? '1 view' : `${compactCount(n)} views`),
+    noted: (date: string) => `noted ${date}`,
+  },
 } as const;
+
+export function ratingLine(rating: SourceRating): string {
+  const stars = rating.stars === null ? '' : formatStars(rating.stars);
+  const ratings = rating.ratings === null ? '' : units.source.ratings(rating.ratings);
+  const views = rating.views === null ? '' : units.source.views(rating.views);
+  const rated = stars !== '' && ratings !== '' ? `${stars} (${ratings})` : stars || ratings;
+  return [
+    rated === '' ? '' : `⭐ ${rated}`,
+    views === '' ? '' : rated === '' ? `👀 ${views}` : views,
+    units.source.noted(formatNotedOn(rating.notedOn)),
+  ]
+    .filter((part) => part !== '')
+    .join(' · ');
+}

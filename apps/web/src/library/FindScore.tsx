@@ -1,5 +1,10 @@
 import { startInLearnKey } from '../music/learn-key.ts';
-import { type FindImportResponse, type FindSearchResponse, type FoundScore } from '@pcaa/shared';
+import {
+  selfSearchUrl,
+  type FindImportResponse,
+  type FindSearchResponse,
+  type FoundScore,
+} from '@pcaa/shared';
 import { useRef, useState } from 'react';
 import { api } from '../api/client.ts';
 import { checkFile } from '../music/file-check.ts';
@@ -183,6 +188,33 @@ export function FindScore({
       <summary>{strings.find.summary}</summary>
       <div className="stack">
         <p className="muted small-print">{strings.find.intro}</p>
+        <div className="stack find-cannot-search" data-testid="find-cannot-search">
+          <strong>{strings.find.cannotSearch}</strong>
+          <p className="small-print">{strings.find.cannotSearchIntro}</p>
+          <ul className="small-print find-cannot-list">
+            <li>{strings.find.museScoreWhy}</li>
+            <li>{strings.find.imslpWhy}</li>
+          </ul>
+          <div className="row">
+            <a
+              className="btn small"
+              href={selfSearchUrl('musescore', query)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {strings.find.searchMuseScore}
+            </a>
+            <a
+              className="btn small"
+              href={selfSearchUrl('imslp', query)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {strings.find.searchImslp}
+            </a>
+          </div>
+          <p className="small-print">{strings.find.thenSource}</p>
+        </div>
         <div className="row">
           <input
             className="input find-query"

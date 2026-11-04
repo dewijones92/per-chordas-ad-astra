@@ -18,22 +18,23 @@ browser (React SPA) ──/api──▶ nginx_dewi (Google gate) ──▶ app c
 
 ## Where each fact lives (DRY)
 
-| Fact                                    | Only place                                                                      |
-| --------------------------------------- | ------------------------------------------------------------------------------- |
-| Shape of every data file and API body   | `packages/shared/src/schemas.ts`                                                |
-| Sync status shape                       | `packages/shared/src/sync.ts`                                                   |
-| Slug and file-name rules                | `packages/shared/src/slug.ts`                                                   |
-| Upload size caps                        | `packages/shared/src/schemas.ts` (`MAX_SCORE_BYTES`, `MAX_TRACK_BYTES`)         |
-| Server configuration and defaults       | `apps/server/src/config.ts`                                                     |
-| Node major version                      | `.nvmrc` (preflight checks the Dockerfile)                                      |
-| Test PDFs and tones                     | `packages/fixtures`                                                             |
-| Test scores (MuseScore 2/3/4, MusicXML) | `packages/fixtures/src/music.ts` (one spec, every encoding)                     |
-| Test MIDI files                         | `packages/fixtures/src/midi.ts` (`makeMidi`, an independent writer of the spec) |
-| Score model (measures, notes, repeats)  | `apps/web/src/music/model.ts`                                                   |
-| Play-along prefs, speed limits, views   | `packages/shared/src/prefs.ts`                                                  |
-| Piano samples and their licence         | `apps/web/public/piano/manifest.json` (built by `tools/build-piano-samples.sh`) |
-| Annotation tool sizes, colours, keys    | `apps/web/src/annotate/tools.ts`                                                |
-| Design tokens                           | `apps/web/src/styles/global.css` `:root`                                        |
+| Fact                                                         | Only place                                                                      |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| Shape of every data file and API body                        | `packages/shared/src/schemas.ts`                                                |
+| Sync status shape                                            | `packages/shared/src/sync.ts`                                                   |
+| Slug and file-name rules                                     | `packages/shared/src/slug.ts`                                                   |
+| Upload size caps                                             | `packages/shared/src/schemas.ts` (`MAX_SCORE_BYTES`, `MAX_TRACK_BYTES`)         |
+| Server configuration and defaults                            | `apps/server/src/config.ts`                                                     |
+| Node major version                                           | `.nvmrc` (preflight checks the Dockerfile)                                      |
+| Test PDFs and tones                                          | `packages/fixtures`                                                             |
+| Test scores (MuseScore 2/3/4, MusicXML)                      | `packages/fixtures/src/music.ts` (one spec, every encoding)                     |
+| Test MIDI files                                              | `packages/fixtures/src/midi.ts` (`makeMidi`, an independent writer of the spec) |
+| Score model (measures, notes, repeats)                       | `apps/web/src/music/model.ts`                                                   |
+| Play-along prefs, speed limits, views                        | `packages/shared/src/prefs.ts`                                                  |
+| Where a piece came from: site names, link and number parsing | `packages/shared/src/source.ts` (ADR 0028)                                      |
+| Piano samples and their licence                              | `apps/web/public/piano/manifest.json` (built by `tools/build-piano-samples.sh`) |
+| Annotation tool sizes, colours, keys                         | `apps/web/src/annotate/tools.ts`                                                |
+| Design tokens                                                | `apps/web/src/styles/global.css` `:root`                                        |
 
 ## Server
 
@@ -52,6 +53,7 @@ pushing → clean | push-failed`.
 - `api/client.ts`: fetch wrapper that parses every response with the shared schemas, and tracks saves
   for the status pill.
 - `library/FindScore.tsx`: the 🔍 Find a score panel in the New piece dialog; `find-view.ts` holds its pure text.
+- `piece/SourceLine.tsx`: the 🔗 source link, rating and its edit form in the piece header (ADR 0028).
 - `score/`: `pdf.ts` (lazy legacy pdf.js), `ScoreViewer` (layouts, page turning, text editor),
   `PageView` (lazy canvas render per page plus the annotation layer), `turn.ts` (pure),
   `pdf-marks.ts` (converts a PDF's own annotations into drawings, ADR 0011).

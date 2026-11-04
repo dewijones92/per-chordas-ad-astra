@@ -486,6 +486,107 @@ describe('DataRepo edited time and pins', () => {
     expect((await repo.getPiece(piece.id)).pinned).toBe(false);
   });
 
+  it('saves a pasted link and a rating on their own, stamping the day and leaving every other field alone', async () => {
+    const piece = await repo.createPiece({
+      title: 'The Lonely Waltz',
+      artist: 'Someone',
+      tags: ['waltz'],
+      notes: 'slowly',
+      targetBpm: 90,
+    });
+    const ref = await repo.addScore(piece.id, 'lonely.pdf', new Blob([pdf]));
+    later('2026-11-04T08:30:00.000Z');
+    const next = await repo.updatePiece(piece.id, {
+      source: {
+        url: 'https://musescore.com/user/1/scores/2',
+        rating: { stars: 4.8, ratings: 120, views: 15_000 },
+      },
+    });
+    expect(next.source).toEqual({
+      name: 'MuseScore',
+      url: 'https://musescore.com/user/1/scores/2',
+      licence: null,
+      licenceUrl: null,
+      rating: { stars: 4.8, ratings: 120, views: 15_000, notedOn: '2026-11-04' },
+    });
+    expect(next).toMatchObject({
+      title: 'The Lonely Waltz',
+      artist: 'Someone',
+      tags: ['waltz'],
+      notes: 'slowly',
+      targetBpm: 90,
+      scores: [ref],
+      createdAt: piece.createdAt,
+    });
+    expect(changes.descriptions.at(-1)).toBe("Source for 'The Lonely Waltz': MuseScore ⭐ 4.8");
+    expect((await repo.getPiece(piece.id)).source).toEqual(next.source);
+  });
+
+  it('keeps the day a rating was noted until its numbers change, and says so without stars', async () => {
+    const piece = await repo.createPiece({ title: 'Air' });
+    const url = 'https://musescore.com/user/1/scores/2';
+    later('2026-11-04T08:30:00.000Z');
+    await repo.updatePiece(piece.id, {
+      source: { url, rating: { stars: 4.8, ratings: 120, views: null } },
+    });
+    later('2026-11-09T08:30:00.000Z');
+    const same = await repo.updatePiece(piece.id, {
+      source: { url, rating: { stars: 4.8, ratings: 120, views: null } },
+    });
+    expect(same.source?.rating?.notedOn).toBe('2026-11-04');
+    const changed = await repo.updatePiece(piece.id, {
+      source: { url, rating: { stars: null, ratings: null, views: 9000 } },
+    });
+    expect(changed.source?.rating).toEqual({
+      stars: null,
+      ratings: null,
+      views: 9000,
+      notedOn: '2026-11-09',
+    });
+    expect(changes.descriptions.at(-1)).toBe("Source for 'Air': MuseScore");
+  });
+
+  it('keeps the licence Find a score recorded while the link stays, and a clear removes the source', async () => {
+    const found = await repo.createPiece({
+      title: 'Nocturne',
+      source: {
+        name: 'Mutopia Project',
+        url: 'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=582',
+        licence: 'Public Domain',
+        licenceUrl: 'https://creativecommons.org/licenses/publicdomain/',
+      },
+    });
+    const rated = await repo.updatePiece(found.id, {
+      source: {
+        url: 'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=582',
+        rating: { stars: 5, ratings: null, views: null },
+      },
+    });
+    expect(rated.source).toMatchObject({ licence: 'Public Domain', rating: { stars: 5 } });
+    const cleared = await repo.updatePiece(found.id, { source: null });
+    expect(cleared.source).toBeUndefined();
+    expect(changes.descriptions.at(-1)).toBe("Remove the source of 'Nocturne'");
+    expect(await readFile(repo.path('pieces', found.id, 'piece.json'), 'utf8')).not.toContain(
+      'source',
+    );
+  });
+
+  it('refuses a link that is not http or https, and an empty rating', async () => {
+    const piece = await repo.createPiece({ title: 'Air' });
+    await expect(
+      repo.updatePiece(piece.id, { source: { url: 'javascript:alert(1)', rating: null } }),
+    ).rejects.toThrow();
+    await expect(
+      repo.updatePiece(piece.id, {
+        source: {
+          url: 'https://musescore.com/x',
+          rating: { stars: null, ratings: null, views: null },
+        },
+      }),
+    ).rejects.toThrow();
+    expect((await repo.getPiece(piece.id)).source).toBeUndefined();
+  });
+
   it('drawing on a score marks the piece edited; a no-op save does not', async () => {
     const piece = await repo.createPiece({ title: 'Air' });
     const ref = await repo.addScore(piece.id, 'air.pdf', new Blob([pdf]));

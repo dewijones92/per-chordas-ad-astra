@@ -50,6 +50,7 @@ import {
 import { useAsync } from '../ui/use-async.ts';
 import { useDraft } from '../ui/use-draft.ts';
 import './piece.css';
+import { SourceLine } from './SourceLine.tsx';
 import { names, strings, tips } from '../strings.ts';
 
 function Section({
@@ -501,20 +502,6 @@ export function PiecePage({ id }: { id: string }) {
             {current.title}
           </h1>
           {current.artist && <span className="muted">{current.artist}</span>}
-          {current.source && (
-            <span className="piece-source small-print" data-testid="piece-source">
-              <a href={current.source.url} target="_blank" rel="noreferrer">
-                {strings.find.fromSite(current.source.name)}
-              </a>{' '}
-              {current.source.licenceUrl ? (
-                <a href={current.source.licenceUrl} target="_blank" rel="noreferrer">
-                  {strings.find.attribution(current.source.licence)}
-                </a>
-              ) : (
-                strings.find.attribution(current.source.licence)
-              )}
-            </span>
-          )}
           <button
             type="button"
             className="btn small ghost pin-toggle"
@@ -527,6 +514,12 @@ export function PiecePage({ id }: { id: string }) {
           >
             {current.pinned ? strings.piece.pinned : strings.piece.pin}
           </button>
+          <SourceLine
+            piece={current}
+            onSaved={(next) => {
+              setData(() => next);
+            }}
+          />
         </div>
         {current.scores.length > 1 && (
           <div className="row score-tabs" role="tablist">
