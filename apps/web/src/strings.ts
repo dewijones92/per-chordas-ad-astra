@@ -63,7 +63,7 @@ export const strings = {
     artist: '🎤 Artist / composer',
     tags: '🔖 Tags (comma separated)',
     pdf: '📄 Score PDF (optional)',
-    music: '🎹 MuseScore / MusicXML for Play-along (optional)',
+    music: '🎹 MuseScore / MusicXML / MIDI for Play-along (optional)',
     unreadable: (error: string) => `⚠️ This file could not be read for its title: ${error}`,
     createdButFailed: '⚠️ The piece was created. Pick another file and press Create again, or',
     openAsIs: '➡️ open it as it is',
@@ -140,10 +140,10 @@ export const strings = {
       `📊 ${String(count)} sessions · ${total} in total`,
     targetTempo: '🎯 Target tempo',
     addTrack: '➕ Add backing track',
-    addMusic: '➕ Add MuseScore / MusicXML',
+    addMusic: '➕ Add MuseScore / MusicXML / MIDI',
     addPdf: '➕ Add PDF',
     playAlongEmpty:
-      '🎹 Add a MuseScore (.mscz, .mscx) or MusicXML (.mxl, .musicxml) file to watch its notes fall onto a keyboard, transpose it and play along.',
+      '🎹 Add a MuseScore (.mscz, .mscx), MusicXML (.mxl, .musicxml) or MIDI (.mid, .midi) file to watch its notes fall onto a keyboard, transpose it and play along.',
     noSetlists: '🗂️ Create setlists from the library.',
     removeConfirm: (name: string, withDrawings: boolean) =>
       `🗑️ Remove “${name}”${withDrawings ? ' and its drawings' : ''}? It stays in the GitHub history.`,

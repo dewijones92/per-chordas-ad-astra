@@ -115,7 +115,7 @@ export function buildPerformance(score: ScoreModel): Performance {
       rawNotes.push({
         pitch: n.pitch,
         staff: n.staff,
-        velocity: latestAt(dynamics, n.tick)?.velocity ?? DEFAULT_VELOCITY,
+        velocity: n.velocity ?? latestAt(dynamics, n.tick)?.velocity ?? DEFAULT_VELOCITY,
         bar: occurrence,
         grace: n.grace,
         startTick: n.tick + shift,

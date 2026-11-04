@@ -2,10 +2,11 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadScore, parseScoreText, unpackScore } from '../src/music/load.ts';
+import { TPQ } from '../src/music/model.ts';
 import { unroll } from '../src/music/unroll.ts';
 import { buildPerformance } from '../src/music/performance.ts';
 import { toMusicXml, tpcOf } from '../src/music/to-musicxml.ts';
-import { transposeMusicXml } from '../src/music/export.ts';
+import { performanceToMidi, transposeMusicXml } from '../src/music/export.ts';
 import { transposeFifths } from '../src/music/keys.ts';
 import { assignHands } from '../src/music/hands.ts';
 import { grandStaff, scoreHands } from '../src/music/grand-staff.ts';
@@ -22,7 +23,54 @@ const HANDS_AGREE: Readonly<Record<string, number>> = {
   'tutorial-apres-un-reve.musicxml': 0.6,
   'tutorial-chopin-prelude.musicxml': 1,
 };
-const HANDS_WIDE: Readonly<Record<string, number>> = { 'Reunion.mscz': 12, 'goldberg.mscz': 30 };
+const HANDS_WIDE: Readonly<Record<string, number>> = {
+  'Reunion.mscz': 12,
+  'goldberg.mscz': 30,
+  'chopin-nocturne-op9-1.mid': 12,
+};
+
+function noteOnCount(bytes: Uint8Array): number {
+  let pos = 14;
+  let count = 0;
+  while (pos + 8 <= bytes.length) {
+    const size = new DataView(bytes.buffer, bytes.byteOffset).getUint32(pos + 4);
+    const end = pos + 8 + size;
+    let at = pos + 8;
+    let status = 0;
+    const varLen = () => {
+      let v = 0;
+      for (;;) {
+        const b = bytes[at++] ?? 0;
+        v = v * 128 + (b & 0x7f);
+        if (b < 0x80) return v;
+      }
+    };
+    while (at < end) {
+      varLen();
+      const first = bytes[at] ?? 0;
+      if (first === 0xff) {
+        at += 2;
+        const length = varLen();
+        at += length;
+      } else if (first === 0xf0 || first === 0xf7) {
+        at += 1;
+        const length = varLen();
+        at += length;
+      } else {
+        if (first >= 0x80) {
+          status = first;
+          at += 1;
+        }
+        const data = (status & 0xf0) === 0xc0 || (status & 0xf0) === 0xd0 ? 1 : 2;
+        if ((status & 0xf0) === 0x90 && (status & 0x0f) !== 9 && (bytes[at + 1] ?? 0) > 0)
+          count += 1;
+        at += data;
+      }
+    }
+    pos = end;
+  }
+  return count;
+}
 
 describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
   const dir = corpus ?? '';
@@ -60,6 +108,13 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
   const files = (() => {
     try {
       return readdirSync(join(dir, 'dl')).filter((f) => /\.(mscz|mscx|mxl|musicxml)$/.test(f));
+    } catch {
+      return [];
+    }
+  })();
+  const midiFiles = (() => {
+    try {
+      return readdirSync(join(dir, 'dl')).filter((f) => /\.midi?$/i.test(f));
     } catch {
       return [];
     }
@@ -203,7 +258,7 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
     60_000,
   );
 
-  it.each(files)(
+  it.each([...files, ...midiFiles])(
     '%s: the hand split never crosses, rarely stretches past an octave, and on piano scores mostly agrees with the written hands',
     (name) => {
       const perf = buildPerformance(loadScore(readFileSync(join(dir, 'dl', name))));
@@ -241,6 +296,53 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
         ).length;
         expect(same / Math.max(1, notes.length)).toBeGreaterThanOrEqual(HANDS_AGREE[name] ?? 0.9);
       }
+    },
+    30_000,
+  );
+  it.each(midiFiles)(
+    '%s reads every note once, as a grand staff, with its key, bars and tempo',
+    (name) => {
+      const bytes = readFileSync(join(dir, 'dl', name));
+      const score = loadScore(bytes);
+      expect(score.format).toBe('midi');
+      expect(score.notes.length).toBe(noteOnCount(bytes));
+      expect(score.notation).toBeNull();
+      expect(score.parts).toHaveLength(1);
+      expect(score.parts[0]?.staves).toHaveLength(2);
+      expect(score.staves.map((s) => s.role)).toEqual(['right', 'left']);
+      const perf = buildPerformance(score);
+      expect(perf.notes).toHaveLength(score.notes.length);
+      expect(perf.duration).toBeGreaterThan(60);
+      if (name === 'chopin-nocturne-op9-1.mid') {
+        expect(perf.keyFifths).toBe(-5);
+        expect(perf.keyMinor).toBe(true);
+        expect(score.measures[0]?.ticks).toBe(6 * TPQ);
+        expect(score.measures[0]?.beat).toBe(TPQ);
+        expect(perf.baseBpm).toBe(116);
+        expect(score.notes.filter((n) => n.staff === 0)).toHaveLength(697);
+        expect(score.notes.filter((n) => n.staff === 1)).toHaveLength(1017);
+        expect(score.title).toBe('');
+      }
+      console.info(
+        `dewidebug corpus ${name}: notes=${String(score.notes.length)} bars=${String(score.measures.length)} played=${String(perf.bars.length)} seconds=${perf.duration.toFixed(1)} range=${String(perf.lowest)}-${String(perf.highest)}`,
+      );
+    },
+  );
+
+  it.each(midiFiles)(
+    '%s survives being written back out as MIDI and read again',
+    (name) => {
+      const perf = buildPerformance(loadScore(readFileSync(join(dir, 'dl', name))));
+      const again = buildPerformance(loadScore(performanceToMidi(perf, 0)));
+      expect(again.notes).toHaveLength(perf.notes.length);
+      expect(again.bars).toHaveLength(perf.bars.length);
+      expect(again.keyFifths).toBe(perf.keyFifths);
+      expect(again.baseBpm).toBe(perf.baseBpm);
+      const worst = perf.notes.reduce(
+        (max, n, i) => Math.max(max, Math.abs((again.notes[i]?.start ?? 99) - n.start)),
+        0,
+      );
+      expect(worst).toBeLessThan(0.002);
     },
     30_000,
   );

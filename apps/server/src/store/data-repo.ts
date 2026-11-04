@@ -11,6 +11,8 @@ import {
   type MusicRef,
   ZIPPED_MUSIC_EXTENSIONS,
   extensionOf,
+  isMidi,
+  isMidiFile,
   isZip,
   Loop,
   HardBit,
@@ -346,6 +348,9 @@ export class DataRepo {
       checkHead: (head) => {
         if (zipped) {
           return isZip(head) ? null : new RejectedError(`That .${ext} file is not a zip archive`);
+        }
+        if (isMidiFile(originalName)) {
+          return isMidi(head) ? null : new RejectedError(`That .${ext} file is not a MIDI file`);
         }
         const text = new TextDecoder()
           .decode(head.subarray(0, 64))

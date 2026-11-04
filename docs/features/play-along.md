@@ -1,5 +1,5 @@
 ---
-title: Play-along (MuseScore and MusicXML, falling notes, transpose, loop)
+title: Play-along (MuseScore, MusicXML and MIDI, falling notes, transpose, loop)
 status: shipped
 updated: 2026-11-04
 ---
@@ -9,11 +9,23 @@ updated: 2026-11-04
 Dewi, 24 Oct 2026: open MuseScore files in the app, transpose them, and watch the notes fall onto a
 keyboard from above, like the bird's-eye piano videos.
 
-- **Files**: `.mscz`/`.mscx` from MuseScore 2, 3 and 4, and MusicXML `.mxl`/`.musicxml`. Start a new piece
-  straight from one (**+ New piece**, then the MuseScore / MusicXML field: the title and composer fill in
+- **Files**: `.mscz`/`.mscx` from MuseScore 2, 3 and 4, MusicXML `.mxl`/`.musicxml`, and Standard MIDI files
+  `.mid`/`.midi` (see **MIDI files** below). Start a new piece
+  straight from one (**+ New piece**, then the MuseScore / MusicXML / MIDI field: the title and composer fill in
   from the file if still empty, and the piece opens in Play-along), or add one to an existing piece from its
   **🎹 Play-along** section. Stored untouched under `pieces/<slug>/music/`. The title and composer come from
   the file's metadata, or from MuseScore's title frame (first line only, so "Arranged by…" is left out).
+- **MIDI files** (4 Nov 2026, so Chopin's Nocturne Op. 9 No. 1 can be learned from the free Mutopia
+  edition, which exists only as LilyPond, MIDI and PDF): our own small Standard MIDI File reader
+  (`music/midi.ts`, ADR 0014), format 0 and 1; SMPTE timing and format 2 are refused with a message saying so.
+  Each track becomes a staff (a format 0 file is split by channel; the percussion channel is left out). When
+  exactly two staves have notes, they become one piano part with two staves, the one with the higher average
+  pitch first and on the right, so the hand split and 🔎 File check work as for a grand staff; the part is
+  called "Piano" unless both tracks share a name. Bars come from the time signatures (4/4 until one is given),
+  tempo and key from their meta events, the title from a track that has no notes (a placeholder such as
+  "Track 0" is ignored, and then the file name is used). The General MIDI program names the instrument for the
+  file check: 0–7 piano, 24–31 guitar, anything else is "other". Each note keeps its own velocity. A MIDI file has
+  no engraving, so there is no 🎼 Notation strip, no ✏️ Draw and 💾 MusicXML is disabled; 💾 MIDI still exports.
 - **Views** (top of the piece page, only when the piece has a music file): **📄 Score** (the PDF),
   **📄🎹 Both** (PDF on the left, falling notes on the right) and **🎹 Notes** (falling notes only). A piece
   with music but no PDF opens in Notes. The view is remembered per piece, on every device.
@@ -88,8 +100,10 @@ keyboard from above, like the bird's-eye piano videos.
   by the same interval, folded into seven sharps or flats, and each note is spelled in the key in force; the same
   rule as the key line and the notation; printed accidentals are left for the notation program to redo), so
   it opens in MuseScore or any notation program; MuseScore files go through our own converter first. MIDI
-  is a type-1 file with a track per staff, repeats played out, at the written tempo shape (fixed 120 bpm
-  clock, timings from the performance). Nothing is uploaded; it is built in the browser.
+  is a type-1 file with a track per staff, repeats played out, written at the piece's first tempo with the
+  timings from the performance (so a tempo change later on is kept in the timing but not as a tempo event),
+  and with the key (transposed) and a time signature for every bar length, so the app's own reader gets the
+  same notes, bars, tempo and key back. Nothing is uploaded; it is built in the browser.
 - **Loop**: drag across bars on the **bar strip** above the notes, or use From here / To here. Click a bar
   to jump to it, Shift+click to stretch the loop. **Speed up each loop** adds a chosen step every time
   round (0.5–20%, 5% to start with) until a chosen speed (100% to start with), both typed in beside the switch; the change happens exactly at the loop point, so no note is cut. **🔁 Loop** switches the loop off
@@ -129,9 +143,12 @@ Files: `apps/web/src/music/*` (`mscx.ts`, `musicxml.ts` and `load.ts` read files
 `apps/web/public/piano/`, `DataRepo.addMusic`.
 
 Tests: `apps/web/test/music-parse.test.ts` (one waltz in six encodings gives identical notes),
-`music-play.test.ts`, `music-corpus.test.ts` (opt-in, real files and MuseScore's repeat orders),
-`apps/server/test/data-repo.test.ts`, `e2e/play-along.spec.ts`.
+`midi.test.ts` (the MIDI reader), `music-play.test.ts`, `music-corpus.test.ts` (opt-in, real files and
+MuseScore's repeat orders, and the Nocturne MIDI), `apps/server/test/data-repo.test.ts`,
+`e2e/play-along.spec.ts`, `e2e/midi.spec.ts`.
 
-Known gaps: lyrics, fingering, articulations and dynamics marks are not in the notation yet; ottava
+Known gaps: a MIDI file's hand split is decided by the app, as for guitar scores, because MIDI does not say
+which hand plays what beyond its track order; MIDI has no notation, key spelling or ties, so notes that were tied
+in the source arrive as one long note or as two notes, as the file wrote them; lyrics, fingering, articulations and dynamics marks are not in the notation yet; ottava
 lines, swing, pedal and grace-note timing are approximate; two of MuseScore's 69 repeat cases (a jump into
 an ending that has its own repeats) differ.

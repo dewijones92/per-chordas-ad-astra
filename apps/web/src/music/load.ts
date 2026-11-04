@@ -1,5 +1,6 @@
-import { isZip } from '@pcaa/shared';
+import { isMidi, isZip } from '@pcaa/shared';
 import { unzipSync } from 'fflate';
+import { readMidi } from './midi.ts';
 import type { ScoreModel } from './model.ts';
 import { parseMscx } from './mscx.ts';
 import { parseMusicXml } from './musicxml.ts';
@@ -46,6 +47,17 @@ export function parseScoreText(source: string): ScoreModel {
   throw new Error(`Not a MuseScore or MusicXML file (found <${tag}>)`);
 }
 
+export interface ReadScore {
+  score: ScoreModel;
+  text: string | null;
+}
+
+export function readScore(bytes: Uint8Array): ReadScore {
+  if (isMidi(bytes)) return { score: readMidi(bytes), text: null };
+  const text = unpackScore(bytes);
+  return { score: parseScoreText(text), text };
+}
+
 export function loadScore(bytes: Uint8Array): ScoreModel {
-  return parseScoreText(unpackScore(bytes));
+  return readScore(bytes).score;
 }

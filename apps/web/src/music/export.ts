@@ -69,8 +69,9 @@ export function transposeMusicXml(xml: string, semitones: number, fromFifths: nu
 }
 
 const TICKS_PER_QUARTER = 480;
-const EXPORT_BPM = 120;
-const TICKS_PER_SECOND = (TICKS_PER_QUARTER * EXPORT_BPM) / 60;
+const FALLBACK_BPM = 120;
+const SIGNATURE_DENOMINATORS = [4, 8, 16, 32, 64] as const;
+const SIGNATURE_TOLERANCE_TICKS = 2;
 
 function varLen(value: number): number[] {
   let v = Math.max(0, Math.round(value));
@@ -95,27 +96,63 @@ function chunk(type: string, body: number[]): number[] {
   ];
 }
 
+function metaEvent(type: number, data: readonly number[]): number[] {
+  return [0xff, type, ...varLen(data.length), ...data];
+}
+
 function text(meta: number, value: string): number[] {
-  const bytes = Array.from(new TextEncoder().encode(value));
-  return [0x00, 0xff, meta, ...varLen(bytes.length), ...bytes];
+  return [0x00, ...metaEvent(meta, Array.from(new TextEncoder().encode(value)))];
+}
+
+function signatureOf(ticks: number): { n: number; d: number } {
+  for (const d of SIGNATURE_DENOMINATORS) {
+    const unit = (4 * TICKS_PER_QUARTER) / d;
+    const n = Math.round(ticks / unit);
+    if (n >= 1 && n <= 255 && Math.abs(ticks - n * unit) <= SIGNATURE_TOLERANCE_TICKS) {
+      return { n, d };
+    }
+  }
+  const finest = (4 * TICKS_PER_QUARTER) / 64;
+  return { n: Math.min(255, Math.max(1, Math.round(ticks / finest))), d: 64 };
 }
 
 export function performanceToMidi(perf: Performance, transpose: number): Uint8Array {
-  const micros = Math.round(60_000_000 / EXPORT_BPM);
-  const tempoTrack = chunk('MTrk', [
-    ...text(0x03, perf.title || 'Play-along'),
-    0x00,
-    0xff,
-    0x51,
-    0x03,
-    (micros >> 16) & 0xff,
-    (micros >> 8) & 0xff,
-    micros & 0xff,
-    0x00,
-    0xff,
-    0x2f,
-    0x00,
-  ]);
+  const micros = Math.round(60_000_000 / (perf.baseBpm ?? FALLBACK_BPM));
+  const ticksPerSecond = (TICKS_PER_QUARTER * 1_000_000) / micros;
+  const conductor: { tick: number; bytes: number[] }[] = [
+    {
+      tick: 0,
+      bytes: metaEvent(0x03, Array.from(new TextEncoder().encode(perf.title || 'Play-along'))),
+    },
+    {
+      tick: 0,
+      bytes: metaEvent(0x59, [
+        transposeFifths(perf.keyFifths, transpose) & 0xff,
+        perf.keyMinor ? 1 : 0,
+      ]),
+    },
+    {
+      tick: 0,
+      bytes: metaEvent(0x51, [(micros >> 16) & 0xff, (micros >> 8) & 0xff, micros & 0xff]),
+    },
+  ];
+  let signature = '';
+  for (const bar of perf.bars) {
+    const start = Math.round(bar.start * ticksPerSecond);
+    const { n, d } = signatureOf(Math.round(bar.end * ticksPerSecond) - start);
+    if (`${String(n)}/${String(d)}` === signature) continue;
+    signature = `${String(n)}/${String(d)}`;
+    conductor.push({ tick: start, bytes: metaEvent(0x58, [n, Math.log2(d), 24, 8]) });
+  }
+  const endTick = Math.round((perf.bars.at(-1)?.end ?? perf.duration) * ticksPerSecond);
+  const tempoBody: number[] = [];
+  let lastTick = 0;
+  for (const e of conductor.sort((a, b) => a.tick - b.tick)) {
+    tempoBody.push(...varLen(e.tick - lastTick), ...e.bytes);
+    lastTick = e.tick;
+  }
+  tempoBody.push(...varLen(Math.max(0, endTick - lastTick)), ...metaEvent(0x2f, []));
+  const tempoTrack = chunk('MTrk', tempoBody);
   const tracks = perf.staves.map((staff, index) => {
     const channel = index < 9 ? index : Math.min(15, index + 1);
     const events: { tick: number; bytes: number[] }[] = [];
@@ -124,11 +161,11 @@ export function performanceToMidi(perf: Performance, transpose: number): Uint8Ar
       const pitch = Math.min(127, Math.max(0, n.pitch + transpose));
       const velocity = Math.min(127, Math.max(1, Math.round(n.velocity)));
       events.push({
-        tick: Math.round(n.start * TICKS_PER_SECOND),
+        tick: Math.round(n.start * ticksPerSecond),
         bytes: [0x90 | channel, pitch, velocity],
       });
       events.push({
-        tick: Math.round(n.end * TICKS_PER_SECOND),
+        tick: Math.round(n.end * ticksPerSecond),
         bytes: [0x80 | channel, pitch, 0],
       });
     }

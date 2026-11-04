@@ -1,13 +1,13 @@
 ---
 title: Library, search, tags and setlists
 status: shipped
-updated: 2026-10-24
+updated: 2026-11-04
 ---
 
 # Library
 
 - Piece cards with title, artist, tags, counts of scores and tracks, and target tempo.
-- **New piece** dialog: title, artist, comma-separated tags, optional PDF, optional MuseScore / MusicXML file
+- **New piece** dialog: title, artist, comma-separated tags, optional PDF, optional MuseScore / MusicXML / MIDI file
   for Play-along. Picking a music file fills an empty title and artist from it. Creates and opens the piece;
   with music and no PDF it opens in Play-along. A failed upload keeps the created piece and does not upload
   a file twice on retry.

@@ -49,7 +49,7 @@ import { sideFor, suggestBySide } from './suggest-fingering.ts';
 import { checkFile } from './file-check.ts';
 import { FileCheckLine } from './FileCheckLine.tsx';
 import { ResizeHandle } from './ResizeHandle.tsx';
-import { parseScoreText, unpackScore } from './load.ts';
+import { readScore } from './load.ts';
 import { instrumentFor, noteKey } from './model.ts';
 import {
   assignHands,
@@ -97,8 +97,7 @@ function usePerformance(pieceId: string, file: string) {
     if (!res.ok) throw new Error(`Could not fetch ${file}: ${String(res.status)}`);
     const bytes = new Uint8Array(await res.arrayBuffer());
     const started = window.performance.now();
-    const text = unpackScore(bytes);
-    const score = parseScoreText(text);
+    const { score, text } = readScore(bytes);
     const perf = buildPerformance(score);
     console.info('dewidebug play-along parsed', {
       file,
@@ -374,6 +373,7 @@ export function PlayAlong({
   );
   const readout = useRef<HTMLSpanElement>(null);
   const transpose = music.transpose;
+  const notatable = loaded.data?.score.format !== 'midi';
   const sourceXml = useMemo(() => {
     const data = loaded.data;
     if (!data) return null;
@@ -1209,42 +1209,46 @@ export function PlayAlong({
             {strings.playAlong.halfBeats}
           </label>
         )}
-        <label className="playalong-field">
-          <input
-            type="checkbox"
-            checked={prefs.notation}
-            data-testid="playalong-notation"
-            onChange={(e) => {
-              const notation = e.target.checked;
-              updatePrefs((p) => ({ ...p, notation }));
-            }}
-          />
-          {strings.playAlong.notation}
-        </label>
-        <button
-          type="button"
-          className="btn small ghost"
-          data-testid="notation-draw"
-          aria-pressed={drawMode}
-          title={tips.notation.draw}
-          onClick={() => {
-            if (drawMode) {
-              console.info('dewidebug notation draw mode off');
-              setDrawMode(false);
-              return;
-            }
-            if (player?.playing || player?.starting) toggle();
-            if (!prefs.notation) updatePrefs((p) => ({ ...p, notation: true }));
-            console.info('dewidebug notation draw mode on', {
-              file: music.file,
-              zoom: notationZoom,
-            });
-            setNotationZoom((z) => Math.max(z, DRAW_MIN_ZOOM));
-            setDrawMode(true);
-          }}
-        >
-          {strings.notation.draw}
-        </button>
+        {notatable && (
+          <>
+            <label className="playalong-field">
+              <input
+                type="checkbox"
+                checked={prefs.notation}
+                data-testid="playalong-notation"
+                onChange={(e) => {
+                  const notation = e.target.checked;
+                  updatePrefs((p) => ({ ...p, notation }));
+                }}
+              />
+              {strings.playAlong.notation}
+            </label>
+            <button
+              type="button"
+              className="btn small ghost"
+              data-testid="notation-draw"
+              aria-pressed={drawMode}
+              title={tips.notation.draw}
+              onClick={() => {
+                if (drawMode) {
+                  console.info('dewidebug notation draw mode off');
+                  setDrawMode(false);
+                  return;
+                }
+                if (player?.playing || player?.starting) toggle();
+                if (!prefs.notation) updatePrefs((p) => ({ ...p, notation: true }));
+                console.info('dewidebug notation draw mode on', {
+                  file: music.file,
+                  zoom: notationZoom,
+                });
+                setNotationZoom((z) => Math.max(z, DRAW_MIN_ZOOM));
+                setDrawMode(true);
+              }}
+            >
+              {strings.notation.draw}
+            </button>
+          </>
+        )}
         <label className="playalong-field">
           <input
             type="checkbox"

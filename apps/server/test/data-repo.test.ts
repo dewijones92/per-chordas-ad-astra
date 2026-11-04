@@ -1,6 +1,6 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { makeMusicXml, makePdf, PIANO_WALTZ } from '@pcaa/fixtures';
+import { makeMidi, makeMusicXml, makePdf, PIANO_WALTZ } from '@pcaa/fixtures';
 import { emptyAnnotations, FileName, Slug, type Annotations } from '@pcaa/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { changedPages, DataRepo, RejectedError } from '../src/store/data-repo.ts';
@@ -646,10 +646,27 @@ describe('DataRepo music files', () => {
     expect(changes.descriptions.at(-1)).toBe("Add music gran-vals.mscx to 'Gran Vals'");
   });
 
+  it('stores a MIDI file under its own name and keeps it as music', async () => {
+    const piece = await repo.createPiece({ title: 'Nocturne' });
+    const ref = await repo.addMusic(
+      piece.id,
+      'Nocturne Op 9.mid',
+      new Blob([makeMidi(PIANO_WALTZ)]),
+    );
+    expect(ref).toEqual({ file: 'nocturne-op-9.mid', name: 'Nocturne Op 9', transpose: 0 });
+    await repo.addMusic(piece.id, 'other.MIDI', new Blob([makeMidi(PIANO_WALTZ)]));
+    expect((await repo.getPiece(piece.id)).music.map((m) => m.file)).toEqual([
+      'nocturne-op-9.mid',
+      'other.midi',
+    ]);
+  });
+
   it('refuses a zip that is not a zip, XML that is not XML, and other file types', async () => {
     const piece = await repo.createPiece({ title: 'X' });
     await expect(repo.addMusic(piece.id, 'a.mscz', new Blob([xml]))).rejects.toThrow(/not a zip/);
     await expect(repo.addMusic(piece.id, 'a.musicxml', new Blob([zip]))).rejects.toThrow(/not XML/);
+    await expect(repo.addMusic(piece.id, 'a.mid', new Blob([xml]))).rejects.toThrow(/not a MIDI/);
+    await expect(repo.addMusic(piece.id, 'a.midi', new Blob([zip]))).rejects.toThrow(/not a MIDI/);
     await expect(repo.addMusic(piece.id, 'a.pdf', new Blob([zip]))).rejects.toThrow(
       /Music must be one of/,
     );

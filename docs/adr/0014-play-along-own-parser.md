@@ -1,5 +1,5 @@
 ---
-title: Play-along reads MuseScore and MusicXML with our own parser, plays a sampled piano
+title: Play-along reads MuseScore, MusicXML and MIDI with our own parsers, plays a sampled piano
 status: accepted
 date: 2026-10-24
 updated: 2026-11-04
@@ -21,6 +21,20 @@ MuseScore writes today.
   ticks with ties and grace notes; tempo, dynamics and key. Rejected **webmscore** (MuseScore in
   WebAssembly): it is built on MuseScore 3, so it cannot open MuseScore 4 files, it is about 10 MB, and it
   is GPL.
+- **Our own MIDI reader** (4 Nov 2026, `music/midi.ts`), no MIDI library. Dewi wanted Chopin's Nocturne Op. 9
+  No. 1 from the Mutopia Project, which publishes it only as LilyPond, MIDI and PDF, and asked for no
+  third-party library (no music21, no `midi` package) to read it. Standard MIDI Files, format 0 and 1, into the
+  same model: variable-length quantities, running status, note-on with velocity 0 as note-off, overlapping
+  notes of one pitch paired first in first out, tempo, time signature and key meta events, system exclusive and
+  everything else skipped; SMPTE time and format 2 are refused with a message. The percussion channel is left
+  out. Bars come from the time signatures, a track or channel becomes a staff, and exactly two staves become one
+  piano part with two staves (higher average pitch first, as the right hand), so the grand-staff hand split and
+  the file check work. `ScoreNote` gained an optional `velocity` so a MIDI note keeps its own loudness. There is
+  no engraving in MIDI, so `notation` is null and the Notation strip, ✏️ Draw and the MusicXML export are not
+  offered. The oracle is the app's own MIDI writer (`performanceToMidi`, which now also writes key and time
+  signatures and the piece's first tempo so a file survives the round trip), an independent writer in
+  `packages/fixtures`, hand-built bytes, and the real Nocturne (a plain count of note-ons) under `MUSIC_CORPUS`;
+  that file is CC BY-SA 2.5 and is not committed.
 - **Play order** (`unroll.ts`) is written from the rules, then checked against MuseScore's own repeat
   test files and their expected bar orders (`src/engraving/tests/repeat_tests.cpp`, 69 cases): 67 match.
   The two left are jumps into an ending that has its own repeats. The check runs when `MUSIC_CORPUS`

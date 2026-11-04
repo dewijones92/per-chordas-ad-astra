@@ -1,6 +1,7 @@
 export const SCORE_EXTENSIONS = ['pdf'] as const;
 export const AUDIO_EXTENSIONS = ['mp3', 'm4a', 'ogg', 'wav', 'flac'] as const;
-export const MUSIC_EXTENSIONS = ['mscz', 'mscx', 'mxl', 'musicxml'] as const;
+export const MIDI_EXTENSIONS = ['mid', 'midi'] as const;
+export const MUSIC_EXTENSIONS = ['mscz', 'mscx', 'mxl', 'musicxml', ...MIDI_EXTENSIONS] as const;
 export const ZIPPED_MUSIC_EXTENSIONS = ['mscz', 'mxl'] as const;
 
 export type FileKind = 'scores' | 'tracks' | 'music';
@@ -17,6 +18,8 @@ export const CONTENT_TYPES: Readonly<Record<string, string>> = {
   mscx: 'application/x-musescore+xml',
   mxl: 'application/vnd.recordare.musicxml',
   musicxml: 'application/vnd.recordare.musicxml+xml',
+  mid: 'audio/midi',
+  midi: 'audio/midi',
 };
 
 export const SCORE_ACCEPT = [...SCORE_EXTENSIONS.map((e) => `.${e}`), 'application/pdf'].join(',');
@@ -27,6 +30,16 @@ export const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04] as const;
 
 export function isZip(bytes: ArrayLike<number>): boolean {
   return ZIP_MAGIC.every((b, i) => bytes[i] === b);
+}
+
+export const MIDI_MAGIC = [0x4d, 0x54, 0x68, 0x64] as const;
+
+export function isMidi(bytes: ArrayLike<number>): boolean {
+  return MIDI_MAGIC.every((b, i) => bytes[i] === b);
+}
+
+export function isMidiFile(name: string): boolean {
+  return (MIDI_EXTENSIONS as readonly string[]).includes(extensionOf(name));
 }
 
 export function extensionOf(name: string): string {

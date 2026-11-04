@@ -28,6 +28,7 @@ browser (React SPA) ──/api──▶ nginx_dewi (Google gate) ──▶ app c
 | Node major version                      | `.nvmrc` (preflight checks the Dockerfile)                                      |
 | Test PDFs and tones                     | `packages/fixtures`                                                             |
 | Test scores (MuseScore 2/3/4, MusicXML) | `packages/fixtures/src/music.ts` (one spec, every encoding)                     |
+| Test MIDI files                         | `packages/fixtures/src/midi.ts` (`makeMidi`, an independent writer of the spec) |
 | Score model (measures, notes, repeats)  | `apps/web/src/music/model.ts`                                                   |
 | Play-along prefs, speed limits, views   | `packages/shared/src/prefs.ts`                                                  |
 | Piano samples and their licence         | `apps/web/public/piano/manifest.json` (built by `tools/build-piano-samples.sh`) |
@@ -56,8 +57,8 @@ pushing → clean | push-failed`.
 - `metronome/`: `scheduler.ts` (pure), `engine.ts` (Web Audio), `MetronomeProvider` (app-wide).
 - `drums/`: `grooves.ts` (pure patterns and the tick-to-hits function), `voices.ts` (synthesised drum sounds); used by the
   metronome and the play-along (ADR 0022).
-- `music/`: Play-along (ADR 0014). `load.ts` unzips and picks the reader; `mscx.ts` (MuseScore 2–4) and
-  `musicxml.ts` fill one `ScoreModel`; `unroll.ts` decides the bar order; `performance.ts` turns it into
+- `music/`: Play-along (ADR 0014). `load.ts` unzips and picks the reader (`MThd` means MIDI); `mscx.ts` (MuseScore 2–4),
+  `musicxml.ts` and `midi.ts` (Standard MIDI Files) fill one `ScoreModel`; `unroll.ts` decides the bar order; `performance.ts` turns it into
   notes in seconds; `transport.ts` (pure) schedules against the audio clock; `player.ts` plays the
   Salamander samples; `falling.ts` draws the notes and keyboard; `PlayAlong.tsx` and `BarStrip.tsx` are
   the panel. Notation (ADR 0015): `to-musicxml.ts` converts MuseScore to MusicXML, `notation.worker.ts`

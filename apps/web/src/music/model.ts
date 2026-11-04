@@ -60,6 +60,7 @@ export interface ScoreNote {
   tieForward: boolean;
   grace: boolean;
   finger?: Finger;
+  velocity?: number;
 }
 
 export interface TempoMark {
@@ -79,7 +80,7 @@ export interface KeyMark {
   minor: boolean;
 }
 
-export type ScoreFormat = 'musescore' | 'musicxml';
+export type ScoreFormat = 'musescore' | 'musicxml' | 'midi';
 
 export interface ScoreModel {
   title: string;
