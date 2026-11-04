@@ -57,6 +57,7 @@ import { BarStrip } from './BarStrip.tsx';
 import { suggestBySide } from './suggest-fingering.ts';
 import { chordLabels, type ChordLabel } from './chords.ts';
 import { applyHandChoice, HAND_CHOICES, handChoiceOf, hasHands } from './hand-choice.ts';
+import { handColourOf, handLayers } from './hand-timelines.ts';
 import { checkFile } from './file-check.ts';
 import { FileCheckLine } from './FileCheckLine.tsx';
 import { ResizeHandle } from './ResizeHandle.tsx';
@@ -144,6 +145,8 @@ function FallingCanvas({
   userFingers,
   suggested,
   chords,
+  handsOn,
+  fingerGuess,
   selectedNote,
   onPick,
   pickedLabel,
@@ -167,6 +170,8 @@ function FallingCanvas({
   userFingers: ReadonlyMap<string, string>;
   suggested: ReadonlyMap<PerfNote, number> | null;
   chords: readonly ChordLabel[] | null;
+  handsOn: boolean;
+  fingerGuess: ReadonlyMap<PerfNote, number> | null;
   selectedNote: string | null;
   onPick: (note: PerfNote | null) => void;
   pickedLabel: string | null;
@@ -202,6 +207,35 @@ function FallingCanvas({
     [prefs.names, perf.keyFifths, transpose],
   );
   const muted = useMemo(() => new Set(mutedLanes), [mutedLanes]);
+  const handLayerList = useMemo(
+    () =>
+      handsOn
+        ? handLayers({
+            notes: perf.notes,
+            hidden,
+            laneOf: lanes.laneOf,
+            sideOf: (n) => sideOfNote(lanes, n),
+            userFingers,
+            suggested: fingerGuess,
+            transpose,
+            range,
+            tails: prefs.tails,
+            colourOf: (side) => handColourOf(side, lanes.lanes, colours),
+          })
+        : [],
+    [
+      handsOn,
+      perf,
+      hidden,
+      lanes,
+      userFingers,
+      fingerGuess,
+      transpose,
+      range,
+      prefs.tails,
+      colours,
+    ],
+  );
 
   useEffect(() => {
     const el = canvas.current?.parentElement;
@@ -253,6 +287,7 @@ function FallingCanvas({
         userFingers,
         ...(suggested ? { suggested } : {}),
         ...(chords ? { chords } : {}),
+        hands: handLayerList,
         selected: selectedNote,
         expected,
         played,
@@ -267,6 +302,18 @@ function FallingCanvas({
       el.dataset['blocks'] = playing
         ? ''
         : drawn.blocks.map((b) => `${String(b.pitch)}:${String(b.x)}:${String(b.y)}`).join(' ');
+      el.dataset['hands'] = playing
+        ? ''
+        : JSON.stringify(
+            drawn.hands.map((h) => ({
+              side: h.side,
+              tips: Array.from(h.x, (x, f) => ({
+                finger: f + 1,
+                x: Math.round(x),
+                down: (h.pose.dip[f] ?? 0) > 0.5,
+              })),
+            })),
+          );
       el.dataset['position'] = position.toFixed(3);
       el.dataset['fingers'] = String(drawn.fingers);
       el.dataset['expected'] = [...expected].join(' ');
@@ -299,6 +346,7 @@ function FallingCanvas({
     userFingers,
     suggested,
     chords,
+    handLayerList,
     selectedNote,
     expected,
     played,
@@ -523,10 +571,13 @@ export function PlayAlong({
     () => (perf ? (leftOut ? perf.notes.filter((n) => !leftOut.has(n)) : perf.notes) : null),
     [perf, leftOut],
   );
-  const suggested = useMemo(() => {
-    if (!playable || !lanes || !suggestOn) return null;
+  const pianoPlay = perf !== undefined && (prefs.playOn ?? instrumentFor(perf.staves)) === 'piano';
+  const handsOn = pianoPlay && prefs.hands;
+  const fingerGuess = useMemo(() => {
+    if (!playable || !lanes || !(suggestOn || handsOn)) return null;
     return suggestBySide(playable, (n) => sideOfNote(lanes, n));
-  }, [playable, lanes, suggestOn]);
+  }, [playable, lanes, suggestOn, handsOn]);
+  const suggested = suggestOn ? fingerGuess : null;
   const chordsOn = prefs.chords;
   const chords = useMemo(() => {
     if (!perf || !playable || !lanes || !chordsOn) return null;
@@ -1414,6 +1465,21 @@ export function PlayAlong({
           />
           {strings.playAlong.suggest}
         </label>
+        {pianoPlay && (
+          <label className="playalong-field" title={tips.playAlong.showHands}>
+            <input
+              type="checkbox"
+              checked={prefs.hands}
+              data-testid="playalong-hands"
+              onChange={(e) => {
+                const hands = e.target.checked;
+                console.info('dewidebug hands shown', { on: hands });
+                updatePrefs((p) => ({ ...p, hands }));
+              }}
+            />
+            {strings.playAlong.showHands}
+          </label>
+        )}
         <label className="playalong-field" title={tips.playAlong.chordNames}>
           <input
             type="checkbox"
@@ -1536,7 +1602,7 @@ export function PlayAlong({
       <div className="playalong-parts playalong-settings" aria-label={tips.playAlong.parts}>
         <Choice
           label={strings.playAlong.hands}
-          title={tips.playAlong.hands}
+          title={tips.playAlong.showHands}
           value={prefs.byHand === null ? 'auto' : prefs.byHand ? 'hands' : 'parts'}
           options={(['auto', 'parts', 'hands'] as const).map((m) => ({
             value: m,
@@ -1747,6 +1813,8 @@ export function PlayAlong({
         userFingers={userFingers}
         suggested={suggested}
         chords={chords}
+        handsOn={handsOn}
+        fingerGuess={fingerGuess}
         selectedNote={picked?.key ?? null}
         onPick={pickNote}
         pickedLabel={picked?.label ?? null}

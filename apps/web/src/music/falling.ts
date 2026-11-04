@@ -10,6 +10,8 @@ import { noteName, pitchName, type KeyRange } from './keys.ts';
 import type { PerfNote, Performance } from './performance.ts';
 import { noteKey } from './model.ts';
 import type { ChordLabel } from './chords.ts';
+import { drawHands } from './hand-draw.ts';
+import type { HandLayer } from './hand-pose.ts';
 
 export const LABEL_PX = 12;
 export const FINGER_PX = 14;
@@ -46,6 +48,7 @@ export interface FallingView {
   userFingers?: ReadonlyMap<string, string>;
   suggested?: ReadonlyMap<PerfNote, number>;
   chords?: readonly ChordLabel[];
+  hands?: readonly HandLayer[];
   selected?: string | null;
   expected?: ReadonlySet<number>;
   played?: ReadonlySet<number>;
@@ -205,6 +208,7 @@ export interface FallingDrawn {
   suggested: number;
   selected: number;
   chords: readonly string[];
+  hands: readonly HandLayer[];
   blocks: readonly { pitch: number; x: number; y: number }[];
 }
 
@@ -476,12 +480,16 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
     }
     marker(k, keyTop + keyHeight * BLACK_KEY_HEIGHT_RATIO - 10, k.pitch);
   }
+  const hands = view.hands ?? [];
+  if (hands.length > 0)
+    drawHands(ctx, hands, position, { keyTop, keyHeight, whiteWidth: layout.whiteWidth });
   return {
     pressed,
     fingers,
     suggested: suggestedDrawn,
     selected: selectedDrawn,
     chords: chordsDrawn,
+    hands,
     blocks,
   };
 }

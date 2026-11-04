@@ -21,6 +21,11 @@ describe('play-along preferences', () => {
     expect(PlayAlongPrefs.parse({ ...older, chords: true }).chords).toBe(true);
   });
 
+  it('read from before the hands as showing them, and keep them off when switched off', () => {
+    expect(PlayAlongPrefs.parse(older).hands).toBe(true);
+    expect(PlayAlongPrefs.parse({ ...older, hands: false }).hands).toBe(false);
+  });
+
   it('have the same defaults as an empty parse of the older shape', () => {
     expect(PlayAlongPrefs.parse({ ...older, muted: [], position: 0 })).toEqual(DEFAULT_PLAY_ALONG);
   });

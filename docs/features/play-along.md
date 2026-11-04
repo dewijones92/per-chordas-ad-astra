@@ -87,6 +87,13 @@ keyboard from above, like the bird's-eye piano videos.
   C/E, Bdim, Gsus4) on a sticker at the left edge of the falling notes where it starts, one chord a bar (a waltz bass
   and two chords read as one), spelled for the key it now sounds in. Bars that are not a chord show nothing
   ([ADR 0023](../adr/0023-chord-names.md)).
+- **🖐️ Show hands** (on to start with, remembered per file, piano only): two see-through hands drawn over the
+  keyboard at the bottom of the falling notes, right hand violet and left hand teal, with the finger numbers on the
+  fingertips. They glide to each new position (a shift, a jump, the thumb passing under) shortly before the notes
+  arrive, a pressing finger dips and lights up, a stretched chord spreads the fingers, and a hand with nothing to
+  play fades until its next note. The fingers are exactly the numbers on the falling notes (yours in red, the
+  file's, then the 🤖 suggestion, which is still used for the hands when its grey numbers are switched off). The
+  notes land on the fingertips and nothing is drawn above the keys ([ADR 0029](../adr/0029-hands-over-the-keyboard.md)).
 - **✂️ Thin octaves** (by hand only, on to start with): where the tune is written in octaves, as guitar music
   often is, the lower copy is left out (not drawn, not played, not on the grand staff), so in Gran Vals bars 18–21
   the right hand plays the tune and the left hand bass then chords instead of the right hand stretching an octave

@@ -8,6 +8,7 @@ export interface StaffColour {
 
 const RIGHT: StaffColour = { fill: '#6d3df2', edge: '#4b22c9', glow: '#ece5ff' };
 const LEFT: StaffColour = { fill: '#13b9a6', edge: '#0b7f72', glow: '#d9f7f2' };
+export const HAND_COLOURS = { right: RIGHT, left: LEFT } as const;
 const OTHERS: readonly StaffColour[] = [
   { fill: '#ff5d73', edge: '#c9384c', glow: '#ffe6ea' },
   { fill: '#3a8dff', edge: '#1f62c4', glow: '#dcebff' },

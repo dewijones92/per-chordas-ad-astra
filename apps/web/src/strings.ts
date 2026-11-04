@@ -273,6 +273,7 @@ export const strings = {
       waited: (seconds: number) => `⏳ Waited ${String(seconds)} s`,
       again: '🔄 Start again',
     },
+    showHands: '🖐️ Show hands',
     hardBits: '📌 Hard bits',
     hardBitsFailed: '❌ Saved hard bits could not be loaded:',
     hardBitsEmpty: '💡 Loop a passage, then save it here to come back to it.',
@@ -477,6 +478,8 @@ export const tips = {
       'The falling notes stop at each note or chord of yours until you play it, then carry on; play on a MIDI keyboard, the on-screen keys or your computer keyboard. With nothing muted you play every note you can see; mute a hand to play just that one, and a hidden hand is left to the app',
     waitResult: 'How that went: notes right first time, wrong notes and time spent waiting',
     waitInputs: 'Where your playing comes from',
+    showHands:
+      'Two see-through hands drawn over the keyboard that glide to each new position, with the finger numbers on the fingertips, and a finger that dips and lights up when it presses; the fingers are the same ones as the numbers on the falling notes',
     suggest:
       'Grey finger numbers worked out by the app wherever neither the file nor you has given one; red numbers always win',
     learnKey:
