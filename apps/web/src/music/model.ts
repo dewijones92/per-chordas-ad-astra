@@ -98,6 +98,10 @@ export interface ScoreModel {
   warnings: string[];
 }
 
+export function noteKey(n: Pick<ScoreNote, 'staff' | 'measure' | 'tick' | 'pitch'>): string {
+  return `s${String(n.staff)}m${String(n.measure)}t${String(Math.round(n.tick))}p${String(n.pitch)}`;
+}
+
 export const DEFAULT_BPM = 120;
 export const DEFAULT_VELOCITY = 80;
 

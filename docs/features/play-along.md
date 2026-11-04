@@ -37,6 +37,9 @@ keyboard from above, like the bird's-eye piano videos.
   clearly piano (⚠️), from the three clues a file carries: the instrument it names, its layout (one part on two joined
   staves, single staves, guitar tab) and its fingering marks by kind; ❓ explains. Piano fingering in the file shows
   as red numbers on the stave and on the falling notes ([ADR 0021](../adr/0021-fingering.md)).
+- **✋ Your fingering**: click a falling note and press 1–5 (Backspace clears, Esc lets go). It shows as a red number
+  on the note, replaces the file's own mark, and is saved to GitHub for everyone who opens the piece
+  ([ADR 0021](../adr/0021-fingering.md)).
 - **🔭 Look ahead** (Dewi, 4 Nov 2026: "zoom out and see quite a lot"): how many seconds the falling notes show, from
   1 to 20 (3 to start), by − / + on the play bar or Ctrl + scroll over the falling notes, which leaves the PDF's zoom
   alone. Note names stay 12 px however far you zoom out: on a note too thin to hold one, the name sits just above it,

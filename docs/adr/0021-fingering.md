@@ -31,6 +31,16 @@ red numbers on the notes. The readers dropped fingering entirely.
   `fing` class). Guitar fingering is counted in the check but not drawn on the falling notes, where it would mislead
   a pianist.
 
+- **Your own fingering** (Dewi: click a note, press 1–5, red; shared between the people, like drawings): click a
+  falling note (a click, not a drag, which still scrubs), press **1–5**; Backspace, Delete or 0 clears it and Esc lets
+  go. It replaces the file's mark on that note. It is stored per music file in `fingering.json` in the data repo,
+  keyed by the **written** note (`s<staff>m<measure>t<tick>p<pitch>`), so it follows the note through transposing,
+  speed, ✂️ thinning and hiding a hand. Each keypress saves just that note (never the whole file), and the commit
+  says which: "Finger 3 on B4 in bar 1 of 'Gran Vals' (gv.mscz)". The hint showing which note is picked floats over
+  the falling notes so nothing above them moves.
+
 ## Consequences
 
-- Your own fingering (next) goes on top of the file's, keyed to the same written note.
+- Fingering added by clicking the stave, and your fingering drawn on the stave, are a follow-up; today your numbers
+  show on the falling notes (the file's show on both).
+- If the music file is replaced by a different edition, keys that match no note are simply not drawn.

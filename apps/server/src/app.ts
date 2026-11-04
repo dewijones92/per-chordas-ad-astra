@@ -189,6 +189,10 @@ export function createApp(deps: AppDeps): Hono {
   );
 
   api.get('/pieces/:id/loops', async (c) => c.json(await repo.getLoops(slug(c))));
+  api.get('/pieces/:id/fingering', async (c) => c.json(await repo.getFingering(slug(c))));
+  api.put('/pieces/:id/fingering/:file', async (c) =>
+    c.json(await repo.putFinger(slug(c), file(c), await c.req.json())),
+  );
   api.get('/pieces/:id/hard-bits', async (c) => c.json(await repo.getHardBits(slug(c), person(c))));
   api.put('/pieces/:id/hard-bits/:file/:bit/best', async (c) =>
     c.json(

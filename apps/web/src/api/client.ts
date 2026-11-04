@@ -3,7 +3,10 @@ import {
   type PdfImportRequest,
   Health,
   Loops,
+  FileFingering,
+  Fingering,
   HardBits,
+  type FingerChange,
   type HardBit,
   MusicRef,
   type Loop,
@@ -140,6 +143,16 @@ export const api = {
         `/api/pieces/${enc(id)}/hard-bits/${enc(file)}/${enc(bit)}/best`,
         HardBits,
         jsonInit('PUT', { bestSpeed }),
+      ),
+    ),
+  getFingering: (id: string) => request(`/api/pieces/${enc(id)}/fingering`, Fingering),
+  putFinger: (id: string, file: string, change: FingerChange) =>
+    tracked(
+      'fingering',
+      request(
+        `/api/pieces/${enc(id)}/fingering/${enc(file)}`,
+        FileFingering,
+        jsonInit('PUT', change),
       ),
     ),
   getSetlists: () => request('/api/setlists', Setlists),

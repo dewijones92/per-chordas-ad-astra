@@ -2,9 +2,11 @@ import type { StaffColour } from './colours.ts';
 import { keyboardLayout, keyForPitch, type KeyboardLayout } from './keyboard.ts';
 import { noteName, pitchName, type KeyRange } from './keys.ts';
 import type { PerfNote, Performance } from './performance.ts';
+import { noteKey } from './model.ts';
 
 export const LABEL_PX = 12;
 export const FINGER_PX = 14;
+const MAX_REPORTED_BLOCKS = 64;
 export const FINGER_COLOUR = '#d7263d';
 export const KEYBOARD_SHARE = 0.2;
 export const MAX_KEYBOARD_HEIGHT = 130;
@@ -27,6 +29,8 @@ export interface FallingView {
   loop: { start: number; end: number } | null;
   names: { flats: boolean } | null;
   lookAhead: number;
+  userFingers?: ReadonlyMap<string, string>;
+  selected?: string | null;
   width: number;
   height: number;
 }
@@ -161,14 +165,64 @@ function drawFinger(
 export interface FallingDrawn {
   pressed: ReadonlyMap<number, string>;
   fingers: number;
+  selected: number;
+  blocks: readonly { pitch: number; x: number; y: number }[];
 }
 
-export function fingerOf(n: PerfNote): string | null {
-  return n.source?.finger?.kind === 'piano' ? n.source.finger.text : null;
+export function fingerOf(n: PerfNote, user?: ReadonlyMap<string, string>): string | null {
+  const source = n.source;
+  if (!source) return null;
+  return (
+    user?.get(noteKey(source)) ?? (source.finger?.kind === 'piano' ? source.finger.text : null)
+  );
+}
+
+interface Block {
+  key: NonNullable<ReturnType<typeof keyForPitch>>;
+  keyUp: number;
+  yBottom: number;
+  h: number;
+  x: number;
+  w: number;
+}
+
+function blockOf(view: FallingView, g: Geometry, n: PerfNote): Block | null {
+  const key = keyForPitch(g.layout, n.pitch + view.transpose, view.range);
+  if (!key) return null;
+  const yOf = (t: number) => g.notesHeight - (t - view.position) * g.pxPerSecond;
+  const keyUp = keyUpAt(n, view.tails);
+  const yBottom = yOf(n.start);
+  return {
+    key,
+    keyUp,
+    yBottom,
+    h: Math.max(4, yBottom - yOf(keyUp) - 1),
+    x: key.x + 1,
+    w: Math.max(3, key.width - 2),
+  };
+}
+
+export function noteAt(view: FallingView, px: number, py: number): PerfNote | null {
+  const g = geometry(view);
+  const top = view.position + g.notesHeight / Math.max(1, g.pxPerSecond);
+  let hit: PerfNote | null = null;
+  for (const n of visibleNotes(view.perf.notes, view.position, top, longestOf(view.perf))) {
+    if (view.hidden.has(view.laneOf(n))) continue;
+    const b = blockOf(view, g, n);
+    if (
+      b &&
+      px >= b.x - 2 &&
+      px <= b.x + b.w + 2 &&
+      py >= b.yBottom - b.h - 2 &&
+      py <= b.yBottom + 2
+    )
+      hit = n;
+  }
+  return hit;
 }
 
 export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): FallingDrawn {
-  const { width, height, perf, position, transpose, range } = view;
+  const { width, height, perf, position, transpose } = view;
   const g = geometry(view);
   const { layout, notesHeight, pxPerSecond } = g;
   const longest = longestOf(perf);
@@ -218,18 +272,21 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
   const notes = visibleNotes(perf.notes, position, top, longest);
   const labelTops = new Map<number, number>();
   let fingers = 0;
+  let selectedDrawn = 0;
+  const blocks: { pitch: number; x: number; y: number }[] = [];
   for (const n of notes) {
     if (view.hidden.has(view.laneOf(n))) continue;
-    const key = keyForPitch(layout, n.pitch + transpose, range);
-    if (!key) continue;
+    const block = blockOf(view, g, n);
+    if (!block) continue;
     const colour = view.colours[view.laneOf(n)];
     if (!colour) continue;
-    const keyUp = keyUpAt(n, view.tails);
-    const yTop = yOf(keyUp);
-    const yBottom = yOf(n.start);
-    const h = Math.max(4, yBottom - yTop - 1);
-    const x = key.x + 1;
-    const w = Math.max(3, key.width - 2);
+    const { key, keyUp, yBottom, h, x, w } = block;
+    if (blocks.length < MAX_REPORTED_BLOCKS)
+      blocks.push({
+        pitch: n.pitch,
+        x: Math.round(x + w / 2),
+        y: Math.round(yBottom - Math.min(h, 40) / 2),
+      });
     const sounding = n.start <= position && keyUp > position;
     const alpha = view.muted.has(view.laneOf(n)) ? 0.35 : 1;
     if (keyUp < n.end) {
@@ -248,10 +305,13 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
     roundRect(ctx, x, yBottom - h, w, h, Math.min(6, w / 3));
     ctx.fillStyle = sounding ? colour.edge : colour.fill;
     ctx.fill();
-    ctx.strokeStyle = '#1d1533';
-    ctx.lineWidth = 1.5;
+    const chosen =
+      view.selected != null && n.source !== undefined && noteKey(n.source) === view.selected;
+    ctx.strokeStyle = chosen ? FINGER_COLOUR : '#1d1533';
+    ctx.lineWidth = chosen ? 4 : 1.5;
     ctx.stroke();
-    const finger = fingerOf(n);
+    if (chosen) selectedDrawn += 1;
+    const finger = fingerOf(n, view.userFingers);
     const stack = (finger ? FINGER_PX + 2 : 0) + (view.names ? LABEL_PX : 0);
     const onBlock = h >= stack + 4 && w >= LABEL_PX;
     let baseline = onBlock ? yBottom - 2 : yBottom - h - 1;
@@ -314,5 +374,5 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
       ctx.stroke();
     }
   }
-  return { pressed, fingers };
+  return { pressed, fingers, selected: selectedDrawn, blocks };
 }

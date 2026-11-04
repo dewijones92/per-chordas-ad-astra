@@ -11,6 +11,7 @@ import {
   roundSpeed,
   speedPercent,
   stepLookAhead,
+  type FingerText,
   type HardBit,
   type MusicRef,
   type PlayAlongPrefs,
@@ -27,7 +28,7 @@ import {
 import { api } from '../api/client.ts';
 import { DrawingStatus } from '../annotate/DrawingStatus.tsx';
 import { Toolbar } from '../annotate/Toolbar.tsx';
-import { shortcutOf } from '../ui/shortcuts.ts';
+import { fingerKeyOf, shortcutOf } from '../ui/shortcuts.ts';
 import { useAnnotations } from '../annotate/use-annotations.ts';
 import { claimDrawing, useDrawing } from '../annotate/use-drawing.ts';
 import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
@@ -41,24 +42,26 @@ import { PercentInput } from '../ui/PercentInput.tsx';
 import { rememberPlayAlong, savedPlayAlong, scoreKey } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
 import { staffColours } from './colours.ts';
-import { drawFalling, geometry, keyUpAt } from './falling.ts';
-import { capoFor, fitRange, keyName, signedSemitones, transposeFifths } from './keys.ts';
+import { drawFalling, geometry, keyUpAt, noteAt, type FallingView } from './falling.ts';
+import { capoFor, fitRange, keyName, noteName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip } from './BarStrip.tsx';
 import { checkFile } from './file-check.ts';
 import { FileCheckLine } from './FileCheckLine.tsx';
 import { ResizeHandle } from './ResizeHandle.tsx';
 import { parseScoreText, unpackScore } from './load.ts';
-import { instrumentFor } from './model.ts';
+import { instrumentFor, noteKey } from './model.ts';
 import { assignHands, handLanes, LEFT_OUT, partLanes, thinOctaves, type Lanes } from './hands.ts';
 import { grandStaff, scoreHands } from './grand-staff.ts';
 import { DRAW_MIN_ZOOM, Notation } from './Notation.tsx';
 import { toMusicXml } from './to-musicxml.ts';
 import { download, exportName, performanceToMidi, transposeMusicXml } from './export.ts';
-import { barAt, buildPerformance, type Performance } from './performance.ts';
+import { barAt, buildPerformance, type Performance, type PerfNote } from './performance.ts';
 import { PianoPlayer, type PlayerEvent } from './player.ts';
 import { PlayAlongLog } from './practice-session.ts';
 import { clampSpeed } from './transport.ts';
 import './music.css';
+
+const CLICK_SLOP = 4;
 
 function clock(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
@@ -116,6 +119,10 @@ function FallingCanvas({
   mutedLanes,
   onScrub,
   onLookAhead,
+  userFingers,
+  selectedNote,
+  onPick,
+  pickedLabel,
 }: {
   perf: Performance;
   player: PianoPlayer | null;
@@ -128,7 +135,12 @@ function FallingCanvas({
   mutedLanes: readonly number[];
   onScrub: (seconds: number) => void;
   onLookAhead: Dispatch<SetStateAction<number>>;
+  userFingers: ReadonlyMap<string, string>;
+  selectedNote: string | null;
+  onPick: (note: PerfNote | null) => void;
+  pickedLabel: string | null;
 }) {
+  const lastView = useRef<FallingView | null>(null);
   const canvas = useRef<HTMLCanvasElement | null>(null);
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const canvasRef = useCallback((el: HTMLCanvasElement | null) => {
@@ -183,7 +195,7 @@ function FallingCanvas({
     const draw = () => {
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       const position = player?.position() ?? prefs.position;
-      const drawn = drawFalling(ctx, {
+      const view: FallingView = {
         perf,
         position,
         transpose,
@@ -196,9 +208,17 @@ function FallingCanvas({
         loop,
         names,
         lookAhead: prefs.lookAhead,
+        userFingers,
+        selected: selectedNote,
         width: size.width,
         height: size.height,
-      });
+      };
+      lastView.current = view;
+      const drawn = drawFalling(ctx, view);
+      el.dataset['selected'] = String(drawn.selected);
+      el.dataset['blocks'] = playing
+        ? ''
+        : drawn.blocks.map((b) => `${String(b.pitch)}:${String(b.x)}:${String(b.y)}`).join(' ');
       el.dataset['position'] = position.toFixed(3);
       el.dataset['fingers'] = String(drawn.fingers);
       el.dataset['pressed'] = [...drawn.pressed]
@@ -226,9 +246,11 @@ function FallingCanvas({
     size,
     prefs.position,
     prefs.lookAhead,
+    userFingers,
+    selectedNote,
   ]);
 
-  const drag = useRef<{ y: number; position: number } | null>(null);
+  const drag = useRef<{ x: number; y: number; position: number; moved: boolean } | null>(null);
   const pxPerSecond = geometry({
     width: size.width,
     height: size.height,
@@ -238,6 +260,11 @@ function FallingCanvas({
 
   return (
     <div className="playalong-stage">
+      {pickedLabel && (
+        <span className="finger-picked" data-testid="finger-picked">
+          {strings.playAlong.fingerFor(pickedLabel)}
+        </span>
+      )}
       <canvas
         ref={canvasRef}
         className="playalong-canvas"
@@ -250,14 +277,33 @@ function FallingCanvas({
         }}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
-          drag.current = { y: e.clientY, position: player?.position() ?? prefs.position };
+          drag.current = {
+            x: e.clientX,
+            y: e.clientY,
+            position: player?.position() ?? prefs.position,
+            moved: false,
+          };
         }}
         onPointerMove={(e) => {
-          if (!drag.current) return;
-          onScrub(drag.current.position + (e.clientY - drag.current.y) / Math.max(1, pxPerSecond));
+          const d = drag.current;
+          if (!d) return;
+          if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) < CLICK_SLOP) return;
+          d.moved = true;
+          onScrub(d.position + (e.clientY - d.y) / Math.max(1, pxPerSecond));
         }}
-        onPointerUp={() => {
+        onPointerUp={(e) => {
+          const d = drag.current;
           drag.current = null;
+          if (!d || d.moved || !lastView.current) return;
+          const box = e.currentTarget.getBoundingClientRect();
+          const hit = noteAt(lastView.current, e.clientX - box.left, e.clientY - box.top);
+          console.info('dewidebug falling note picked', {
+            x: Math.round(e.clientX - box.left),
+            y: Math.round(e.clientY - box.top),
+            pitch: hit?.pitch ?? null,
+            bar: hit?.bar ?? null,
+          });
+          onPick(hit);
         }}
       />
     </div>
@@ -614,8 +660,70 @@ export function PlayAlong({
     [updatePrefs],
   );
 
+  const fingering = useAsync(() => api.getFingering(pieceId), `fingering:${pieceId}`);
+  const { setData: setFingeringData, reload: reloadFingering } = fingering;
+  const fingeringLoaded = fingering.data !== undefined;
+  const fileFingers = fingering.data?.files[music.file];
+  const userFingers = useMemo(() => new Map(Object.entries(fileFingers ?? {})), [fileFingers]);
+  const [picked, setPicked] = useState<{ key: string; label: string } | null>(null);
+  const pickNote = useCallback(
+    (n: PerfNote | null) => {
+      if (!n?.source || !perf) {
+        setPicked(null);
+        return;
+      }
+      const flats = perf.keyFifths < 0;
+      const label = units.noteInBar(
+        noteName(n.source.pitch, flats),
+        perf.bars[n.bar]?.number ?? n.source.measure + 1,
+      );
+      setPicked({ key: noteKey(n.source), label });
+    },
+    [perf],
+  );
+  const setFinger = useCallback(
+    (finger: FingerText | null) => {
+      if (!picked) return;
+      if (!fingeringLoaded) {
+        console.warn('dewidebug finger not saved: the saved fingering has not loaded', picked);
+        return;
+      }
+      console.info('dewidebug finger set', { ...picked, finger, file: music.file });
+      const change = { note: picked.key, finger, label: picked.label };
+      setFingeringData((data) => {
+        const { [picked.key]: _was, ...rest } = data?.files[music.file] ?? {};
+        const notes = finger === null ? rest : { ...rest, [picked.key]: finger };
+        return { files: { ...(data?.files ?? {}), [music.file]: notes } };
+      });
+      api.putFinger(pieceId, music.file, change).then(
+        (saved) => {
+          setFingeringData((data) => ({
+            files: { ...(data?.files ?? {}), [music.file]: saved.notes },
+          }));
+        },
+        (error: unknown) => {
+          console.warn('dewidebug finger save failed; reloading the saved fingering', {
+            error: String(error),
+          });
+          reloadFingering();
+        },
+      );
+    },
+    [picked, fingeringLoaded, music.file, pieceId, setFingeringData, reloadFingering],
+  );
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const finger = picked ? fingerKeyOf(e) : null;
+      if (finger) {
+        e.preventDefault();
+        setFinger(finger === 'clear' ? null : finger);
+        return;
+      }
+      if (picked && e.key === 'Escape') {
+        setPicked(null);
+        return;
+      }
       const shortcut = shortcutOf(e);
       if (shortcut === 'playPause') {
         e.preventDefault();
@@ -638,7 +746,7 @@ export function PlayAlong({
     return () => {
       document.removeEventListener('keydown', onKey);
     };
-  }, [toggle, setSpeed, stepBar, prefs.speed]);
+  }, [toggle, setSpeed, stepBar, prefs.speed, picked, setFinger]);
 
   if (loaded.error) {
     return (
@@ -1404,6 +1512,10 @@ export function PlayAlong({
         mutedLanes={mutedLanes}
         onScrub={seekTo}
         onLookAhead={setLookAhead}
+        userFingers={userFingers}
+        selectedNote={picked?.key ?? null}
+        onPick={pickNote}
+        pickedLabel={picked?.label ?? null}
       />
     </section>
   );

@@ -1,3 +1,4 @@
+import { FINGERS, type FingerText } from '@pcaa/shared';
 import { strings } from '../strings.ts';
 
 export type Shortcut =
@@ -58,11 +59,18 @@ export function shortcutOf(e: KeyboardEvent): Shortcut | null {
   return BINDINGS[e.key.length === 1 ? e.key.toLowerCase() : e.key] ?? null;
 }
 
+export function fingerKeyOf(e: KeyboardEvent): FingerText | 'clear' | null {
+  if (e.ctrlKey || e.metaKey || e.altKey || ownsKey(e.target, e.key)) return null;
+  if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') return 'clear';
+  return (FINGERS as readonly string[]).includes(e.key) ? (e.key as FingerText) : null;
+}
+
 export const KEYS_HELP: readonly string[] = [
   strings.keys.playPause,
   strings.keys.metronome,
   strings.keys.speed,
   strings.keys.bars,
+  strings.keys.fingers,
   strings.keys.pages,
   strings.keys.tempo,
   strings.keys.zoom,

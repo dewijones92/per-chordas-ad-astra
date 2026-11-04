@@ -510,6 +510,23 @@ describe('HTTP API with two people', () => {
     expect((await bests(id, 'a.mscz', WIFE))[0]?.bestSpeed).toBe(0.4);
   });
 
+  it('shares one fingering between people, and refuses a finger outside 1-5', async () => {
+    const id = await pieceWithTwoFiles();
+    const set = await app.request(
+      `/api/pieces/${id}/fingering/a.mscz`,
+      as(DEWI, send('PUT', { note: 's0m0t0p60', finger: '3', label: 'C4 in bar 1' })),
+    );
+    expect(set.status).toBe(200);
+    expect(await set.json()).toEqual({ notes: { s0m0t0p60: '3' } });
+    const bad = await app.request(
+      `/api/pieces/${id}/fingering/a.mscz`,
+      as(DEWI, send('PUT', { note: 's0m0t0p60', finger: '7', label: 'C4' })),
+    );
+    expect(bad.status).toBe(400);
+    const theirs = await app.request(`/api/pieces/${id}/fingering`, as(WIFE));
+    expect(await theirs.json()).toEqual({ files: { 'a.mscz': { s0m0t0p60: '3' } } });
+  });
+
   it("labels replies with the person and refuses a resume push from someone else's browser cache", async () => {
     const mine = await app.request('/api/resume', as(WIFE));
     expect(mine.headers.get('x-person')).toBe('wife.name');

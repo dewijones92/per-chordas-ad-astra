@@ -727,3 +727,77 @@ describe('DataRepo hard bits', () => {
     expect((await repo.getHardBits(piece.id)).files).toEqual({});
   });
 });
+
+describe('DataRepo fingering', () => {
+  let cleanup: () => Promise<void>;
+  let changes: RecordingChanges;
+  let repo: DataRepo;
+  const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]);
+
+  beforeEach(async () => {
+    let dir: string;
+    ({ path: dir, cleanup } = await tempDir());
+    changes = new RecordingChanges();
+    repo = new DataRepo({ dir, changes, log: silentLog });
+  });
+  afterEach(async () => cleanup());
+
+  it('keeps one finger per written note per music file, and says which note in the commit', async () => {
+    const piece = await repo.createPiece({ title: 'Nocturne' });
+    const a = await repo.addMusic(piece.id, 'a.mscz', new Blob([zip]));
+    const b = await repo.addMusic(piece.id, 'b.mscz', new Blob([zip]));
+    await repo.putFinger(piece.id, a.file, {
+      note: 's0m4t9600p70',
+      finger: '3',
+      label: 'B♭4 in bar 5',
+    });
+    expect(changes.descriptions.at(-1)).toBe("Finger 3 on B♭4 in bar 5 of 'Nocturne' (a.mscz)");
+    await repo.putFinger(piece.id, a.file, {
+      note: 's1m0t0p46',
+      finger: '5',
+      label: 'B♭2 in bar 1',
+    });
+    await repo.putFinger(piece.id, b.file, {
+      note: 's0m0t0p60',
+      finger: '1',
+      label: 'C4 in bar 1',
+    });
+    const after = await repo.putFinger(piece.id, a.file, {
+      note: 's0m4t9600p70',
+      finger: '2',
+      label: 'B♭4 in bar 5',
+    });
+    expect(after).toEqual({ notes: { s0m4t9600p70: '2', s1m0t0p46: '5' } });
+    await repo.putFinger(piece.id, a.file, {
+      note: 's1m0t0p46',
+      finger: null,
+      label: 'B♭2 in bar 1',
+    });
+    expect(changes.descriptions.at(-1)).toBe("Clear finger on B♭2 in bar 1 of 'Nocturne' (a.mscz)");
+    expect(await repo.getFingering(piece.id)).toEqual({
+      files: { 'a.mscz': { s0m4t9600p70: '2' }, 'b.mscz': { s0m0t0p60: '1' } },
+    });
+  });
+
+  it('refuses a finger for an unknown file, a made-up note key or a finger outside 1-5', async () => {
+    const piece = await repo.createPiece({ title: 'X' });
+    const a = await repo.addMusic(piece.id, 'a.mscz', new Blob([zip]));
+    await expect(
+      repo.putFinger(piece.id, file('ghost.mscz'), { note: 's0m0t0p60', finger: '1', label: 'C4' }),
+    ).rejects.toThrow(/Unknown music file/);
+    await expect(
+      repo.putFinger(piece.id, a.file, { note: '../evil', finger: '1', label: 'C4' }),
+    ).rejects.toThrow();
+    await expect(
+      repo.putFinger(piece.id, a.file, { note: 's0m0t0p60', finger: '6', label: 'C4' }),
+    ).rejects.toThrow();
+  });
+
+  it('drops a music file’s fingering when the file is removed', async () => {
+    const piece = await repo.createPiece({ title: 'Y' });
+    const a = await repo.addMusic(piece.id, 'a.mscz', new Blob([zip]));
+    await repo.putFinger(piece.id, a.file, { note: 's0m0t0p60', finger: '1', label: 'C4' });
+    await repo.removeFile(piece.id, a.file);
+    expect((await repo.getFingering(piece.id)).files).toEqual({});
+  });
+});

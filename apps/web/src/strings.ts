@@ -48,6 +48,7 @@ export const strings = {
     metronome: '⏱️ M: start or stop the metronome, anywhere',
     speed: '🐢 [ and ]: play-along slower or faster',
     bars: '⏮️ , and .: previous or next bar',
+    fingers: '✋ Click a falling note, then 1 to 5: its finger; Backspace clears it, Esc lets go',
     pages: '📄 ← and →, Page Up and Page Down: turn the page',
     tempo: '⏱️ + and −: metronome tempo, on a score page',
     zoom: '🔍 Ctrl + and Ctrl −, or Ctrl + scroll: zoom',
@@ -184,6 +185,8 @@ export const strings = {
     tails: '🔔 Ringing tails',
     thinOctaves: '✂️ Thin octaves',
     lookAhead: '🔭 Look ahead',
+    fingerFor: (note: string) =>
+      `✋ ${note}: press 1 to 5 for its finger, Backspace to clear, Esc when done`,
     fewerControls: '🔼 Fewer controls',
     moreControls: '🔽 More controls',
     handNames: { right: '🫱 Right hand', left: '🫲 Left hand' },
@@ -536,6 +539,7 @@ export const names = {
 
 export const units = {
   seconds: (n: number) => `${String(n)} s`,
+  noteInBar: (note: string, bar: number) => `${note} in bar ${String(bar)}`,
   loopBars: (from: number, to: number) => `bars ${String(from)}–${String(to)}`,
   ago: {
     justNow: 'just now',

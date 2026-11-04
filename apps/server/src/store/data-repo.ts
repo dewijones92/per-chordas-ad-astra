@@ -14,6 +14,9 @@ import {
   isZip,
   Loop,
   HardBit,
+  type FileFingering,
+  FingerChange,
+  Fingering,
   HardBits,
   HardBitBest,
   speedPercent,
@@ -364,6 +367,11 @@ export class DataRepo {
         await rm(this.path('pieces', id, 'annotations', `${file}.json`), { force: true });
       }
       if (kind === 'music') {
+        const fingering = await this.readFingering(id);
+        if (fingering.files[file]) {
+          const { [file]: _gone, ...kept } = fingering.files;
+          await this.writeJson(this.path('pieces', id, 'fingering.json'), { files: kept });
+        }
         const bits = await this.readHardBits(id);
         if (bits.files[file]) {
           const { [file]: _removed, ...rest } = bits.files;
@@ -496,6 +504,47 @@ export class DataRepo {
       await this.touch(piece, 'loops');
       this.changes.markDirty(`Save loops for ${quote(piece.title)} (${track})`);
       return next;
+    });
+  }
+
+  private async readFingering(id: Slug): Promise<Fingering> {
+    await this.getPiece(id);
+    return readJson(this.path('pieces', id, 'fingering.json'), Fingering, () => ({ files: {} }));
+  }
+
+  async getFingering(id: Slug): Promise<Fingering> {
+    return this.readFingering(id);
+  }
+
+  async putFinger(id: Slug, file: FileName, input: unknown): Promise<FileFingering> {
+    const change = FingerChange.parse(input);
+    return this.locked(`piece:${id}`, async () => {
+      const piece = await this.getPiece(id);
+      if (!piece.music.some((m) => m.file === file)) {
+        throw new RejectedError(`Unknown music file: ${file}`);
+      }
+      const current = await this.readFingering(id);
+      const { [file]: previous = {}, ...others } = current.files;
+      const { [change.note]: was, ...rest } = previous;
+      const notes = change.finger === null ? rest : { ...rest, [change.note]: change.finger };
+      const next: Fingering = {
+        files: Object.keys(notes).length > 0 ? { ...others, [file]: notes } : others,
+      };
+      await this.writeJson(this.path('pieces', id, 'fingering.json'), next);
+      this.log.debug(
+        {
+          file,
+          note: change.note,
+          from: was ?? null,
+          to: change.finger,
+          count: Object.keys(notes).length,
+        },
+        'dewidebug repo finger saved',
+      );
+      this.changes.markDirty(
+        `${change.finger === null ? 'Clear finger' : `Finger ${change.finger}`} on ${change.label} of ${quote(piece.title)} (${file})`,
+      );
+      return { notes };
     });
   }
 

@@ -6,6 +6,7 @@ import {
   FINGER_PX,
   geometry,
   LABEL_PX,
+  noteAt,
   type FallingView,
 } from '../src/music/falling.ts';
 import type { PerfNote, Performance } from '../src/music/performance.ts';
@@ -178,5 +179,59 @@ describe('finger numbers on the falling notes', () => {
       expect(texts.some((t) => t.text === 'p')).toBe(false);
       expect(texts.filter((t) => t.text === 'C')).toHaveLength(1);
     }
+  });
+});
+
+describe('picking a falling note and fingering it', () => {
+  const fingered = {
+    ...note(60, 0, 0.5),
+    source: {
+      staff: 0,
+      measure: 0,
+      pitch: 60,
+      tick: 0,
+      ticks: 480,
+      tieForward: false,
+      grace: false,
+      finger: { text: '3', kind: 'piano' as const },
+    },
+  };
+  const plain = {
+    ...note(67, 1, 1.5),
+    source: {
+      staff: 0,
+      measure: 0,
+      pitch: 67,
+      tick: 960,
+      ticks: 480,
+      tieForward: false,
+      grace: false,
+    },
+  };
+
+  it('finds the note under the pointer, and nothing in empty space', () => {
+    const v = view(perfOf([fingered, plain]), DEFAULT_LOOK_AHEAD);
+    const g = geometry(v);
+    const key = g.layout.keys.find((k) => k.pitch === 60);
+    if (!key) throw new Error('no C4');
+    const y = g.notesHeight - 0.25 * g.pxPerSecond;
+    expect(noteAt(v, key.x + key.width / 2, y)?.pitch).toBe(60);
+    expect(noteAt(v, key.x + key.width / 2, 5)).toBeNull();
+  });
+
+  it('draws your finger in place of the file’s, and outlines the chosen note', () => {
+    const { ctx, texts } = recordingContext();
+    const drawn = drawFalling(ctx, {
+      ...view(perfOf([fingered, plain]), DEFAULT_LOOK_AHEAD),
+      userFingers: new Map([
+        ['s0m0t0p60', '1'],
+        ['s0m0t960p67', '5'],
+      ]),
+      selected: 's0m0t960p67',
+    });
+    expect(texts.map((t) => t.text)).toEqual(expect.arrayContaining(['1', '5']));
+    expect(texts.some((t) => t.text === '3')).toBe(false);
+    expect(drawn.fingers).toBe(2);
+    expect(drawn.selected).toBe(1);
   });
 });
