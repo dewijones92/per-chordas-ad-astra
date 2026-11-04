@@ -1,3 +1,5 @@
+import { LearnKeyToggle, useLearnKey } from '../music/LearnKeyToggle.tsx';
+import { startInLearnKey } from '../music/learn-key.ts';
 import {
   LIBRARY_SORTS,
   LibrarySort,
@@ -50,6 +52,7 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
     music: null,
   });
   const [busy, setBusy] = useState(false);
+  const [learnKey, setLearnKey] = useLearnKey();
   const [error, setError] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
 
@@ -94,7 +97,8 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
         setUploaded((u) => ({ ...u, score: file }));
       }
       if (music && uploaded.music !== music) {
-        await api.uploadMusic(id, music);
+        const ref = await api.uploadMusic(id, music);
+        if (learnKey) await startInLearnKey(id, ref.file, music);
         setUploaded((u) => ({ ...u, music }));
       }
       console.info('dewidebug new piece created', {
@@ -182,6 +186,7 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
           />
         </label>
         {musicNote && <p className="muted small-print">{musicNote}</p>}
+        <LearnKeyToggle on={learnKey} onChange={setLearnKey} />
         {error && <p className="error">{error}</p>}
         {error && createdId && (
           <p className="muted">

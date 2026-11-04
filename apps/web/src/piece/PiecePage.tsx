@@ -1,3 +1,5 @@
+import { LearnKeyToggle, useLearnKey } from '../music/LearnKeyToggle.tsx';
+import { startInLearnKey } from '../music/learn-key.ts';
 import {
   AUDIO_ACCEPT,
   kindOfFile,
@@ -401,6 +403,7 @@ function TagsField({ piece, onPatch }: { piece: Piece; onPatch: Patcher }) {
 
 export function PiecePage({ id }: { id: string }) {
   const piece = useAsync(() => api.getPiece(id), `piece:${id}`);
+  const [learnKey, setLearnKey] = useLearnKey();
   const freshResume = useAsync(() => pullResume(800), `resume:${id}`);
   const sessions = useAsync(() => api.listSessions(id), `sessions:${id}`);
   const setlists = useAsync(() => api.getSetlists(), 'setlists');
@@ -686,10 +689,12 @@ export function PiecePage({ id }: { id: string }) {
                 testId="upload-music"
                 onFile={async (f) => {
                   const ref = await api.uploadMusic(current.id, f);
+                  if (learnKey) await startInLearnKey(current.id, ref.file, f);
                   piece.reload();
                   chooseView(scoreFile ? 'split' : 'notes', ref.file);
                 }}
               />
+              <LearnKeyToggle on={learnKey} onChange={setLearnKey} />
             </div>
             <p className="muted small-print">
               {names.pianoCredit}{' '}

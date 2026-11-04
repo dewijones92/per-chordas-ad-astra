@@ -11,6 +11,9 @@ updated: 2026-11-04
   for Play-along. Picking a music file fills an empty title and artist from it. Creates and opens the piece;
   with music and no PDF it opens in Play-along. A failed upload keeps the created piece and does not upload
   a file twice on retry.
+- **🎵 Start in C major or A minor** (in the dialog and beside ➕ Add music on a piece): when ticked, new music opens
+  in C major, or A minor if it is in a minor key, by the nearest shift; remembered per person, off until ticked
+  ([ADR 0013](../adr/0013-where-preferences-live.md)).
 - **Search** (`/` focuses it): MiniSearch over title, artist, tags and notes, with prefix matching and
   small typos forgiven; title matches rank first.
 - **Tag chips**: a piece must have every selected tag.

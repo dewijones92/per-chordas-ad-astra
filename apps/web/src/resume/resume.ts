@@ -246,6 +246,14 @@ export function savedViewMode(): ViewMode {
   return legacy(LEGACY_VIEW_KEY, (raw) => ViewMode.safeParse(raw).data ?? null) ?? 'page';
 }
 
+export function rememberLearnKey(on: boolean): void {
+  updateResume((s) => ({ ...s, learnKey: { on, at: now() } }));
+}
+
+export function savedLearnKey(): boolean {
+  return readResume().learnKey?.on ?? false;
+}
+
 export function rememberLibrarySort(choice: SortChoice): void {
   updateResume((s) => ({ ...s, librarySort: { ...choice, at: now() } }));
 }

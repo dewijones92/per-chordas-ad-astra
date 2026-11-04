@@ -2,7 +2,7 @@
 title: Metronome settings in the data repo; view preferences in the resume state
 status: accepted
 date: 2026-10-14
-updated: 2026-10-14
+updated: 2026-11-04
 ---
 
 # 0013 · Where preferences live
@@ -29,6 +29,12 @@ commit for every zoom step and noise in the data repo's history, which the spec 
   `pcaa.score.view.v1`, `pcaa.library.sort.v1`), so the first device to load after the change carries
   its preferences over.
 - Search text, tag chips and the selected setlist stay unsaved: a fresh start is expected there.
+
+- **🎵 Start in C major or A minor** (Dewi, 4 Nov 2026: he prefers to learn in C major or A minor) is a per-person
+  choice in the resume state (`learnKey`), off until ticked and then remembered. When it is on, music added through
+  the New piece dialog or ➕ Add music has its Play-along key set to C major (A minor for a minor key) by the
+  nearest way, at most six semitones (`learnKeyShift` in `music/learn-key.ts`); the file is untouched and 🎵 Key can
+  put it back. Off by default, because a person who has not chosen it should see the key as written.
 
 ## Consequences
 

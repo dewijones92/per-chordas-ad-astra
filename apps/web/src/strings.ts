@@ -188,6 +188,7 @@ export const strings = {
     tails: '🔔 Ringing tails',
     thinOctaves: '✂️ Thin octaves',
     lookAhead: '🔭 Look ahead',
+    learnKey: '🎵 Start in C major or A minor',
     fingerFor: (note: string) =>
       `✋ ${note}: press 1 to 5 for its finger, Backspace to clear, Esc when done`,
     fewerControls: '🔼 Fewer controls',
@@ -391,6 +392,8 @@ export const tips = {
       'Drag to give the stave or the falling notes more room; double-click to go back to automatic',
     suggest:
       'Grey finger numbers worked out by the app wherever neither the file nor you has given one; red numbers always win',
+    learnKey:
+      'When music is added, set its key to C major (or A minor for a minor key) by the nearest way; the file is not changed and the Key control can put it back',
     compact: 'Hide or show the settings rows, to give the falling notes more room',
     barStrip: 'Bars: click to jump, drag across bars to loop them',
     play: 'Play or pause (K)',
