@@ -19,6 +19,7 @@ import {
   SettingsFile,
   Setlists,
   SyncStatus,
+  TodayFacts,
   TrackRef,
   type MetronomeSave,
   type NewPracticeSession,
@@ -170,6 +171,7 @@ export const api = {
   getSetlists: () => request('/api/setlists', Setlists),
   putSetlists: (setlists: Setlists) =>
     tracked('setlists', request('/api/setlists', Setlists, jsonInit('PUT', setlists))),
+  getToday: () => request('/api/today', TodayFacts),
   listSessions: (pieceId?: string) =>
     request(
       pieceId ? `/api/sessions?pieceId=${enc(pieceId)}` : '/api/sessions',

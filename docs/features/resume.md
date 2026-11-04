@@ -1,7 +1,7 @@
 ---
 title: Resume where you left off
 status: shipped
-updated: 2026-10-30
+updated: 2026-11-04
 ---
 
 # Resume where you left off
@@ -17,6 +17,9 @@ Dewi, 7 Oct 2026: _"I always wanna resume from where I left off."_
   playing, and when the page closes).
 - The practice timer: an unfinished session comes back **paused** at its time so far, so a closed laptop
   never logs hours you did not practise.
+
+- **Practise today** keeps two stamps here (ADR [0025](../adr/0025-practise-today.md)): when each hard bit's
+  loop was last played (`bitsTried`) and which suggestions you marked done for today (`todayDone`).
 
 **Per person** (ADR 0019): with `OWNER_PERSON` set, each person signed in through the gate has their own resume
 state, so their last piece, play-along settings and zoom are their own.

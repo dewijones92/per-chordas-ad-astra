@@ -5,6 +5,7 @@ import { emptyAnnotations, FileName, Slug, type Annotations } from '@pcaa/shared
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { changedPages, DataRepo, RejectedError } from '../src/store/data-repo.ts';
 import { NotFoundError } from '../src/store/files.ts';
+import { personOf } from '../src/person.ts';
 import { silentLog, tempDir } from './helpers.ts';
 
 class RecordingChanges {
@@ -981,5 +982,81 @@ describe('DataRepo fingering', () => {
     await repo.putFinger(piece.id, a.file, { note: 's0m0t0p60', finger: '1', label: 'C4' });
     await repo.removeFile(piece.id, a.file);
     expect((await repo.getFingering(piece.id)).files).toEqual({});
+  });
+});
+
+describe('DataRepo practise-today facts', () => {
+  let cleanup: () => Promise<void>;
+  let repo: DataRepo;
+  const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]);
+  const dewi = personOf('dewi@example.com', 'dewi');
+  const wife = personOf('wife@example.com', 'dewi');
+  const bit = { id: 'b1', name: 'The run', from: 11, to: 15, fromBar: 12, toBar: 16 };
+
+  beforeEach(async () => {
+    let dir: string;
+    ({ path: dir, cleanup } = await tempDir());
+    repo = new DataRepo({ dir, changes: new RecordingChanges(), log: silentLog });
+  });
+  afterEach(async () => cleanup());
+
+  it('lists only pieces that are pinned or have hard bits, with the asker’s own numbers', async () => {
+    const vals = await repo.createPiece({ title: 'Gran Vals', targetBpm: 120 });
+    const music = await repo.addMusic(vals.id, 'a.mscz', new Blob([zip]));
+    await repo.putFileHardBits(vals.id, music.file, [{ ...bit, bestSpeed: 0.55 }], dewi);
+    await repo.putHardBitBest(vals.id, music.file, 'b1', { bestSpeed: 0.9 }, wife);
+    await repo.createPiece({ title: 'Plain' });
+    const pinned = await repo.createPiece({ title: 'Pinned one' });
+    await repo.updatePiece(pinned.id, { pinned: true });
+    await repo.addSession(
+      {
+        pieceId: vals.id,
+        startedAt: '2026-10-30T10:00:00.000Z',
+        durationSec: 600,
+        bpm: 90,
+        note: '',
+      },
+      dewi,
+    );
+    await repo.addSession(
+      {
+        pieceId: vals.id,
+        startedAt: '2026-11-01T10:00:00.000Z',
+        durationSec: 600,
+        bpm: 100,
+        note: '',
+      },
+      wife,
+    );
+
+    const mine = await repo.getTodayFacts(dewi);
+    expect(mine.pieces.map((p) => p.id)).toEqual(['gran-vals', 'pinned-one']);
+    expect(mine.pieces[0]).toMatchObject({
+      title: 'Gran Vals',
+      pinned: false,
+      targetBpm: 120,
+      lastPractisedAt: Date.parse('2026-10-30T10:00:00.000Z'),
+      bestBpm: 90,
+      bits: [
+        { file: 'a.mscz', id: 'b1', name: 'The run', fromBar: 12, toBar: 16, bestSpeed: 0.55 },
+      ],
+    });
+    expect(mine.pieces[1]).toMatchObject({
+      pinned: true,
+      lastPractisedAt: null,
+      bestBpm: null,
+      bits: [],
+    });
+
+    const hers = await repo.getTodayFacts(wife);
+    expect(hers.pieces[0]).toMatchObject({
+      lastPractisedAt: Date.parse('2026-11-01T10:00:00.000Z'),
+      bestBpm: 100,
+      bits: [{ bestSpeed: 0.9 }],
+    });
+  });
+
+  it('is empty for an empty library', async () => {
+    expect(await repo.getTodayFacts(dewi)).toEqual({ pieces: [] });
   });
 });

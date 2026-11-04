@@ -14,7 +14,7 @@ import {
   type PracticeSession,
 } from '@pcaa/shared';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useLocation } from 'wouter';
+import { Link, useLocation, useSearch } from 'wouter';
 import { api } from '../api/client.ts';
 import { Toolbar } from '../annotate/Toolbar.tsx';
 import { DrawingStatus } from '../annotate/DrawingStatus.tsx';
@@ -420,6 +420,13 @@ export function PiecePage({ id }: { id: string }) {
     [id],
   );
   const [, navigate] = useLocation();
+  const search = useSearch();
+  const [linkedBit, setLinkedBit] = useState(() => {
+    const params = new URLSearchParams(search);
+    const bit = params.get('bit');
+    const file = params.get('file');
+    return bit && file ? { bit, file } : null;
+  });
   const metronome = useMetronome();
   const current = piece.data;
 
@@ -464,7 +471,13 @@ export function PiecePage({ id }: { id: string }) {
   const lists = setlists.data?.setlists ?? [];
   const pieceSessions = sessions.data ?? [];
   const totalSec = pieceSessions.reduce((sum, s) => sum + s.durationSec, 0);
-  const wantedView = chosenView ?? savedPieceView(id);
+  const settledView = chosenView ?? savedPieceView(id);
+  const wantedView = linkedBit
+    ? {
+        mode: settledView?.mode === 'notes' ? ('notes' as const) : ('split' as const),
+        file: linkedBit.file,
+      }
+    : settledView;
   const musicRef =
     current.music.find((m) => m.file === wantedView?.file) ?? current.music[0] ?? null;
   const viewMode: PieceView = !musicRef
@@ -606,6 +619,17 @@ export function PiecePage({ id }: { id: string }) {
               music={musicRef}
               onTranspose={(semitones) => {
                 transposeMusic(musicRef.file, semitones);
+              }}
+              openBit={linkedBit?.bit ?? null}
+              onBitOpened={() => {
+                console.info('dewidebug piece opened on a hard bit; keeping the view', {
+                  id,
+                  file: musicRef.file,
+                  mode: viewMode,
+                });
+                chooseView(viewMode, musicRef.file);
+                setLinkedBit(null);
+                navigate(`/piece/${id}`, { replace: true });
               }}
             />
           )}

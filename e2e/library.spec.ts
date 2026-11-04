@@ -1,3 +1,4 @@
+import { makeMscx, PIANO_WALTZ, zipScore } from '../packages/fixtures/src/index.ts';
 import { expect, test, type Page } from '@playwright/test';
 import { createPiece, eventuallyInRemote, openLibrary, remoteLog } from './support/helpers.ts';
 import { strings } from '../apps/web/src/strings.ts';
@@ -179,4 +180,80 @@ test('searching ranks by best match and pauses the sort', async ({ page }) => {
   await expect(page.getByLabel('Sort pieces')).toBeDisabled();
   await expect(page.getByText('Best match first while searching')).toBeVisible();
   await expect(page.getByTestId('piece-card')).toHaveCount(1);
+});
+
+test('Practise today suggests a slow hard bit, opens its loop in Play-along, and can be set aside for the day', async ({
+  page,
+}) => {
+  const id = await createPiece(page, 'Today Waltz', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles({
+    name: 'Today Waltz.mscz',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from(zipScore('waltz.mscx', makeMscx(PIANO_WALTZ, '4.50'))),
+  });
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  const saved = await page.request.put(`/api/pieces/${id}/hard-bits/today-waltz.mscz`, {
+    data: [{ id: 'b1', name: 'Opening', from: 0, to: 0, fromBar: 1, toBar: 1, bestSpeed: 0.2 }],
+  });
+  expect(saved.status()).toBe(200);
+
+  await openLibrary(page);
+  const item = page.getByTestId('today-item').filter({ hasText: 'Today Waltz' });
+  await expect(item).toHaveText(/^📌 ‘Opening’ in Today Waltz: best 20%/);
+  await expect(page.getByTestId('today')).toContainText(strings.library.today.title);
+
+  await item.getByRole('link').click();
+  await expect(page).toHaveURL(new RegExp(`/piece/${id}$`));
+  await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
+  await expect(
+    page.getByTestId('hard-bit').getByRole('button', { name: 'Opening', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+
+  await openLibrary(page);
+  await expect(item).toHaveCount(1);
+  await item.getByTestId('today-done').click();
+  await expect(item).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Your library' })).toBeVisible();
+  await expect(page.getByTestId('today-item').filter({ hasText: 'Today Waltz' })).toHaveCount(0);
+});
+
+test('playing a hard bit’s loop notes the try, so Practise today rests it for a day', async ({
+  page,
+}) => {
+  const id = await createPiece(page, 'Tried Waltz', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles({
+    name: 'Tried Waltz.mscz',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from(zipScore('waltz.mscx', makeMscx(PIANO_WALTZ, '4.50'))),
+  });
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await page.request.put(`/api/pieces/${id}/hard-bits/tried-waltz.mscz`, {
+    data: [{ id: 'b1', name: 'Opening', from: 0, to: 0, fromBar: 1, toBar: 1, bestSpeed: 0.3 }],
+  });
+
+  await openLibrary(page);
+  const item = page.getByTestId('today-item').filter({ hasText: 'Tried Waltz' });
+  await item.getByRole('link').click();
+  await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
+  await page.getByTestId('playalong-countin').uncheck();
+  await page.getByTestId('playalong-play').click();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(
+          (
+            JSON.parse(localStorage.getItem('pcaa.resume.v2') ?? '{}') as {
+              bitsTried?: Record<string, unknown>;
+            }
+          ).bitsTried ?? {},
+        ).join(),
+      ),
+    )
+    .toBe(`${id}/tried-waltz.mscz/b1`);
+  await page.getByTestId('playalong-play').click();
+
+  await openLibrary(page);
+  await expect(page.getByTestId('piece-card').first()).toBeVisible();
+  await expect(item).toHaveCount(0);
 });

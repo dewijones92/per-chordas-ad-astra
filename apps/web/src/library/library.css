@@ -321,3 +321,45 @@
 .library-continue-item .muted {
   font-size: 13px;
 }
+
+.today {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.today h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.today-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.today-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--sun-wash);
+  box-shadow: var(--pop);
+}
+
+.today-link {
+  flex: 1;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: none;
+}
+
+.today-link:hover {
+  text-decoration: underline;
+}

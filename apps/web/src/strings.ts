@@ -159,6 +159,12 @@ export const strings = {
     notOpened: '👀 Not opened yet',
     practised: (ago: string, total: string) => `🕘 Practised ${ago} · ⏱ ${total}`,
     removeFromSetlist: '➖ Remove from setlist',
+    today: {
+      title: '📅 Practise today',
+      done: '✅ Done for today',
+      bit: (bit: string, piece: string, detail: string) => `📌 ‘${bit}’ in ${piece}: ${detail}`,
+      piece: (piece: string, detail: string) => `⭐ ${piece}: ${detail}`,
+    },
     continue: '▶️ Continue',
     setlists: '🗂️ Setlists',
     allPieces: '🎼 All pieces',
@@ -487,6 +493,10 @@ export const tips = {
     reverse: 'Reverse order',
     pickForMe: 'Open a piece at random, favouring ones you have not practised lately',
     tagFilter: 'Filter by tag',
+    today: {
+      list: 'Suggestions for what to practise today',
+      doneFor: (what: string) => `Hide ${what} until tomorrow`,
+    },
   },
   piece: {
     layoutGroup: 'Page layout',
@@ -722,6 +732,14 @@ export const names = {
 } as const;
 
 export const units = {
+  today: {
+    best: (percent: number) => `best ${String(percent)}%`,
+    noBest: 'no best speed yet',
+    lastTried: (ago: string) => `last tried ${ago}`,
+    lastPractised: (ago: string) => `last practised ${ago}`,
+    notPractised: 'not practised yet',
+    bpm: (best: number, target: number) => `best ${String(best)} of ${String(target)} BPM`,
+  },
   seconds: (n: number) => `${String(n)} s`,
   noteInBar: (note: string, bar: number) => `${note} in bar ${String(bar)}`,
   loopBars: (from: number, to: number) => `bars ${String(from)}–${String(to)}`,

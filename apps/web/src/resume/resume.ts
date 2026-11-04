@@ -1,4 +1,5 @@
 import {
+  bitKey,
   DEFAULT_PLAY_ALONG,
   DEFAULT_SORT,
   type PieceView,
@@ -222,6 +223,21 @@ export function rememberPieceView(pieceId: string, mode: PieceView, file: string
 export function savedPieceView(pieceId: string): { mode: PieceView; file: string | null } | null {
   const saved = readResume().pieceView[pieceId];
   return saved ? { mode: saved.mode, file: saved.file } : null;
+}
+
+export function rememberBitTried(pieceId: string, file: string, bitId: string): void {
+  updateResume((s) => ({
+    ...s,
+    bitsTried: { ...s.bitsTried, [bitKey(pieceId, file, bitId)]: { at: now() } },
+  }));
+}
+
+export function rememberTodayDone(key: string): void {
+  updateResume((s) => ({ ...s, todayDone: { ...s.todayDone, [key]: { at: now() } } }));
+}
+
+export function stampTimes(stamps: Record<string, { at: number }>): Map<string, number> {
+  return new Map(Object.entries(stamps).map(([key, { at }]) => [key, at]));
 }
 
 export function rememberViewMode(mode: ViewMode): void {

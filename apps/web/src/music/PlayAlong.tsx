@@ -19,6 +19,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -42,7 +43,7 @@ import { Choice } from '../ui/Choice.tsx';
 import { useHelp } from '../ui/Help.tsx';
 import { LoopSwitch } from '../ui/LoopSwitch.tsx';
 import { PercentInput } from '../ui/PercentInput.tsx';
-import { rememberPlayAlong, savedPlayAlong, scoreKey } from '../resume/resume.ts';
+import { rememberBitTried, rememberPlayAlong, savedPlayAlong, scoreKey } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
 import { staffColours } from './colours.ts';
 import {
@@ -472,10 +473,14 @@ export function PlayAlong({
   pieceId,
   music,
   onTranspose,
+  openBit = null,
+  onBitOpened,
 }: {
   pieceId: string;
   music: MusicRef;
   onTranspose: (semitones: number) => void;
+  openBit?: string | null;
+  onBitOpened?: () => void;
 }) {
   const loaded = usePerformance(pieceId, music.file);
   const perf = loaded.data?.perf;
@@ -873,6 +878,44 @@ export function PlayAlong({
     },
     [player, perf, updatePrefs, waitJumpTo],
   );
+
+  const chooseBit = useCallback(
+    (b: HardBit) => {
+      console.info('dewidebug hard bit chosen', { name: b.name, from: b.from, to: b.to });
+      updatePrefs((p) => ({ ...p, loop: { from: b.from, to: b.to }, loopOn: true }));
+      const bar = perf?.bars[b.from];
+      if (bar && player && !player.playing) seekTo(bar.start);
+    },
+    [updatePrefs, perf, player, seekTo],
+  );
+
+  const openLinkedBit = useEffectEvent((wanted: HardBit | undefined) => {
+    if (wanted) chooseBit(wanted);
+    onBitOpened?.();
+  });
+  useEffect(() => {
+    if (openBit === null || !bitsLoaded || !perf || !player) return;
+    const wanted = bits.find((b) => b.id === openBit);
+    console.info('dewidebug hard bit opened from a link', {
+      id: openBit,
+      found: wanted?.name ?? null,
+    });
+    const timer = window.setTimeout(() => {
+      openLinkedBit(wanted);
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [openBit, bitsLoaded, bits, perf, player]);
+
+  const loopBitId = loopNow
+    ? (bits.find((b) => b.from === loopNow.from && b.to === loopNow.to)?.id ?? null)
+    : null;
+  useEffect(() => {
+    if (!playing || loopBitId === null) return;
+    console.info('dewidebug hard bit tried', { id: loopBitId });
+    rememberBitTried(pieceId, music.file, loopBitId);
+  }, [playing, loopBitId, pieceId, music.file]);
 
   const pausedAt = prefs.position;
   const notationPosition = useCallback(
@@ -1581,14 +1624,7 @@ export function PlayAlong({
                 aria-pressed={active}
                 title={tips.playAlong.hardBit(b.fromBar, b.toBar)}
                 onClick={() => {
-                  console.info('dewidebug hard bit chosen', {
-                    name: b.name,
-                    from: b.from,
-                    to: b.to,
-                  });
-                  updatePrefs((p) => ({ ...p, loop: { from: b.from, to: b.to }, loopOn: true }));
-                  const bar = perf.bars[b.from];
-                  if (bar && player && !player.playing) seekTo(bar.start);
+                  chooseBit(b);
                 }}
               >
                 {b.name}

@@ -499,6 +499,41 @@ describe('HTTP API with two people', () => {
     expect((await best(DEWI))?.bestSpeed).toBe(0.7);
   });
 
+  it('serves each person their own practise-today facts at /api/today', async () => {
+    const id = await pieceWithTwoFiles();
+    await app.request(
+      `/api/pieces/${id}/hard-bits/a.mscz`,
+      as(DEWI, send('PUT', [{ ...bit('b1'), bestSpeed: 0.4 }])),
+    );
+    await app.request(
+      `/api/pieces/${id}/hard-bits/a.mscz/b1/best`,
+      as(WIFE, send('PUT', { bestSpeed: 0.8 })),
+    );
+    await app.request(
+      '/api/sessions',
+      as(WIFE, send('POST', { ...session(id, '2026-11-02T09:00:00.000Z'), bpm: 80 })),
+    );
+    const facts = async (email: string | null) =>
+      (await (await app.request('/api/today', as(email))).json()) as {
+        pieces: {
+          id: string;
+          lastPractisedAt: number | null;
+          bestBpm: number | null;
+          bits: { bestSpeed: number }[];
+        }[];
+      };
+    const his = await facts(DEWI);
+    expect(his.pieces).toHaveLength(1);
+    expect(his.pieces[0]).toMatchObject({ id, lastPractisedAt: null, bestBpm: null });
+    expect(his.pieces[0]?.bits.map((b) => b.bestSpeed)).toEqual([0.4]);
+    const hers = await facts(WIFE);
+    expect(hers.pieces[0]).toMatchObject({
+      lastPractisedAt: Date.parse('2026-11-02T09:00:00.000Z'),
+      bestBpm: 80,
+    });
+    expect(hers.pieces[0]?.bits.map((b) => b.bestSpeed)).toEqual([0.8]);
+  });
+
   async function pieceWithTwoFiles(): Promise<string> {
     const piece = (await (
       await app.request('/api/pieces', as(DEWI, send('POST', { title: 'Two Files' })))

@@ -37,6 +37,7 @@ import {
   type PieceStats,
   type SortKey,
 } from './sort.ts';
+import { TodaySection } from './TodaySection.tsx';
 import './library.css';
 import { strings, tips } from '../strings.ts';
 
@@ -582,6 +583,7 @@ export function LibraryPage() {
             {strings.library.newPiece}
           </button>
         </div>
+        {!active && !searching && tags.length === 0 && <TodaySection now={now} />}
         <ContinueRow items={continueItems} now={now} />
         <div className="row library-sort">
           <label className="row sort-field">

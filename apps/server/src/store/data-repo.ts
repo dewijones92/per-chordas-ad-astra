@@ -42,6 +42,8 @@ import {
   Setlists,
   Slug,
   uniqueSlug,
+  type TodayFacts,
+  type TodayPiece,
   type NewPracticeSession,
   type ScoreRef,
   type TrackRef,
@@ -800,6 +802,42 @@ export class DataRepo {
       }
     }
     return sessions.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  }
+
+  async getTodayFacts(person: Person = SOLE_USER): Promise<TodayFacts> {
+    const sessions = await this.listSessions({}, person);
+    const pieces: TodayPiece[] = [];
+    for (const piece of await this.listPieces()) {
+      const stored = await this.readHardBits(piece.id);
+      const bits = piece.music.flatMap((m) =>
+        hardBitsFor(person, stored.files[m.file] ?? []).map((b) => ({
+          file: m.file,
+          id: b.id,
+          name: b.name,
+          fromBar: b.fromBar,
+          toBar: b.toBar,
+          bestSpeed: b.bestSpeed,
+        })),
+      );
+      if (!piece.pinned && bits.length === 0) continue;
+      const mine = sessions.filter((s) => s.pieceId === piece.id);
+      const bpms = mine.flatMap((s) => (s.bpm === null ? [] : [s.bpm]));
+      pieces.push({
+        id: piece.id,
+        title: piece.title,
+        pinned: piece.pinned,
+        targetBpm: piece.targetBpm,
+        lastPractisedAt:
+          mine.length === 0 ? null : Math.max(...mine.map((s) => Date.parse(s.startedAt))),
+        bestBpm: bpms.length === 0 ? null : Math.max(...bpms),
+        bits,
+      });
+    }
+    this.log.debug(
+      { person: person.key, pieces: pieces.length, bits: pieces.flatMap((p) => p.bits).length },
+      'dewidebug repo practise-today facts read',
+    );
+    return { pieces };
   }
 
   async addSession(

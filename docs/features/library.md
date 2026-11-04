@@ -44,6 +44,12 @@ updated: 2026-11-04
   sort is paused. ADR [0012](../adr/0012-library-sort-facts.md) says where each date comes from.
 - **Pin** (☆ on a card, or ☆ Pin beside the title on a piece): pinned pieces sit at the top of every
   sort and are tinted. Saved in `piece.json`; commits say `Pin`/`Unpin`, and pinning is not an edit.
+- **📅 Practise today** (above Continue, on All pieces with no search or tag): up to five suggestions, each
+  saying why, e.g. "📌 ‘The run’ in Gran Vals: best 55%, last tried 6 days ago". Hard bits that are furthest
+  below full speed or have not been tried for longest, and pinned pieces not practised for 3+ days. A hard-bit
+  line opens the piece in Play-along with that bit's loop already set; "✅ Done for today" hides a line until
+  tomorrow. Per person, and hidden entirely when there is nothing to suggest. The rule is in ADR
+  [0025](../adr/0025-practise-today.md).
 - **Continue** row: the four most recently opened pieces, shown on All pieces with no search or tag.
 - **Card badges**: when it was last practised and the total time (or "Not practised yet"), plus the
   added/edited/opened time when that is the sort.
@@ -53,11 +59,11 @@ updated: 2026-11-04
   and remove on the cards; add a piece from its page (Tags & setlists). Deleting a piece removes it
   from every setlist.
 
-Files: `apps/web/src/library/*` (`sort.ts` is the pure sort/stats/pick module), `rememberOpened` and
+Files: `apps/web/src/library/*` (`sort.ts` is the pure sort/stats/pick module, `today.ts` the pure Practise-today ranking, `TodaySection.tsx` the list), `GET /api/today` and `DataRepo.getTodayFacts`, `rememberOpened` and
 `lastOpenedAt` in `apps/web/src/resume/resume.ts`, `DataRepo.createPiece/updatePiece/deletePiece/putSetlists`.
 `apps/server/src/find/*` (the sites, the polite client, the service), `apps/web/src/library/FindScore.tsx`.
 `apps/web/src/piece/SourceLine.tsx`, `packages/shared/src/source.ts` (site names, link and number parsing, `applySourceEdit`).
 Tests: `packages/shared/test/source.test.ts`, `apps/web/test/rating-line.test.ts`, `e2e/source.spec.ts`,
-`apps/web/test/search.test.ts`, `apps/web/test/library-sort.test.ts`,
+`apps/web/test/search.test.ts`, `apps/web/test/library-sort.test.ts`, `apps/web/test/practise-today.test.ts`,
 `apps/server/test/data-repo.test.ts`, `e2e/library.spec.ts`, `apps/server/test/find-*.test.ts`,
 `apps/web/test/find-view.test.ts`, `e2e/find.spec.ts`.

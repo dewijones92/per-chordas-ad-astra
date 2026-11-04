@@ -69,3 +69,18 @@ describe('view preferences', () => {
     ).toThrow();
   });
 });
+
+describe('practise-today stamps', () => {
+  it('merge newest-wins per key, default to empty for older state, and are kept by the schema', () => {
+    const a = ResumeState.parse({
+      bitsTried: { 'p/a.mscz/b1': { at: 10 }, 'p/a.mscz/b2': { at: 50 } },
+      todayDone: { 'piece/p': { at: 5 } },
+    });
+    const b = ResumeState.parse({ bitsTried: { 'p/a.mscz/b1': { at: 30 } } });
+    const merged = mergeResume(a, b);
+    expect(merged.bitsTried).toEqual({ 'p/a.mscz/b1': { at: 30 }, 'p/a.mscz/b2': { at: 50 } });
+    expect(merged.todayDone).toEqual({ 'piece/p': { at: 5 } });
+    expect(ResumeState.parse({}).bitsTried).toEqual({});
+    expect(ResumeState.parse({}).todayDone).toEqual({});
+  });
+});

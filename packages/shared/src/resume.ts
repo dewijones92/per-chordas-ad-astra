@@ -3,6 +3,7 @@ import { PieceView, PlayAlongPrefs, SortChoice, ViewMode } from './prefs.ts';
 
 const at = z.number().int().nonnegative();
 const key = z.string().min(1).max(200);
+const bitKeyText = z.string().min(1).max(260);
 
 export const ResumeState = z.object({
   lastPath: z
@@ -36,6 +37,8 @@ export const ResumeState = z.object({
   pieceView: z
     .record(key, z.object({ mode: PieceView, file: z.string().max(100).nullable(), at }))
     .default({}),
+  bitsTried: z.record(bitKeyText, z.object({ at })).default({}),
+  todayDone: z.record(bitKeyText, z.object({ at })).default({}),
 });
 export type ResumeState = z.output<typeof ResumeState>;
 
@@ -52,6 +55,8 @@ export const emptyResume = (): ResumeState => ({
   learnKey: null,
   playAlong: {},
   pieceView: {},
+  bitsTried: {},
+  todayDone: {},
 });
 
 function newest<T extends { at: number }>(
@@ -86,5 +91,7 @@ export function mergeResume(a: ResumeState, b: ResumeState): ResumeState {
     learnKey: newerOf(a.learnKey, b.learnKey),
     playAlong: newest(a.playAlong, b.playAlong),
     pieceView: newest(a.pieceView, b.pieceView),
+    bitsTried: newest(a.bitsTried, b.bitsTried),
+    todayDone: newest(a.todayDone, b.todayDone),
   };
 }

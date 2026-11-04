@@ -247,6 +247,8 @@ export function createApp(deps: AppDeps): Hono {
   api.get('/settings', async (c) => c.json(await repo.getSettings()));
   api.put('/settings/metronome', async (c) => c.json(await repo.putMetronome(await c.req.json())));
 
+  api.get('/today', async (c) => c.json(await repo.getTodayFacts(person(c))));
+
   api.get('/sessions', async (c) => {
     const pieceId = c.req.query('pieceId');
     return c.json(
