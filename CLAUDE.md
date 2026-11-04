@@ -39,6 +39,18 @@ reversal).
   uploads, drawing, key spelling, click sounds) and extend that rather than adding a second version, and keep
   the UI's controls, wording and shortcuts the same wherever the same thing appears. Before writing similar
   code twice, factor it; when you find two versions of one thing, merge them.
+- **No duplication from a discussed idea** (Totum's rule, adopted 4 Nov 2026). Before building, search for code
+  that already does each part, and name in the plan what each part **reuses**. Code one module needs but another
+  owns is **moved** to a shared module, never rewritten. A new copy of existing logic needs a reason Dewi agreed.
+- **Consistent everywhere; exceptions are discussed** (Totum's rule, adopted 4 Nov 2026). The same kind of thing
+  looks, behaves and carries the same facts wherever it appears: the Score, Both and Notes views, the library card
+  and the piece page, the metronome page and the dock, Dewi's session and his wife's. When a change touches one
+  path, check its siblings. A deliberate exception is never built silently: ask Dewi, then record it in the ADR.
+- **Every async operation shows itself** (Totum's rule, adopted 4 Nov 2026). Anything the user starts that does
+  not finish at once (an upload, a file loading, the piano sounds loading, a save) shows what it is while it runs
+  and ends with a visible result, ✅ or ❌, never silence.
+- **Text wraps; nothing truncates.** No `text-overflow: ellipsis`; a row grows to fit its title (Totum's rule,
+  adopted 4 Nov 2026; there are none today).
 - **Testing pyramid, every time.** Many fast unit tests on pure modules (metronome scheduler, pitch
   maths, annotation history and geometry, page turning, sync engine against a real bare repo), a
   Playwright e2e for **every flow that matters**, run in CI. A bug fix lands with a test seen to fail
@@ -59,15 +71,26 @@ reversal).
   `console.info('dewidebug …')`.
 - **No new code comments.** The why goes in commit messages, ADRs and docs.
 - CI must stay green. Commit at each green state.
+- **Iterate quickly and shift left** (Totum's rule, adopted 4 Nov 2026). Treat a slow loop as a defect: measure
+  where the minutes go, then move the check earlier and cheaper (a unit test instead of an e2e, one spec file
+  instead of the suite, the full gate only before a push). When a cycle is slow, fix the tooling in that session.
+- **A doc's `status` is a claim, and a stale claim is worse than none.** When you touch an area, re-read its doc
+  against the code and correct it; when a doc was wrong, say so in it rather than quietly fixing it.
+- **Own the repo.** Take the structurally right option over the timid one (collapse duplicate types, rename for
+  honesty, move code to where it belongs), with the gate green and one coherent commit per move. Surface only the
+  decisions that are genuinely Dewi's: a behaviour change to something shipped, or a trade-off with no default.
 - **How a batch runs** (Dewi, 24 Oct 2026, in the shape of Totum's):
-  1. **Start with a discussion.** Before a batch, list what it will contain and ask Dewi the questions only he can
+  1. **Start with a discussion, grounded in the code.** Read (or send a Haiku scout through) the code each item
+     touches first, so the questions come from what the code does. Then list what it will contain and ask Dewi the questions only he can
      answer (scope, defaults, trade-offs) with `AskUserQuestion`; write each decision into the ADRs or
      `docs/todos/_index.md` and the session's task file so it survives a context reset. Never ask what the code can answer.
   2. **Each feature ships on its own**, so Dewi can try it on the Pi straight away: tests (a bug fix's test seen red
      first), docs and ADRs in the same commit, the full `pnpm gate`, a look at the changed screen, then push **only
      when the gate's exit code is 0** (`e=$?; [ $e -eq 0 ] && git push`). The push deploys; watch CI until the Pi
      reports the new sha healthy. No review or soak per feature; do not hold features back waiting for one.
-  3. **The batch ends with a soak and an Opus review, in parallel.** The soak: three separate `pnpm e2e` runs
+  3. **The batch ends with a soak, an Opus review and Haiku sweeps, in parallel.** The sweeps: one checks each
+     change for consistency across every view and way in (Score, Both, Notes; library and piece page; both people),
+     one looks for use cases the batch missed; a sweep's finding is a hypothesis to check against the code. The soak: three separate `pnpm e2e` runs
      (flakes are findings, not noise to retry past; not `--repeat-each`, which shares one data repo across repeats
      and fails a third of the suite on duplicate pieces, seen 24 Oct 2026), the opt-in real-file corpus (`MUSIC_CORPUS`, see `docs/tests/_index.md`) when the batch touched Play-along, and a look at every changed screen on
      the deployed build. The review: one `reviewer` agent (Opus, high effort) on the batch's commits, given Dewi's
