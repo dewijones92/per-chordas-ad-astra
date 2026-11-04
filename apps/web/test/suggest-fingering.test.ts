@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { suggestFingering, type FingerNote } from '../src/music/suggest-fingering.ts';
+import { sideFor, suggestFingering, type FingerNote } from '../src/music/suggest-fingering.ts';
 
 const seq = (pitches: readonly number[], step = 0.5): FingerNote[] =>
   pitches.map((pitch, i) => ({ pitch, start: i * step, end: i * step + step * 0.9 }));
@@ -63,5 +63,14 @@ describe('suggested fingering', () => {
     const t0 = performance.now();
     suggestFingering(many, 'right');
     expect(performance.now() - t0).toBeLessThan(500);
+  });
+});
+
+describe('which hand a note is suggested for', () => {
+  it('follows the lane, and splits a single staff at middle C', () => {
+    expect(sideFor('left', 80, 60)).toBe('left');
+    expect(sideFor('right', 40, 60)).toBe('right');
+    expect(sideFor('single', 59, 60)).toBe('left');
+    expect(sideFor(undefined, 60, 60)).toBe('right');
   });
 });

@@ -45,7 +45,7 @@ import { staffColours } from './colours.ts';
 import { drawFalling, geometry, keyUpAt, noteAt, type FallingView } from './falling.ts';
 import { capoFor, fitRange, keyName, noteName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip } from './BarStrip.tsx';
-import { suggestBySide } from './suggest-fingering.ts';
+import { sideFor, suggestBySide } from './suggest-fingering.ts';
 import { checkFile } from './file-check.ts';
 import { FileCheckLine } from './FileCheckLine.tsx';
 import { ResizeHandle } from './ResizeHandle.tsx';
@@ -444,11 +444,9 @@ export function PlayAlong({
   const suggested = useMemo(() => {
     if (!perf || !lanes || !suggestOn) return null;
     const playable = leftOut ? perf.notes.filter((n) => !leftOut.has(n)) : perf.notes;
-    return suggestBySide(playable, (n) => {
-      const role = lanes.lanes[lanes.laneOf(n)]?.role;
-      if (role === 'left' || role === 'right') return role;
-      return n.pitch < MIDDLE_C ? 'left' : 'right';
-    });
+    return suggestBySide(playable, (n) =>
+      sideFor(lanes.lanes[lanes.laneOf(n)]?.role, n.pitch, MIDDLE_C),
+    );
   }, [perf, lanes, leftOut, suggestOn]);
   const grandXml = useMemo(() => {
     const score = loaded.data?.score;

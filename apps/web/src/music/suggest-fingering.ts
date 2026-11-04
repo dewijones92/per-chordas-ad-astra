@@ -164,6 +164,11 @@ function moveCost(prev: Group, pf: Fingers, next: Group, nf: Fingers, hand: Hand
   return (cost / next.pitches.length) * (gap > REPOSITION_GAP ? 0.25 : 1);
 }
 
+export function sideFor(role: string | undefined, pitch: number, middle: number): HandSide {
+  if (role === 'left' || role === 'right') return role;
+  return pitch < middle ? 'left' : 'right';
+}
+
 export function suggestBySide<T extends FingerNote>(
   notes: readonly T[],
   sideOf: (n: T) => HandSide,
