@@ -52,8 +52,8 @@ between the people like the other drawings (ADR 0019).
   the mouse wheel and `Ctrl`+wheel still move through the music and the look-ahead, so a mark can be drawn
   anywhere in the piece.
 - **Saved as its own file.** `annotations/<music file>.falling.json` beside the stave's `annotations/<music
-file>.json`, the same `Annotations` shape, read and written by `GET`/`PUT
-/api/pieces/:id/annotations/:file/falling` (music files only), through the same autosave and retry
+file>.json`, the same `Annotations` shape, read by `GET` and changed by `PATCH` (ADR 0030)
+  `/api/pieces/:id/annotations/:file/falling` (music files only), through the same autosave and retry
   (`useAnnotations(…, 'falling')`). It is removed with the music file. Commits read
   `Draw on the falling notes in 'Gran Vals' (gran-vals.mscz bar 12)`.
 

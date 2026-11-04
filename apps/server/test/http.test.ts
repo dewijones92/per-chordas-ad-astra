@@ -245,12 +245,15 @@ describe('HTTP API', () => {
         '1': [{ kind: 'stamp', id: 'a', colour: '#123456', glyph: 'P', x: 1, y: 2, size: 20 }],
       },
     };
-    const put = await app.request(`/api/pieces/${piece.id}/annotations/romanza.pdf`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(doc),
-    });
-    expect(put.status).toBe(200);
+    const url = `/api/pieces/${piece.id}/annotations/romanza.pdf`;
+    const send = (body: unknown) =>
+      app.request(url, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    expect((await send(doc)).status).toBe(400);
+    expect((await send({ version: 1, put: doc.pages, remove: [] })).status).toBe(200);
     expect(
       await (await app.request(`/api/pieces/${piece.id}/annotations/romanza.pdf`)).json(),
     ).toEqual(doc);
@@ -281,9 +284,9 @@ describe('HTTP API', () => {
     expect(
       (
         await app.request(url, {
-          method: 'PUT',
+          method: 'PATCH',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(doc),
+          body: JSON.stringify({ version: 1, put: doc.pages, remove: [] }),
         })
       ).status,
     ).toBe(200);

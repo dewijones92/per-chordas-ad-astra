@@ -26,10 +26,11 @@ belong to the notation, so `Ctrl+Z` never undoes the PDF's marks.
 **Bookmarks.** "🔖 Bookmark" under the score saves the current page and offset with a name; the jump
 bar scrolls back to it.
 
-**Saving.** 800 ms after the last change the document is PUT; the server describes which pages
-changed. Hiding the page or leaving the piece sends a keepalive save and a flush. A failed save is retried
+**Saving.** 800 ms after the last change what changed since the last save is sent (`PATCH`: the marks added or
+edited, and the ids removed; ADR 0030), and the server applies it to what it holds, so marks made meanwhile in
+another tab or by the other person are kept. It describes which pages changed. Hiding the page or leaving the piece sends a keepalive save and a flush. A failed save is retried
 (2 s, 5 s, 15 s, then every 30 s) with a visible "Drawings not saved yet" strip; if the existing drawings could not
 be loaded, drawing is paused (with Retry) so a save can never overwrite them.
 
-Files: `apps/web/src/score/*`, `apps/web/src/annotate/*`, `DataRepo.putAnnotations`, `DataRepo.importPdfMarks`.
+Files: `apps/web/src/score/*`, `apps/web/src/annotate/*`, `DataRepo.changeAnnotations`, `packages/shared/src/annotation-changes.ts`, `DataRepo.importPdfMarks`.
 Tests: `history`, `geometry`, `turn`, `zoom`, `pdf-marks` unit tests; `e2e/annotate.spec.ts`, `e2e/zoom.spec.ts`, `e2e/pdf-marks.spec.ts`.

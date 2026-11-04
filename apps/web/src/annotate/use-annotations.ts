@@ -1,4 +1,4 @@
-import { emptyAnnotations, type Annotations } from '@pcaa/shared';
+import { diffAnnotations, emptyAnnotations, isNoChange, type Annotations } from '@pcaa/shared';
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import { api, type AnnotationLayer } from '../api/client.ts';
 import { historyReducer, initialHistory, type HistoryAction } from './history.ts';
@@ -17,6 +17,7 @@ export function useAnnotations(pieceId: string, file: string, layer: AnnotationL
   const [retryNonce, setRetryNonce] = useState(0);
   const confirmed = useRef<Annotations | null>(null);
   const inFlight = useRef<Annotations | null>(null);
+  const waiting = useRef(false);
   const failures = useRef(0);
   const latest = useRef<Annotations>(history.present);
   useLayoutEffect(() => {
@@ -54,10 +55,41 @@ export function useAnnotations(pieceId: string, file: string, layer: AnnotationL
   const saveNow = useCallback(
     (keepalive: boolean) => {
       const doc = latest.current;
+      const sending = inFlight.current;
       if (confirmed.current === null) return;
-      if (doc === confirmed.current || doc === inFlight.current) return;
+      if (sending !== null && !keepalive) {
+        if (doc !== sending) {
+          waiting.current = true;
+          console.info('dewidebug annotations save waits for the one in flight', {
+            pieceId,
+            file,
+            layer,
+          });
+        }
+        return;
+      }
+      const base = sending ?? confirmed.current;
+      if (doc === base) return;
+      const changes = diffAnnotations(base, doc);
+      if (isNoChange(changes)) {
+        console.info('dewidebug annotations unchanged since the last save; nothing sent', {
+          pieceId,
+          file,
+          layer,
+        });
+        if (sending === null) confirmed.current = doc;
+        return;
+      }
+      console.info('dewidebug annotations saving changes', {
+        pieceId,
+        file,
+        layer,
+        put: Object.values(changes.put).reduce((n, items) => n + items.length, 0),
+        remove: changes.remove.length,
+        keepalive,
+      });
       inFlight.current = doc;
-      api.putAnnotations(pieceId, file, doc, keepalive, layer).then(
+      api.changeAnnotations(pieceId, file, changes, keepalive, layer).then(
         () => {
           if (inFlight.current === doc) inFlight.current = null;
           confirmed.current = doc;
@@ -65,9 +97,14 @@ export function useAnnotations(pieceId: string, file: string, layer: AnnotationL
             console.info('dewidebug annotations save recovered', { pieceId, file, layer });
           failures.current = 0;
           setSaveError(null);
+          if (waiting.current) {
+            waiting.current = false;
+            setRetryNonce((n) => n + 1);
+          }
         },
         (e: unknown) => {
           if (inFlight.current === doc) inFlight.current = null;
+          waiting.current = false;
           const delay =
             RETRY_DELAYS_MS[Math.min(failures.current, RETRY_DELAYS_MS.length - 1)] ?? 30_000;
           failures.current += 1;

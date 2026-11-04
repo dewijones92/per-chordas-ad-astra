@@ -84,12 +84,13 @@ test('sorts are remembered, drawing counts as an edit, and pins stay on top', as
   );
   await expect.poll(() => cardTitles(page)).toEqual(['Zebra Waltz', 'Apple Etude', 'Mango Rag']);
 
-  const res = await page.request.put(`/api/pieces/${apple}/annotations/apple-etude.pdf`, {
+  const res = await page.request.patch(`/api/pieces/${apple}/annotations/apple-etude.pdf`, {
     data: {
       version: 1,
-      pages: {
+      put: {
         '1': [{ kind: 'stamp', id: 's1', colour: '#ff0000', glyph: '1', x: 50, y: 50, size: 18 }],
       },
+      remove: [],
     },
   });
   expect(res.ok()).toBe(true);

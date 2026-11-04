@@ -140,7 +140,7 @@ test('drawings survive failed saves and reach GitHub once the server answers aga
   await createPiece(page, 'Flaky Network');
   let failures = 0;
   await page.route('**/api/pieces/flaky-network/annotations/**', async (route) => {
-    if (route.request().method() === 'PUT' && failures < 2) {
+    if (route.request().method() === 'PATCH' && failures < 2) {
       failures += 1;
       await route.fulfill({
         status: 502,
@@ -164,4 +164,42 @@ test('drawings survive failed saves and reach GitHub once the server answers aga
   expect(failures).toBe(2);
   expect(doc).toContain('"stamp"');
   await expect(page.getByTestId('drawings-save-error')).toHaveCount(0);
+});
+
+test('two tabs drawing on one score keep each other’s marks, and an undo in one takes only its own', async ({
+  page,
+}) => {
+  const id = await createPiece(page, 'Two Tabs');
+  const other = await page.context().newPage();
+  await other.goto(page.url());
+  await layerBox(other);
+  const held = async () => {
+    const res = await page.request.get(`/api/pieces/${id}/annotations/two-tabs.pdf`);
+    const doc = (await res.json()) as Doc;
+    return Object.values(doc.pages)
+      .flat()
+      .map((i) => i.glyph ?? i.kind)
+      .sort();
+  };
+  const stamp = async (tab: Page, finger: string, x: number) => {
+    const box = await layerBox(tab);
+    await tab.bringToFront();
+    await tab.keyboard.press('s');
+    await tab.getByRole('button', { name: `Finger ${finger}` }).click();
+    await tab.mouse.click(box.x + x, box.y + 120);
+  };
+
+  await stamp(page, '1', 80);
+  await expect.poll(held).toEqual(['1']);
+  await stamp(other, '2', 200);
+  await expect.poll(held).toEqual(['1', '2']);
+
+  await page.bringToFront();
+  await page.keyboard.press('Control+z');
+  await expect(page.getByTestId('annotation-layer-1')).toHaveAttribute('data-items', '0');
+  await expect.poll(held).toEqual(['2']);
+
+  await page.reload();
+  await expect(page.getByTestId('annotation-layer-1')).toHaveAttribute('data-items', '1');
+  await other.close();
 });

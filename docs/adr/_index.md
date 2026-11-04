@@ -34,6 +34,7 @@ updated: 2026-11-04
 | [0012](0012-library-sort-facts.md)                          | Library sorts read recorded facts (edited, opened, pinned)                                | accepted           |
 | [0023](0023-chord-names.md)                                 | Chord names over the left hand: bar windows, exact templates, slash chords                | accepted           |
 | [0024](0024-wait-for-me.md)                                 | Wait for me: stop at your notes until played; MIDI, screen and computer keys              | accepted           |
+| [0030](0030-drawing-saves-send-changes.md)                  | Drawing saves send what changed, applied to what the server holds                         | accepted           |
 | [0029](0029-hands-over-the-keyboard.md)                     | Two see-through hands over the keyboard, driven by the fingering the notes already show   | accepted           |
 | [0027](0027-drawing-on-the-falling-notes.md)                | Drawing on the falling notes: pinned to a written pitch and a bar, falling with it        | accepted           |
 

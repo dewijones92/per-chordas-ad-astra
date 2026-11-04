@@ -25,6 +25,7 @@ import {
   type NewPracticeSession,
   type PieceDraft,
   type PiecePatch,
+  type AnnotationChanges,
 } from '@pcaa/shared';
 import { z } from 'zod';
 import { saves } from '../sync/saves.ts';
@@ -111,16 +112,16 @@ export const api = {
   fileUrl: (id: string, file: string) => `/api/pieces/${enc(id)}/files/${enc(file)}`,
   getAnnotations: (id: string, file: string, layer: AnnotationLayer = 'notation') =>
     request(annotationsUrl(id, file, layer), Annotations),
-  putAnnotations: (
+  changeAnnotations: (
     id: string,
     file: string,
-    doc: Annotations,
+    changes: AnnotationChanges,
     keepalive = false,
     layer: AnnotationLayer = 'notation',
   ) =>
     tracked(
       'drawing',
-      request(annotationsUrl(id, file, layer), Annotations, jsonInit('PUT', doc, keepalive)),
+      request(annotationsUrl(id, file, layer), Annotations, jsonInit('PATCH', changes, keepalive)),
     ),
   importPdfMarks: (id: string, file: string, marks: PdfImportRequest) =>
     tracked(

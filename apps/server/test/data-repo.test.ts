@@ -1,7 +1,7 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { makeMidi, makeMusicXml, makePdf, PIANO_WALTZ } from '@pcaa/fixtures';
-import { emptyAnnotations, FileName, Slug, type Annotations } from '@pcaa/shared';
+import { diffAnnotations, emptyAnnotations, FileName, Slug, type Annotations } from '@pcaa/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { changedPages, DataRepo, RejectedError } from '../src/store/data-repo.ts';
 import { NotFoundError } from '../src/store/files.ts';
@@ -18,6 +18,7 @@ class RecordingChanges {
 const pdf = makePdf(['Exercise 1', 'Exercise 2']);
 const slug = (s: string) => Slug.parse(s);
 const file = (s: string) => FileName.parse(s);
+const changesTo = (doc: Annotations) => diffAnnotations(emptyAnnotations(), doc);
 
 describe('DataRepo', () => {
   let dir: string;
@@ -91,8 +92,8 @@ describe('DataRepo', () => {
         '2': [{ kind: 'stamp', id: 's1', colour: '#ff0000', glyph: '1', x: 10, y: 20, size: 18 }],
       },
     };
-    await repo.putAnnotations(piece.id, ref.file, doc);
-    await repo.putAnnotations(piece.id, ref.file, doc);
+    await repo.changeAnnotations(piece.id, ref.file, changesTo(doc));
+    await repo.changeAnnotations(piece.id, ref.file, changesTo(doc));
     expect(changes.descriptions.at(-1)).toBe("Annotate 'Air' (air.pdf p.2)");
     expect(changes.descriptions.filter((d) => d.startsWith('Annotate'))).toHaveLength(1);
     expect(await repo.getAnnotations(piece.id, ref.file)).toEqual(doc);
@@ -108,7 +109,7 @@ describe('DataRepo', () => {
         '3': [{ kind: 'stamp', id: 's1', colour: '#ff0000', glyph: '2', x: 4, y: -10, size: 50 }],
       },
     };
-    await repo.putAnnotations(piece.id, ref.file, doc);
+    await repo.changeAnnotations(piece.id, ref.file, changesTo(doc));
     expect(changes.descriptions.at(-1)).toBe("Annotate 'Vals' (vals.musicxml bar 3)");
     expect(await repo.getAnnotations(piece.id, ref.file)).toEqual(doc);
     await repo.removeFile(piece.id, ref.file);
@@ -135,9 +136,9 @@ describe('DataRepo', () => {
       },
     };
     expect(await repo.getFallingDrawings(piece.id, ref.file)).toEqual(emptyAnnotations());
-    await repo.putAnnotations(piece.id, ref.file, notation);
-    await repo.putFallingDrawings(piece.id, ref.file, falling);
-    await repo.putFallingDrawings(piece.id, ref.file, falling);
+    await repo.changeAnnotations(piece.id, ref.file, changesTo(notation));
+    await repo.changeFallingDrawings(piece.id, ref.file, changesTo(falling));
+    await repo.changeFallingDrawings(piece.id, ref.file, changesTo(falling));
     expect(changes.descriptions.at(-1)).toBe(
       "Draw on the falling notes in 'Vals' (vals.musicxml bar 3)",
     );
@@ -158,7 +159,7 @@ describe('DataRepo', () => {
     const ref = await repo.addScore(piece.id, 'air.pdf', new Blob([pdf]));
     await expect(repo.getFallingDrawings(piece.id, ref.file)).rejects.toBeInstanceOf(RejectedError);
     await expect(
-      repo.putFallingDrawings(piece.id, ref.file, emptyAnnotations()),
+      repo.changeFallingDrawings(piece.id, ref.file, changesTo(emptyAnnotations())),
     ).rejects.toBeInstanceOf(RejectedError);
   });
 
@@ -174,7 +175,11 @@ describe('DataRepo', () => {
       y: 20,
       size: 18,
     } as const;
-    await repo.putAnnotations(piece.id, ref.file, { version: 1, pages: { '1': [mine] } });
+    await repo.changeAnnotations(
+      piece.id,
+      ref.file,
+      changesTo({ version: 1, pages: { '1': [mine] } }),
+    );
     const ink = {
       kind: 'ink',
       id: 'pdf1',
@@ -215,7 +220,14 @@ describe('DataRepo', () => {
     expect(again).toEqual(imported);
     expect(changes.descriptions.filter((d) => d.startsWith('Import'))).toHaveLength(1);
 
-    await repo.putAnnotations(piece.id, ref.file, { version: 1, pages: { '1': [mine] } });
+    await repo.changeAnnotations(
+      piece.id,
+      ref.file,
+      diffAnnotations(await repo.getAnnotations(piece.id, ref.file), {
+        version: 1,
+        pages: { '1': [mine] },
+      }),
+    );
     const saved = await repo.getAnnotations(piece.id, ref.file);
     expect(saved.pages['1']?.map((i) => i.id)).toEqual(['mine']);
     expect(saved.pdfImport).toEqual(imported.pdfImport);
@@ -264,12 +276,16 @@ describe('DataRepo', () => {
     await repo.updatePiece(piece.id, {
       bookmarks: [{ id: 'b1', name: 'Bridge', score: ref.file, page: 2, y: 100 }],
     });
-    await repo.putAnnotations(piece.id, ref.file, {
-      version: 1,
-      pages: {
-        '1': [{ kind: 'text', id: 't', colour: '#000000', x: 1, y: 2, text: 'hi', size: 12 }],
-      },
-    });
+    await repo.changeAnnotations(
+      piece.id,
+      ref.file,
+      changesTo({
+        version: 1,
+        pages: {
+          '1': [{ kind: 'text', id: 't', colour: '#000000', x: 1, y: 2, text: 'hi', size: 12 }],
+        },
+      }),
+    );
     const after = await repo.removeFile(piece.id, ref.file);
     expect(after.scores).toEqual([]);
     expect(after.bookmarks).toEqual([]);
@@ -421,7 +437,7 @@ describe('DataRepo review fixes', () => {
   it('a save that arrives while a piece is being deleted does not resurrect it', async () => {
     const piece = await repo.createPiece({ title: 'Doomed' });
     const ref = await repo.addScore(piece.id, 'doomed.pdf', new Blob([pdf]));
-    const doc = {
+    const doc: Annotations = {
       version: 1,
       pages: {
         '1': [{ kind: 'stamp', id: 's', colour: '#000000', glyph: '1', x: 1, y: 1, size: 10 }],
@@ -429,7 +445,7 @@ describe('DataRepo review fixes', () => {
     };
     const results = await Promise.allSettled([
       repo.deletePiece(piece.id),
-      repo.putAnnotations(piece.id, ref.file, doc),
+      repo.changeAnnotations(piece.id, ref.file, changesTo(doc)),
     ]);
     expect(results[0].status).toBe('fulfilled');
     await expect(readdir(join(dir, 'pieces'))).resolves.toEqual([]);
@@ -722,10 +738,10 @@ describe('DataRepo edited time and pins', () => {
       },
     };
     const drawn = later('2026-10-09T10:00:00.000Z');
-    await repo.putAnnotations(piece.id, ref.file, doc);
+    await repo.changeAnnotations(piece.id, ref.file, changesTo(doc));
     expect((await repo.getPiece(piece.id)).updatedAt).toBe(drawn);
     later('2026-10-10T10:00:00.000Z');
-    await repo.putAnnotations(piece.id, ref.file, doc);
+    await repo.changeAnnotations(piece.id, ref.file, changesTo(doc));
     expect((await repo.getPiece(piece.id)).updatedAt).toBe(drawn);
   });
 

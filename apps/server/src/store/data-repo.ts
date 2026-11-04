@@ -1,7 +1,9 @@
 import { appendFile, mkdir, open, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import {
+  AnnotationChanges,
   Annotations,
+  applyAnnotationChanges,
   AUDIO_EXTENSIONS,
   emptyAnnotations,
   kindOfFile,
@@ -35,7 +37,6 @@ import {
   PiecePatch,
   Piece,
   PdfImportRequest,
-  type PdfImport,
   PracticeSession,
   safeFileName,
   SettingsFile,
@@ -181,10 +182,6 @@ export function changedPages(before: Annotations, after: Annotations): number[] 
     .filter((k) => JSON.stringify(before.pages[k] ?? []) !== JSON.stringify(after.pages[k] ?? []))
     .map(Number)
     .sort((a, b) => a - b);
-}
-
-function withMarker(doc: Annotations, marker: PdfImport | undefined): Annotations {
-  return marker ? { ...doc, pdfImport: marker } : { version: doc.version, pages: doc.pages };
 }
 
 function flatten(value: unknown, prefix = ''): Map<string, string> {
@@ -518,13 +515,14 @@ export class DataRepo {
     );
   }
 
-  async putAnnotations(id: Slug, file: FileName, input: unknown): Promise<Annotations> {
-    const parsed = Annotations.parse(input);
+  async changeAnnotations(id: Slug, file: FileName, input: unknown): Promise<Annotations> {
+    const changes = AnnotationChanges.parse(input);
     return this.locked(`piece:${id}`, async () => {
       const piece = await this.getPiece(id);
       const before = await this.getAnnotations(id, file);
-      const next = withMarker(parsed, before.pdfImport);
+      const next = applyAnnotationChanges(before, changes);
       const pages = changedPages(before, next);
+      this.logDrawingChange(id, file, 'notation', changes, pages);
       if (pages.length === 0) return next;
       await this.writeJson(this.path('pieces', id, 'annotations', `${file}.json`), next);
       await this.touch(piece, 'drawing');
@@ -535,6 +533,29 @@ export class DataRepo {
       this.changes.markDirty(`Annotate ${quote(piece.title)} (${file} ${where})`);
       return next;
     });
+  }
+
+  private logDrawingChange(
+    id: Slug,
+    file: FileName,
+    layer: 'notation' | 'falling',
+    changes: AnnotationChanges,
+    pages: readonly number[],
+  ): void {
+    this.log.info(
+      {
+        id,
+        file,
+        layer,
+        put: Object.values(changes.put).reduce((n, items) => n + items.length, 0),
+        remove: changes.remove.length,
+        pages,
+        written: pages.length > 0,
+      },
+      pages.length > 0
+        ? 'dewidebug drawing changes applied'
+        : 'dewidebug drawing changes left the file as it was',
+    );
   }
 
   private async fallingPath(id: Slug, file: FileName): Promise<string> {
@@ -548,14 +569,15 @@ export class DataRepo {
     return readJson(await this.fallingPath(id, file), Annotations, emptyAnnotations);
   }
 
-  async putFallingDrawings(id: Slug, file: FileName, input: unknown): Promise<Annotations> {
-    const parsed = Annotations.parse(input);
+  async changeFallingDrawings(id: Slug, file: FileName, input: unknown): Promise<Annotations> {
+    const changes = AnnotationChanges.parse(input);
     return this.locked(`piece:${id}`, async () => {
       const piece = await this.getPiece(id);
       const path = await this.fallingPath(id, file);
       const before = await readJson(path, Annotations, emptyAnnotations);
-      const next: Annotations = { version: parsed.version, pages: parsed.pages };
+      const { pdfImport: _none, ...next } = applyAnnotationChanges(before, changes);
       const bars = changedPages(before, next);
+      this.logDrawingChange(id, file, 'falling', changes, bars);
       if (bars.length === 0) return next;
       await this.writeJson(path, next);
       await this.touch(piece, 'falling drawing');

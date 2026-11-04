@@ -257,6 +257,15 @@ export const PdfImportRequest = PdfImport.omit({ at: true }).extend({ pages: Ann
 export type PdfImportRequest = z.infer<typeof PdfImportRequest>;
 export const emptyAnnotations = (): Annotations => ({ version: 1, pages: {} });
 
+export const AnnotationChanges = z
+  .object({
+    version: z.literal(1),
+    put: AnnotationPages,
+    remove: z.array(z.string().min(1).max(40)).max(10_000),
+  })
+  .strict();
+export type AnnotationChanges = z.infer<typeof AnnotationChanges>;
+
 export const Loop = z.object({
   id: z.string().min(1).max(40),
   name: z.string().min(1).max(120),
