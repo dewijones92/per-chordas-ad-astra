@@ -73,8 +73,3 @@ export const defaultToolState = (): ToolState => ({
   size: 'M',
   glyph: '1',
 });
-
-export function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
-}

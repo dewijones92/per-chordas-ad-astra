@@ -1,7 +1,7 @@
 ---
 title: Metronome
 status: shipped
-updated: 2026-10-14
+updated: 2026-11-04
 ---
 
 # Metronome
@@ -13,7 +13,7 @@ updated: 2026-10-14
   drift; an hour at 97 bpm triplets is checked to 9 decimal places). The engine schedules 120 ms ahead
   every 25 ms on the Web Audio clock.
 - It lives app-wide, so it keeps going while you move between pages; the header shows a mini stop
-  button. `Space` toggles it on a score page; `+`/`−` nudge the tempo. Settings are saved to GitHub as `settings.json`
+  button. `M` toggles it on any page, and `Space` does too on a PDF-only score view and the Metronome page (where the play-along shows, Space is the play-along's, ADR 0020); `+`/`−` nudge the tempo on a score page. Settings are saved to GitHub as `settings.json`
   and follow you to every device; the newest change wins and each commit says what changed
   ([ADR 0013](../adr/0013-where-preferences-live.md)).
 

@@ -14,6 +14,7 @@ import { MetronomeEngine } from './engine.ts';
 import { clampBpm, type MetronomeSettings, type Tick } from './scheduler.ts';
 import { loadSettings, reconcile, saveSettings, type StampedSettings } from './settings-store.ts';
 import { tapTempo } from './tap-tempo.ts';
+import { shortcutOf } from '../ui/shortcuts.ts';
 
 export interface MetronomeApi {
   settings: MetronomeSettings;
@@ -180,11 +181,44 @@ export function MetronomeProvider({ children }: { children: ReactNode }) {
     if (result.bpm !== null) setBpm(result.bpm);
   }, [setBpm]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (shortcutOf(e) !== 'metronome') return;
+      e.preventDefault();
+      console.info('dewidebug metronome key', { key: e.key, wasRunning: running });
+      toggle();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [toggle, running]);
+
   const value = useMemo<MetronomeApi>(
     () => ({ settings, update, setBpm, running, toggle, tap, tick, played }),
     [settings, update, setBpm, running, toggle, tap, tick, played],
   );
   return <MetronomeContext value={value}>{children}</MetronomeContext>;
+}
+
+export function useSpaceForMetronome(): void {
+  const { toggle, running } = useMetronome();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (shortcutOf(e) !== 'playPause') return;
+      if (e.defaultPrevented) {
+        console.info('dewidebug space left to the play-along', { key: e.key });
+        return;
+      }
+      e.preventDefault();
+      console.info('dewidebug metronome by space', { key: e.key, wasRunning: running });
+      toggle();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [toggle, running]);
 }
 
 export function useMetronome(): MetronomeApi {

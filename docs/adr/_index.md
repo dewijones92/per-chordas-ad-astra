@@ -1,6 +1,6 @@
 ---
 title: Architecture decision records
-updated: 2026-10-30
+updated: 2026-11-04
 ---
 
 # ADRs
@@ -25,6 +25,7 @@ updated: 2026-10-30
 | [0017](0017-every-ui-string-in-strings-ts-with-an-emoji.md) | Every UI string in strings.ts; visible text starts with an emoji, checked by a test | accepted           |
 | [0018](0018-piano-hands-for-guitar-scores.md)               | Piano hands for guitar scores: an automatic split, By part / By hand                | accepted           |
 | [0019](0019-people-behind-the-gate.md)                      | People: the gate's email says who; place, settings, log and bests per person        | accepted           |
+| [0020](0020-one-shortcut-table.md)                          | One shortcut table; Space plays whatever is on screen, M runs the metronome         | accepted           |
 | [0012](0012-library-sort-facts.md)                          | Library sorts read recorded facts (edited, opened, pinned)                          | accepted           |
 
 Format: `NNNN-title.md` with frontmatter (`status`, `date`, `updated`). Change a decision by updating

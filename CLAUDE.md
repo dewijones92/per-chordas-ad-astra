@@ -129,7 +129,8 @@ With no `DATA_REMOTE` it keeps a local-only git repo (dev mode).
 - **pdf.js 6's modern build needs Chrome 140+** (`Uint8Array.prototype.toHex`). Older browsers could
   not open any score, so we use the legacy build (ADR 0008).
 - **Locally, run Playwright with Chromium 136**: `PW_CHROMIUM_PATH=~/.cache/ms-playwright/chromium-1169/chrome-linux/chrome pnpm e2e`.
-  Chromium 147+ cannot navigate on Dewi's WSL. CI uses Playwright's bundled browser.
+  Chromium 147+ cannot navigate on Dewi's WSL. CI uses Playwright's bundled browser. If port 8799 is taken (another
+  project's server), set `E2E_PORT=8811`; never kill a process you did not start.
 - **All CSS is global.** A generic class name in one stylesheet (`.empty`) silently restyled another
   feature. Use feature-prefixed or specific class names.
 - **New React-hooks rules forbid resetting state at the top of an effect.** Derive "loading" from a

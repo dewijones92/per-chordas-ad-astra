@@ -16,7 +16,7 @@ import { Link, useLocation } from 'wouter';
 import { api } from '../api/client.ts';
 import { Toolbar } from '../annotate/Toolbar.tsx';
 import { DrawingStatus } from '../annotate/DrawingStatus.tsx';
-import { isTypingTarget } from '../annotate/tools.ts';
+import { shortcutOf } from '../ui/shortcuts.ts';
 import { useDrawing } from '../annotate/use-drawing.ts';
 import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
 import { useWheelZoom } from '../score/use-wheel-zoom.ts';
@@ -25,7 +25,7 @@ import { usePdfMarks } from '../annotate/use-pdf-marks.ts';
 import { Looper } from '../looper/Looper.tsx';
 import { MetronomePanel } from '../metronome/MetronomePanel.tsx';
 import { PlayAlong } from '../music/PlayAlong.tsx';
-import { useMetronome } from '../metronome/MetronomeProvider.tsx';
+import { useMetronome, useSpaceForMetronome } from '../metronome/MetronomeProvider.tsx';
 import { BpmChart } from '../practice/BpmChart.tsx';
 import { PracticeTimer } from '../practice/PracticeTimer.tsx';
 import { bestBpmByDay } from '../practice/stats.ts';
@@ -111,6 +111,7 @@ function ScoreArea({
   const [initialPosition] = useState(() => readResume().scores[spot] ?? null);
   const viewer = useRef<ScoreViewerHandle>(null);
   const metronome = useMetronome();
+  useSpaceForMetronome();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -124,20 +125,16 @@ function ScoreArea({
         });
         return;
       }
-      if (isTypingTarget(e.target)) return;
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+      const shortcut = shortcutOf(e);
+      if (shortcut === 'nextPage') {
         e.preventDefault();
         viewer.current?.turn(1);
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      } else if (shortcut === 'previousPage') {
         e.preventDefault();
         viewer.current?.turn(-1);
-      } else if (e.key === ' ') {
-        e.preventDefault();
-        metronome.toggle();
-      } else if (e.key === '+' || e.key === '=') {
+      } else if (shortcut === 'tempoUp') {
         metronome.setBpm(metronome.settings.bpm + 1);
-      } else if (e.key === '-') {
+      } else if (shortcut === 'tempoDown') {
         metronome.setBpm(metronome.settings.bpm - 1);
       }
     };
@@ -597,7 +594,6 @@ export function PiecePage({ id }: { id: string }) {
               key={musicRef.file}
               pieceId={current.id}
               music={musicRef}
-              spaceToggles={viewMode === 'notes'}
               onTranspose={(semitones) => {
                 transposeMusic(musicRef.file, semitones);
               }}
@@ -705,7 +701,6 @@ export function PiecePage({ id }: { id: string }) {
                 {names.pianoLicence}
               </a>
             </p>
-            <p className="muted small-print">{strings.piece.playAlongKeys}</p>
           </Section>
 
           <Section title={strings.piece.sections.notes} open={current.notes !== ''}>

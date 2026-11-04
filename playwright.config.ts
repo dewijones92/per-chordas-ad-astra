@@ -17,7 +17,7 @@ const silentAudioEnv = {
   PULSE_SERVER: 'unix:/nonexistent/per-chordas-ad-astra-e2e-is-silent',
 };
 
-const port = 8799;
+const port = Number(process.env['E2E_PORT'] ?? '8799');
 const executablePath = process.env['PW_CHROMIUM_PATH'];
 
 export default defineConfig({

@@ -1,7 +1,7 @@
 ---
 title: Play-along (MuseScore and MusicXML, falling notes, transpose, loop)
 status: shipped
-updated: 2026-11-01
+updated: 2026-11-04
 ---
 
 # Play-along
@@ -97,8 +97,9 @@ keyboard from above, like the bird's-eye piano videos.
   `hard-bits.json` in the data repo, saved one file at a time; commits read "Mark hard bit 'The run'" and
   "Hard bit 'The run' up to 75%".
 - **Practice log**: play-along time logs itself (see the practice log feature).
-- **Keys**: K play/pause, `[` `]` slower/faster, `,` `.` previous/next bar. Space plays in the Notes view;
-  where the PDF is showing, Space stays with the metronome.
+- **Keys**: Space or K play/pause, in the Notes and Both views, even after clicking a tick box, the slider or a
+  button; `[` `]` slower/faster, `,` `.` previous/next bar. Every shortcut is listed under ⌨️ Keys in the top bar
+  ([ADR 0020](../adr/0020-one-shortcut-table.md)).
 
 Files: `apps/web/src/music/*` (`mscx.ts`, `musicxml.ts` and `load.ts` read files into one model;
 `unroll.ts` decides the play order; `performance.ts` turns bars into seconds; `transport.ts` schedules;

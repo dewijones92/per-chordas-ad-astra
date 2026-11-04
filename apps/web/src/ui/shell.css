@@ -102,3 +102,27 @@
 .loop-switch:has(input:disabled) {
   opacity: 0.5;
 }
+
+.keys-help-anchor {
+  position: relative;
+}
+
+.keys-help {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 14px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  box-shadow: 4px 4px 0 var(--ink);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.keys-help p {
+  margin: 3px 0;
+}

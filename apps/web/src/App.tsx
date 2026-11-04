@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Route, Switch, useLocation, useRoute } from 'wouter';
 import { LibraryPage } from './library/LibraryPage.tsx';
+import { KeysHelp } from './ui/KeysHelp.tsx';
 import { MetronomeProvider, useMetronome } from './metronome/MetronomeProvider.tsx';
 import { PiecePage } from './piece/PiecePage.tsx';
 import { LogPage } from './practice/LogPage.tsx';
@@ -103,6 +104,7 @@ export function App() {
             <NavLink href="/tools">{strings.nav.tools}</NavLink>
           </nav>
           <span className="spacer" />
+          <KeysHelp />
           <MiniMetronome />
           <SyncPill />
         </header>

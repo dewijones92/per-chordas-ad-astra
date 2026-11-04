@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client.ts';
 import { DrawingStatus } from '../annotate/DrawingStatus.tsx';
 import { Toolbar } from '../annotate/Toolbar.tsx';
-import { isTypingTarget } from '../annotate/tools.ts';
+import { shortcutOf } from '../ui/shortcuts.ts';
 import { useAnnotations } from '../annotate/use-annotations.ts';
 import { claimDrawing, useDrawing } from '../annotate/use-drawing.ts';
 import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
@@ -234,12 +234,10 @@ function FallingCanvas({
 export function PlayAlong({
   pieceId,
   music,
-  spaceToggles,
   onTranspose,
 }: {
   pieceId: string;
   music: MusicRef;
-  spaceToggles: boolean;
   onTranspose: (semitones: number) => void;
 }) {
   const loaded = usePerformance(pieceId, music.file);
@@ -568,26 +566,29 @@ export function PlayAlong({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTypingTarget(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
-      const k = e.key.toLowerCase();
-      if (k === 'k' || (spaceToggles && e.key === ' ')) {
+      const shortcut = shortcutOf(e);
+      if (shortcut === 'playPause') {
         e.preventDefault();
+        console.info('dewidebug play-along key', {
+          key: e.key,
+          target: (e.target as HTMLElement | null)?.tagName,
+        });
         toggle();
-      } else if (e.key === '[') {
+      } else if (shortcut === 'slower') {
         setSpeed(prefs.speed - PLAY_ALONG_SPEED_STEP);
-      } else if (e.key === ']') {
+      } else if (shortcut === 'faster') {
         setSpeed(prefs.speed + PLAY_ALONG_SPEED_STEP);
-      } else if (e.key === ',') {
+      } else if (shortcut === 'previousBar') {
         stepBar(-1);
-      } else if (e.key === '.') {
+      } else if (shortcut === 'nextBar') {
         stepBar(1);
       }
     };
-    window.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey);
     return () => {
-      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onKey);
     };
-  }, [toggle, setSpeed, stepBar, prefs.speed, spaceToggles]);
+  }, [toggle, setSpeed, stepBar, prefs.speed]);
 
   if (loaded.error) {
     return (

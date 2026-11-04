@@ -10,6 +10,19 @@ export const strings = {
     metronome: '⏱️ Metronome',
     practiceLog: '📝 Practice log',
   },
+  keys: {
+    button: '⌨️ Keys',
+    playPause:
+      '⏯️ Space or K: play or pause (the play-along when it shows, otherwise the metronome)',
+    metronome: '⏱️ M: start or stop the metronome, anywhere',
+    speed: '🐢 [ and ]: play-along slower or faster',
+    bars: '⏮️ , and .: previous or next bar',
+    pages: '📄 ← and →, Page Up and Page Down: turn the page',
+    tempo: '⏱️ + and −: metronome tempo, on a score page',
+    zoom: '🔍 Ctrl + and Ctrl −, or Ctrl + scroll: zoom',
+    tools: '✏️ V P H E T L A R O S: drawing tools, while drawing',
+    undo: '↩️ Ctrl+Z and Ctrl+Y: undo and redo a drawing',
+  },
   newPiece: {
     title: '✨ New piece',
     pieceTitle: '🏷️ Title',
@@ -97,7 +110,6 @@ export const strings = {
     addPdf: '➕ Add PDF',
     playAlongEmpty:
       '🎹 Add a MuseScore (.mscz, .mscx) or MusicXML (.mxl, .musicxml) file to watch its notes fall onto a keyboard, transpose it and play along.',
-    playAlongKeys: '⌨️ Keys: K play/pause, [ ] speed, , . bars; Space too in the Notes view.',
     noSetlists: '🗂️ Create setlists from the library.',
     removeConfirm: (name: string, withDrawings: boolean) =>
       `🗑️ Remove “${name}”${withDrawings ? ' and its drawings' : ''}? It stays in the GitHub history.`,
@@ -216,7 +228,7 @@ export const strings = {
   tools: {
     title: '🧰 Tools',
     tuner: '🎤 Tuner',
-    metronomeHint: '💡 Space starts and stops it on a score page; + and − nudge the tempo.',
+    metronomeHint: '💡 Space or M starts and stops it; + and − nudge the tempo on a score page.',
   },
   tuner: {
     start: '🎤 Start tuner',
@@ -264,6 +276,9 @@ export const strings = {
 } as const;
 
 export const tips = {
+  keys: {
+    help: 'Every keyboard shortcut. Keys never fire while you type in a text box; Space still plays after you click a tick box, slider or button',
+  },
   common: {
     help: (what: string) => `Explain: ${what}`,
   },

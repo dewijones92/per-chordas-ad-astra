@@ -1,9 +1,11 @@
 import { MetronomePanel } from '../metronome/MetronomePanel.tsx';
+import { useSpaceForMetronome } from '../metronome/MetronomeProvider.tsx';
 import { TunerPanel } from '../tuner/TunerPanel.tsx';
 import '../piece/piece.css';
 import { strings } from '../strings.ts';
 
 export function ToolsPage() {
+  useSpaceForMetronome();
   return (
     <div className="tools-page">
       <h1>{strings.tools.title}</h1>

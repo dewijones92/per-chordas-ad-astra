@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { History, HistoryAction } from './history.ts';
-import { defaultToolState, isTypingTarget, TOOL_KEYS, type ToolState } from './tools.ts';
+import { ownsKey } from '../ui/shortcuts.ts';
+import { defaultToolState, TOOL_KEYS, type ToolState } from './tools.ts';
 
 export type DrawingSurface = 'score' | 'notation';
 
@@ -44,7 +45,7 @@ export function useDrawing(
   useEffect(() => {
     if (!enabled) return;
     const onKey = (e: KeyboardEvent) => {
-      if (!owns(surface) || isTypingTarget(e.target)) return;
+      if (!owns(surface) || ownsKey(e.target, e.key)) return;
       const key = e.key.toLowerCase();
       if ((e.ctrlKey || e.metaKey) && key === 'z') {
         e.preventDefault();
