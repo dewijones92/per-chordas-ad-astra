@@ -12,6 +12,8 @@ const waltzXml = () => ({
 
 async function settledBox(page: Page) {
   const canvas = page.getByTestId('playalong-canvas');
+  if ((await page.getByTestId('notation-frame').count()) > 0)
+    await expect(page.locator('[data-testid="notation-frame"] svg').first()).toBeVisible();
   let last = JSON.stringify(await canvas.boundingBox());
   await expect
     .poll(async () => {
@@ -26,6 +28,7 @@ async function settledBox(page: Page) {
 }
 
 async function clickNote(page: Page, pitch: number): Promise<void> {
+  await settledBox(page);
   const canvas = page.getByTestId('playalong-canvas');
   const blocks = (await canvas.getAttribute('data-blocks')) ?? '';
   const hit = blocks
