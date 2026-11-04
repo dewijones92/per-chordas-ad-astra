@@ -115,7 +115,12 @@ function hatHit(rule: HatRule, beatInGroove: number, slot: DrumSlot): DrumHit | 
   return { voice: rule.voice, level, twelfths: swung ? SWUNG_OFFBEAT - step : 0 };
 }
 
-export function drumHits(groove: Groove, slot: DrumSlot, accent: boolean): DrumHit[] {
+export function drumHits(
+  groove: Groove,
+  slot: DrumSlot,
+  accent: boolean,
+  withHat = true,
+): DrumHit[] {
   const spec = GROOVE_SPECS[groove];
   const beatInGroove = slot.beat % spec.beats;
   const step = TWELFTHS_PER_BEAT / slot.subdivision;
@@ -126,7 +131,7 @@ export function drumHits(groove: Groove, slot: DrumSlot, accent: boolean): DrumH
     if (tickSub !== slot.sub) continue;
     hits.push({ voice: h.voice, level: h.level, twelfths: h.at - tickSub * step });
   }
-  const hat = hatHit(spec.hat, beatInGroove, slot);
+  const hat = withHat ? hatHit(spec.hat, beatInGroove, slot) : null;
   if (hat && !hits.some((h) => h.voice === 'openHat' && h.twelfths === 0)) hits.push(hat);
   return accent ? hits.map((h) => ({ ...h, level: h.level * ACCENT_GAIN })) : hits;
 }

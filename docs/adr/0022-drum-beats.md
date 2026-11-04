@@ -47,7 +47,10 @@ subdivision setting (♩ ♫ 3 ♬) and the play-along has its own Click, Half-b
   Drums alone makes the beat sound, as drums; ticking both plays drums. The groove comes from the meter of each bar,
   not a setting: three beats is Waltz, two dotted beats is 6/8 (counted in eighths), anything else Rock/pop. Each
   click in the performance carries its groove and slot, so repeats and meter changes follow the music.
-  🎶 Half-beats sets the hat density (eighths, or thirds of a dotted beat in compound time). The count-in plays as a
+  🎶 Half-beats sets the hat density only (eighths, or thirds of a dotted beat in compound time): with drums on the
+  between-beat clicks are always read, and without Half-beats they carry the groove's own hits (Rock/pop's kick on the
+  "and" of 3, 6/8's open hat on the last eighth) but no hat, so both players play one groove (`music/click-hits.ts`;
+  red first, 4 Nov 2026: with Half-beats off those hits were dropped). The count-in plays as a
   side stick plus a closed hat on each beat, the first louder. Known simplification: the play-along ignores a hit's
   sub-tick delay (only Rock in 9/8 and 12/8 has one), so that kick sits on the nearest earlier third.
 - **Diagnostics.** `dewidebug` logs for the engine's start (sound, groove), retunes, groove picks, a sound change

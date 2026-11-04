@@ -1,7 +1,8 @@
 import { countInFor, type PerfClick, type PerfNote, type Performance } from './performance.ts';
 import { chooseSample, gainFor, SampleManifest, sampleFile } from './samples.ts';
 import { playClick } from '../metronome/click.ts';
-import { countInHits, drumHits, type DrumHit } from '../drums/grooves.ts';
+import { countInHits, type DrumHit } from '../drums/grooves.ts';
+import { clickIsHeard, hitsForClick } from './click-hits.ts';
 import { playDrum } from '../drums/voices.ts';
 import { START_LEAD_SECONDS, Transport, type Loop, type Ramp } from './transport.ts';
 
@@ -390,18 +391,13 @@ export class PianoPlayer {
       }
       if (this.clickOn) {
         const halves = this.halfBeats;
-        for (const c of this.clicks.pump(
-          ctx.currentTime,
-          HORIZON_SECONDS,
-          (c) => halves || c.kind !== 'sub',
+        const drums = this.drums;
+        for (const c of this.clicks.pump(ctx.currentTime, HORIZON_SECONDS, (c) =>
+          clickIsHeard(c.kind, halves, drums),
         )) {
           if (!this.master) continue;
-          if (this.drums) {
-            this.playHits(
-              this.trackClicks,
-              c.when,
-              drumHits(c.note.groove, c.note.slot, c.note.kind === 'bar'),
-            );
+          if (drums) {
+            this.playHits(this.trackClicks, c.when, hitsForClick(c.note, halves));
           } else {
             keep(this.trackClicks, playClick(ctx, this.master, c.when, c.note.kind, BEAT_VOLUME));
           }

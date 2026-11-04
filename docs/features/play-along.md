@@ -162,7 +162,8 @@ keyboard from above, like the bird's-eye piano videos.
   dotted beat in compound time), handy when playing very slowly; it is remembered with the other settings. The
   click is the metronome's own sound (`metronome/click.ts`). **🥁 Drums** (off by default, remembered per file)
   plays the beat as drums instead of the click, on its own or with Click: the groove follows each bar's meter
-  (three beats waltz, 6/8 in eighths, otherwise rock/pop), Half-beats sets the hat density, and the count-in
+  (three beats waltz, 6/8 in eighths, otherwise rock/pop), Half-beats sets only the hat density (the off-beat kick and
+  6/8's last-eighth open hat play either way), and the count-in
   becomes side sticks and a hat, the first beat louder ([ADR 0022](../adr/0022-drum-beats.md); the sounds and
   patterns are the metronome's, `drums/`). Pausing during the count-in silences the clicks
   already scheduled, and a seek, speed or loop change during it keeps the music waiting for the count-in to

@@ -1,3 +1,4 @@
+import { makeMscx, PIANO_WALTZ, type FixtureScore } from '@pcaa/fixtures';
 import { describe, expect, it } from 'vitest';
 import {
   GROOVES,
@@ -17,6 +18,9 @@ import {
   type DrumVoice,
 } from '../src/drums/grooves.ts';
 import { playDrum } from '../src/drums/voices.ts';
+import { clickIsHeard, hitsForClick } from '../src/music/click-hits.ts';
+import { parseScoreText } from '../src/music/load.ts';
+import { buildPerformance } from '../src/music/performance.ts';
 import {
   defaultSettings,
   TickScheduler,
@@ -318,6 +322,41 @@ describe('the play-along beat as drums', () => {
       expect(h.level).toBeGreaterThan(rest[i]?.level ?? 1);
       expect(h.level).toBeLessThanOrEqual(1);
     });
+  });
+});
+
+describe('the play-along plays the same groove as the metronome, whatever Half-beats says', () => {
+  const bar = (time: [number, number], dur: 'whole' | 'half', dots = 0): FixtureScore => ({
+    ...PIANO_WALTZ,
+    time,
+    measures: [{ staves: [[{ pitches: [67], dur, dots }], []] }],
+  });
+  const heard = (score: FixtureScore, halfBeats: boolean) =>
+    buildPerformance(parseScoreText(makeMscx(score, '3.02')))
+      .clicks.filter((c) => clickIsHeard(c.kind, halfBeats, true))
+      .flatMap((c) =>
+        hitsForClick(c, halfBeats).map(
+          (h) => `${String(c.slot.beat)}.${String(c.slot.sub)} ${h.voice}`,
+        ),
+      );
+
+  it('plays the kick on the and of 3 in rock, with half-beats off', () => {
+    const off = heard(bar([4, 4], 'whole'), false);
+    expect(off).toContain('2.1 kick');
+    expect(off.filter((h) => h.endsWith(' hat'))).toHaveLength(4);
+  });
+
+  it('plays the open hat on the last eighth of 6/8, with half-beats off', () => {
+    const off = heard(bar([6, 8], 'half', 1), false);
+    expect(off).toContain('5.0 openHat');
+  });
+
+  it('adds only hats when half-beats are on: every hit that played without them still plays', () => {
+    for (const score of [bar([4, 4], 'whole'), bar([6, 8], 'half', 1)]) {
+      const off = heard(score, false).filter((h) => !h.endsWith(' hat'));
+      const on = heard(score, true).filter((h) => !h.endsWith(' hat'));
+      expect(on).toEqual(off);
+    }
   });
 });
 
