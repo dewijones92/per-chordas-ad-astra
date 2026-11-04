@@ -115,6 +115,7 @@ export const PlayAlongPrefs = z.object({
   compact: z.boolean().default(false),
   suggest: z.boolean().default(true),
   chords: z.boolean().default(false),
+  waitForMe: z.boolean().default(false),
 });
 export type PlayAlongPrefs = z.output<typeof PlayAlongPrefs>;
 export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
@@ -145,6 +146,7 @@ export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
   compact: false,
   suggest: true,
   chords: false,
+  waitForMe: false,
 };
 
 export const VIEW_MODES = ['page', 'spread', 'width'] as const;

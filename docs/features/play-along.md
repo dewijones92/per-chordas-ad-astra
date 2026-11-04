@@ -91,6 +91,18 @@ keyboard from above, like the bird's-eye piano videos.
   rings, and its key lights only for the strike, so a guitar's let-ring notes no longer look like keys to hold
   down (catch them with the pedal). With tails on, the hand split counts a key as released after its strike,
   which frees the hands further. Remembered per file.
+- **🎹 Wait for me** (button in the top bar, remembered per file; ADR 0024): the falling notes stop exactly at each
+  note or chord of yours until you play it, then carry on from there. Play on a **MIDI keyboard** (every connected
+  one is heard, plugging one in later works, the bar names them; it says so plainly if the browser has no MIDI or
+  permission was refused), by **clicking the keys** at the bottom of the falling notes, or on the **computer
+  keyboard**: A W S E D F T G Y H U J are C to B from middle C, Z and X move an octave (K stays play and pause, M the
+  metronome, and the drawing-tool letters do not fire while this is on). The keys to press are outlined in coral,
+  the keys you press are yellow with a dot, and they sound with the piano. A chord needs all its keys, in any
+  order, pressed together or still held. A wrong key is counted and the music still waits. Your notes are the
+  lanes you can see, or only the muted ones if you have muted a hand to play it yourself; a hidden hand is left to
+  the app, and ✂️ thinned-out octave notes are not asked for. Count-in, 🔁 loops (each pass waits again), speed and
+  transpose all work (the keys asked for are the ones that sound after transposing). The bar shows a running
+  `✅ first time · ❌ wrong · ⏳ waited` line; at the end, or when you pause, a card gives the result and 🔄 Start again.
 - **Stepping while paused**: `,` / `.`, a bar click or a scrub while paused moves the 📍 Bar readout, the bar
   strip and the notation with the notes (they used to wait until Play).
 - **Sound**: a sampled grand piano (Salamander, CC BY 3.0, credited in the section), 30 notes in minor

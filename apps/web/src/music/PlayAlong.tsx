@@ -23,6 +23,7 @@ import {
   useRef,
   useState,
   type Dispatch,
+  type ReactNode,
   type SetStateAction,
 } from 'react';
 import { api } from '../api/client.ts';
@@ -42,7 +43,15 @@ import { PercentInput } from '../ui/PercentInput.tsx';
 import { rememberPlayAlong, savedPlayAlong, scoreKey } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
 import { staffColours } from './colours.ts';
-import { drawFalling, geometry, keyUpAt, noteAt, type FallingView } from './falling.ts';
+import {
+  drawFalling,
+  geometry,
+  keyAt,
+  keyTargets,
+  keyUpAt,
+  noteAt,
+  type FallingView,
+} from './falling.ts';
 import { capoFor, fitRange, keyName, noteName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip } from './BarStrip.tsx';
 import { suggestBySide } from './suggest-fingering.ts';
@@ -68,6 +77,8 @@ import { toMusicXml } from './to-musicxml.ts';
 import { download, exportName, performanceToMidi, transposeMusicXml } from './export.ts';
 import { barAt, buildPerformance, type Performance, type PerfNote } from './performance.ts';
 import { PianoPlayer, type PlayerEvent } from './player.ts';
+import { useWaitForMe } from './use-wait-for-me.ts';
+import { WaitForMeBar, WaitResult } from './WaitForMePanel.tsx';
 import { PlayAlongLog } from './practice-session.ts';
 import { clampSpeed } from './transport.ts';
 import './music.css';
@@ -135,6 +146,11 @@ function FallingCanvas({
   selectedNote,
   onPick,
   pickedLabel,
+  expected,
+  played,
+  onKeyDown,
+  onKeyUp,
+  overlay,
 }: {
   perf: Performance;
   player: PianoPlayer | null;
@@ -153,6 +169,11 @@ function FallingCanvas({
   selectedNote: string | null;
   onPick: (note: PerfNote | null) => void;
   pickedLabel: string | null;
+  expected: ReadonlySet<number>;
+  played: ReadonlySet<number>;
+  onKeyDown: ((pitch: number) => void) | null;
+  onKeyUp: (pitch: number) => void;
+  overlay: ReactNode;
 }) {
   const lastView = useRef<FallingView | null>(null);
   const canvas = useRef<HTMLCanvasElement | null>(null);
@@ -206,6 +227,12 @@ function FallingCanvas({
     const ctx = el.getContext('2d');
     if (!ctx) return;
     let frame = 0;
+    el.dataset['keys'] = keyTargets({
+      width: size.width,
+      height: size.height,
+      range,
+      lookAhead: prefs.lookAhead,
+    });
     const draw = () => {
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       const position = player?.position() ?? prefs.position;
@@ -226,6 +253,8 @@ function FallingCanvas({
         ...(suggested ? { suggested } : {}),
         ...(chords ? { chords } : {}),
         selected: selectedNote,
+        expected,
+        played,
         width: size.width,
         height: size.height,
       };
@@ -239,6 +268,8 @@ function FallingCanvas({
         : drawn.blocks.map((b) => `${String(b.pitch)}:${String(b.x)}:${String(b.y)}`).join(' ');
       el.dataset['position'] = position.toFixed(3);
       el.dataset['fingers'] = String(drawn.fingers);
+      el.dataset['expected'] = [...expected].join(' ');
+      el.dataset['played'] = [...played].join(' ');
       el.dataset['pressed'] = [...drawn.pressed]
         .map(([pitch, fill]) => `${String(pitch)}:${fill}`)
         .join(' ');
@@ -268,9 +299,23 @@ function FallingCanvas({
     suggested,
     chords,
     selectedNote,
+    expected,
+    played,
   ]);
 
   const drag = useRef<{ x: number; y: number; position: number; moved: boolean } | null>(null);
+  const keyHeld = useRef<number | null>(null);
+  const keyUnder = (e: { clientX: number; clientY: number; currentTarget: HTMLElement }) => {
+    const view = lastView.current;
+    if (!view) return null;
+    const box = e.currentTarget.getBoundingClientRect();
+    return keyAt(view, e.clientX - box.left, e.clientY - box.top);
+  };
+  const releaseKey = () => {
+    const held = keyHeld.current;
+    keyHeld.current = null;
+    if (held !== null) onKeyUp(held);
+  };
   const pxPerSecond = geometry({
     width: size.width,
     height: size.height,
@@ -280,6 +325,7 @@ function FallingCanvas({
 
   return (
     <div className="playalong-stage">
+      {overlay}
       {pickedLabel && (
         <span className="finger-picked" data-testid="finger-picked">
           {strings.playAlong.fingerFor(pickedLabel)}
@@ -297,6 +343,13 @@ function FallingCanvas({
         }}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
+          const key = onKeyDown ? keyUnder(e) : null;
+          if (key !== null && onKeyDown) {
+            console.info('dewidebug on-screen key down', { pitch: key });
+            keyHeld.current = key;
+            onKeyDown(key);
+            return;
+          }
           drag.current = {
             x: e.clientX,
             y: e.clientY,
@@ -305,13 +358,27 @@ function FallingCanvas({
           };
         }}
         onPointerMove={(e) => {
+          if (keyHeld.current !== null && onKeyDown) {
+            const key = keyUnder(e);
+            if (key !== null && key !== keyHeld.current) {
+              onKeyUp(keyHeld.current);
+              keyHeld.current = key;
+              onKeyDown(key);
+            }
+            return;
+          }
           const d = drag.current;
           if (!d) return;
           if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) < CLICK_SLOP) return;
           d.moved = true;
           onScrub(d.position + (e.clientY - d.y) / Math.max(1, pxPerSecond));
         }}
+        onPointerCancel={releaseKey}
         onPointerUp={(e) => {
+          if (keyHeld.current !== null) {
+            releaseKey();
+            return;
+          }
           const d = drag.current;
           drag.current = null;
           if (!d || d.moved || !lastView.current) return;
@@ -520,6 +587,22 @@ export function PlayAlong({
     };
   }, [player, perf, key]);
 
+  const loopBar = activeLoop(prefs);
+  const waitLoopStart = loopBar && perf ? (perf.bars[loopBar.from]?.start ?? null) : null;
+  const wait = useWaitForMe({
+    enabled: prefs.waitForMe,
+    player,
+    perf,
+    lanes,
+    hiddenLanes,
+    mutedLanes,
+    transpose,
+    loopStart: waitLoopStart,
+    playing,
+  });
+  const waitMine = wait.isMine;
+  const { jumpTo: waitJumpTo, beforePlay: waitBeforePlay } = wait;
+
   useEffect(() => {
     if (!player || !lanes) return;
     const muted = new Set(mutedLanes);
@@ -528,12 +611,13 @@ export function PlayAlong({
       lanes: lanes.lanes.map((l) => l.label),
       muted: mutedLanes,
       leftOut: leftOut?.size ?? 0,
+      waitForMe: waitMine !== null,
     });
     player.setInclude((n) => {
       const lane = lanes.laneOf(n);
-      return lane !== LEFT_OUT && !muted.has(lane);
+      return lane !== LEFT_OUT && !muted.has(lane) && !(waitMine?.(n) ?? false);
     });
-  }, [player, lanes, mutedLanes, leftOut]);
+  }, [player, lanes, mutedLanes, leftOut, waitMine]);
 
   const applied = activeLoop(prefs);
   const loopFrom = applied?.from ?? null;
@@ -544,7 +628,8 @@ export function PlayAlong({
     const to = loopTo === null ? undefined : perf.bars[loopTo];
     console.info('dewidebug play-along loop applied', { from: loopFrom, to: loopTo });
     player.setLoop(from && to ? { start: from.start, end: to.end } : null);
-  }, [player, perf, loopFrom, loopTo]);
+    waitJumpTo(player.position());
+  }, [player, perf, loopFrom, loopTo, waitJumpTo]);
 
   useEffect(() => {
     player?.setTranspose(transpose);
@@ -650,7 +735,7 @@ export function PlayAlong({
           clock(perf.duration),
         );
       }
-      if (player.playing) frame = requestAnimationFrame(tick);
+      if (player.active) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => {
@@ -660,25 +745,27 @@ export function PlayAlong({
 
   const toggle = useCallback(() => {
     if (!player) return;
-    if (player.playing || player.starting) {
+    if (player.active || player.starting) {
       player.pause();
       updatePrefs((p) => ({ ...p, position: player.position() }));
     } else {
       setDrawMode(false);
+      waitBeforePlay();
       player.play(prefs.countIn).catch((error: unknown) => {
         console.warn('dewidebug play-along could not start audio', { error: String(error) });
       });
     }
-  }, [player, updatePrefs, prefs.countIn]);
+  }, [player, updatePrefs, prefs.countIn, waitBeforePlay]);
 
   const seekTo = useCallback(
     (seconds: number) => {
       if (!player || !perf) return;
       const target = Math.min(Math.max(0, seconds), perf.duration);
+      waitJumpTo(target);
       player.seek(target);
       if (!player.playing) updatePrefs((p) => ({ ...p, position: target }));
     },
-    [player, perf, updatePrefs],
+    [player, perf, updatePrefs, waitJumpTo],
   );
 
   const pausedAt = prefs.position;
@@ -874,6 +961,19 @@ export function PlayAlong({
           ›
         </button>
         <span className="playalong-readout" ref={readout} data-testid="playalong-position" />
+        <button
+          type="button"
+          className="btn small ghost"
+          aria-pressed={prefs.waitForMe}
+          title={tips.playAlong.waitForMe}
+          data-testid="playalong-wait"
+          onClick={() => {
+            console.info('dewidebug play-along wait for me', { on: !prefs.waitForMe });
+            updatePrefs((p) => ({ ...p, waitForMe: !p.waitForMe }));
+          }}
+        >
+          {strings.playAlong.waitForMe}
+        </button>
         <span className="spacer" />
         <span
           className="playalong-field"
@@ -956,6 +1056,13 @@ export function PlayAlong({
           {prefs.compact ? strings.playAlong.moreControls : strings.playAlong.fewerControls}
         </button>
       </div>
+      {prefs.waitForMe && (
+        <WaitForMeBar
+          wait={wait}
+          playing={playing}
+          flats={transposeFifths(perf.keyFifths, transpose) < 0}
+        />
+      )}
       <div className="playalong-bar playalong-settings">
         <span className="playalong-field" data-testid="playalong-transpose">
           <span>{strings.playAlong.key}</span>
@@ -1258,7 +1365,7 @@ export function PlayAlong({
                   setDrawMode(false);
                   return;
                 }
-                if (player?.playing || player?.starting) toggle();
+                if (player?.active || player?.starting) toggle();
                 if (!prefs.notation) updatePrefs((p) => ({ ...p, notation: true }));
                 console.info('dewidebug notation draw mode on', {
                   file: music.file,
@@ -1628,6 +1735,22 @@ export function PlayAlong({
         selectedNote={picked?.key ?? null}
         onPick={pickNote}
         pickedLabel={picked?.label ?? null}
+        expected={wait.expected}
+        played={wait.played}
+        onKeyDown={prefs.waitForMe ? wait.pressScreen : null}
+        onKeyUp={wait.releaseScreen}
+        overlay={
+          prefs.waitForMe && (
+            <WaitResult
+              wait={wait}
+              playing={playing}
+              onAgain={() => {
+                wait.reset();
+                seekTo(waitLoopStart ?? 0);
+              }}
+            />
+          )
+        }
       />
     </section>
   );

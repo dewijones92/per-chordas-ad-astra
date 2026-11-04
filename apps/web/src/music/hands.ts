@@ -32,7 +32,7 @@ interface State {
   parent: State | null;
 }
 
-function onsetGroups(notes: readonly PerfNote[]): PerfNote[][] {
+export function onsetGroups(notes: readonly PerfNote[]): PerfNote[][] {
   const sorted = [...notes].sort((a, b) => a.start - b.start || a.pitch - b.pitch);
   const groups: PerfNote[][] = [];
   let current: PerfNote[] = [];

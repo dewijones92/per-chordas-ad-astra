@@ -70,6 +70,7 @@ export const KEYS_HELP: readonly string[] = [
   strings.keys.metronome,
   strings.keys.speed,
   strings.keys.bars,
+  strings.keys.piano,
   strings.keys.fingers,
   strings.keys.pages,
   strings.keys.tempo,

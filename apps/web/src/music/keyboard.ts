@@ -14,6 +14,7 @@ export interface KeyboardLayout {
 }
 
 export const BLACK_KEY_RATIO = 0.62;
+export const BLACK_KEY_HEIGHT_RATIO = 0.62;
 
 export function keyboardLayout(range: KeyRange, width: number): KeyboardLayout {
   const whites: number[] = [];
@@ -49,4 +50,20 @@ export function keyForPitch(
     layout.byPitch.get(clamped + 1) ??
     layout.byPitch.get(clamped - 1)
   );
+}
+
+export function keyAtPoint(
+  layout: KeyboardLayout,
+  x: number,
+  y: number,
+  keyTop: number,
+  keyHeight: number,
+): number | null {
+  if (y < keyTop || y > keyTop + keyHeight) return null;
+  const inside = (k: KeyRect) => x >= k.x && x < k.x + k.width;
+  if (y <= keyTop + keyHeight * BLACK_KEY_HEIGHT_RATIO) {
+    const black = layout.keys.find((k) => k.black && inside(k));
+    if (black) return black.pitch;
+  }
+  return layout.keys.find((k) => !k.black && inside(k))?.pitch ?? null;
 }

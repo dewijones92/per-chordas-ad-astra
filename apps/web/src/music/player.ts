@@ -10,6 +10,7 @@ const PUMP_MS = 25;
 const HORIZON_SECONDS = 0.15;
 const RELEASE_TIME_CONSTANT = 0.09;
 const BEAT_VOLUME = 0.8;
+const HOLD_SLACK_SECONDS = 1e-3;
 
 interface Voice {
   source: AudioScheduledSourceNode;
@@ -66,6 +67,13 @@ async function loadLayer(
   );
 }
 
+export interface PlayGate {
+  limit(): number | null;
+  wrapped(): void;
+  held(at: number): void;
+  ended(): void;
+}
+
 export type PlayerEvent =
   | { kind: 'state'; playing: boolean }
   | { kind: 'samples'; loaded: number; total: number; error?: string }
@@ -112,6 +120,12 @@ export class PianoPlayer {
   private startRequest = 0;
   private passListener: (speed: number) => void = () => undefined;
   private startingNow = false;
+  private gate: PlayGate | null = null;
+  private heldAt: number | null = null;
+  private wrapPending = false;
+  private readonly liveVoices = new Set<Voice>();
+  private readonly liveKeys = new Map<number, Voice>();
+  private readonly wantedKeys = new Set<number>();
 
   constructor(
     perf: Performance,
@@ -120,6 +134,10 @@ export class PianoPlayer {
     this.perf = perf;
     this.transport = new Transport(perf.notes, perf.duration);
     this.clicks = new Transport(perf.clicks, perf.duration);
+    this.transport.onWrap = () => {
+      this.wrapPending = true;
+      this.gate?.wrapped();
+    };
   }
 
   private both(apply: (t: Transport<PerfNote> | Transport<PerfClick>) => void): void {
@@ -133,6 +151,45 @@ export class PianoPlayer {
 
   get starting(): boolean {
     return this.startingNow;
+  }
+
+  get held(): boolean {
+    return this.heldAt !== null;
+  }
+
+  get active(): boolean {
+    return this.transport.playing || this.heldAt !== null;
+  }
+
+  get judging(): boolean {
+    const ctx = this.ctx;
+    return this.heldAt !== null || (ctx !== null && this.transport.running(ctx.currentTime));
+  }
+
+  startPosition(): number {
+    return this.transport.startPoint();
+  }
+
+  setGate(gate: PlayGate | null): void {
+    this.gate = gate;
+    const limit = gate ? () => gate.limit() : null;
+    this.transport.limit = limit;
+    this.clicks.limit = limit;
+    console.info('dewidebug play-along gate', { on: gate !== null, held: this.heldAt });
+    if (!gate && this.heldAt !== null) this.release();
+  }
+
+  release(): void {
+    const ctx = this.ctx;
+    if (this.heldAt === null || !ctx) return;
+    console.info('dewidebug play-along released from the held note', { at: this.heldAt });
+    this.heldAt = null;
+    this.wrapPending = false;
+    const now = ctx.currentTime;
+    this.both((t) => {
+      t.play(now);
+    });
+    this.startPump();
   }
 
   get speed(): number {
@@ -229,6 +286,12 @@ export class PianoPlayer {
   pause(): void {
     this.startRequest += 1;
     this.startingNow = false;
+    if (this.heldAt !== null) {
+      console.info('dewidebug play-along pause while held', { at: this.heldAt });
+      this.heldAt = null;
+      this.onEvent({ kind: 'state', playing: false });
+      return;
+    }
     if (!this.ctx || !this.transport.playing) return;
     const at = this.ctx.currentTime;
     this.both((t) => {
@@ -248,6 +311,7 @@ export class PianoPlayer {
     });
     this.lastPosition = song;
     if (this.transport.playing) this.silence();
+    if (this.heldAt !== null) this.release();
   }
 
   setSpeed(speed: number): void {
@@ -281,6 +345,7 @@ export class PianoPlayer {
     });
     this.lastPosition = this.position();
     if (this.transport.playing) this.silence();
+    if (this.heldAt !== null) this.release();
   }
 
   setTranspose(semitones: number): void {
@@ -296,6 +361,8 @@ export class PianoPlayer {
   dispose(): void {
     this.stopPump();
     this.silence();
+    this.heldAt = null;
+    for (const pitch of [...this.liveKeys.keys()]) this.keyUp(pitch);
     stopAll(this.countInClicks, this.ctx?.currentTime ?? 0);
     void this.ctx?.close();
     this.ctx = null;
@@ -313,6 +380,7 @@ export class PianoPlayer {
           from: this.lastPosition.toFixed(2),
           to: position.toFixed(2),
         });
+        this.wrapPending = false;
         this.onEvent({ kind: 'loop', position, speed: this.transport.speedAt(ctx.currentTime) });
       }
       this.lastPosition = position;
@@ -344,6 +412,16 @@ export class PianoPlayer {
       for (const s of this.transport.pump(ctx.currentTime, HORIZON_SECONDS, this.include)) {
         this.voice(s.note, s.when, s.duration);
       }
+      const limit = this.gate?.limit() ?? null;
+      if (
+        limit !== null &&
+        !this.wrapPending &&
+        this.transport.running(ctx.currentTime) &&
+        position >= limit - HOLD_SLACK_SECONDS
+      ) {
+        this.hold(limit);
+        return;
+      }
       if (this.transport.finished(ctx.currentTime)) {
         const at = ctx.currentTime;
         this.both((t) => {
@@ -353,10 +431,27 @@ export class PianoPlayer {
         console.info('dewidebug play-along reached the end');
         this.onEvent({ kind: 'state', playing: false });
         this.onEvent({ kind: 'ended' });
+        this.gate?.ended();
       }
     };
     tick();
     this.timer = window.setInterval(tick, PUMP_MS);
+  }
+
+  private hold(at: number): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    this.both((t) => {
+      t.pause(now, at);
+    });
+    this.stopPump();
+    this.heldAt = at;
+    console.info('dewidebug play-along held at the next note', {
+      at: at.toFixed(3),
+      speed: this.transport.speed,
+    });
+    this.gate?.held(at);
   }
 
   private playHits(nodes: Set<AudioScheduledSourceNode>, when: number, hits: DrumHit[]): void {
@@ -392,17 +487,73 @@ export class PianoPlayer {
 
   private voice(note: PerfNote, when: number, duration: number): void {
     const ctx = this.ctx;
-    const master = this.master;
-    if (!ctx || !master) return;
-    const pitch = note.pitch + this.transpose;
+    if (!ctx) return;
     const start = Math.max(when, ctx.currentTime);
-    const end = start + duration;
+    this.sound(note.pitch + this.transpose, note.velocity, start, start + duration, this.voices);
+  }
+
+  keyDown(pitch: number, velocity: number): void {
+    this.wantedKeys.add(pitch);
+    const ctx = this.ctx;
+    if (ctx?.state === 'running' && this.manifest) {
+      this.startKey(pitch, velocity);
+      return;
+    }
+    console.info('dewidebug play-along key waits for the piano to be ready', {
+      pitch,
+      state: ctx?.state ?? 'none',
+    });
+    this.prepare().then(
+      () => {
+        this.startKey(pitch, velocity);
+      },
+      (error: unknown) => {
+        console.warn('dewidebug play-along key could not start audio', { error: String(error) });
+      },
+    );
+  }
+
+  keyUp(pitch: number): void {
+    this.wantedKeys.delete(pitch);
+    const voice = this.liveKeys.get(pitch);
+    const ctx = this.ctx;
+    if (!voice || !ctx) return;
+    this.liveKeys.delete(pitch);
+    const now = ctx.currentTime;
+    voice.gain.gain.cancelScheduledValues(now);
+    voice.gain.gain.setTargetAtTime(0, now, RELEASE_TIME_CONSTANT);
+    try {
+      voice.source.stop(now + RELEASE_TIME_CONSTANT * 6);
+    } catch (error) {
+      console.info('dewidebug play-along key voice already stopped', { error: String(error) });
+    }
+  }
+
+  private startKey(pitch: number, velocity: number): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.wantedKeys.has(pitch)) return;
+    this.keyUp(pitch);
+    this.wantedKeys.add(pitch);
+    const voice = this.sound(pitch, velocity, ctx.currentTime, null, this.liveVoices);
+    if (voice) this.liveKeys.set(pitch, voice);
+  }
+
+  private sound(
+    pitch: number,
+    velocity: number,
+    start: number,
+    end: number | null,
+    owner: Set<Voice>,
+  ): Voice | null {
+    const ctx = this.ctx;
+    const master = this.master;
+    if (!ctx || !master) return null;
     const gain = ctx.createGain();
-    const level = gainFor(note.velocity);
+    const level = gainFor(velocity);
     gain.connect(master);
     let source: AudioScheduledSourceNode;
     const manifest = this.manifest;
-    const choice = manifest ? chooseSample(manifest, pitch, note.velocity) : null;
+    const choice = manifest ? chooseSample(manifest, pitch, velocity) : null;
     const usable =
       manifest && choice
         ? [choice.layer, ...manifest.layers.map((l) => l.name)]
@@ -428,16 +579,20 @@ export class PianoPlayer {
       gain.gain.setTargetAtTime(level * 0.12, start + 0.005, 0.4);
       source = osc;
     }
-    gain.gain.setTargetAtTime(0, end, RELEASE_TIME_CONSTANT);
     source.connect(gain);
     source.start(start);
-    const stopAt = end + RELEASE_TIME_CONSTANT * 6;
-    source.stop(stopAt);
+    let stopAt = Infinity;
+    if (end !== null) {
+      gain.gain.setTargetAtTime(0, end, RELEASE_TIME_CONSTANT);
+      stopAt = end + RELEASE_TIME_CONSTANT * 6;
+      source.stop(stopAt);
+    }
     const voice: Voice = { source, gain, ends: stopAt };
-    this.voices.add(voice);
+    owner.add(voice);
     source.onended = () => {
-      this.voices.delete(voice);
+      owner.delete(voice);
       gain.disconnect();
     };
+    return voice;
   }
 }

@@ -31,3 +31,6 @@ so the browser ticked the box instead), and in the Both view it ran the metronom
 - An e2e test covers each case: Space with a tick box, the slider, the Play button and the canvas focused; Both
   view; M; a PDF-only view; the Metronome page; a number box still typing.
 - New bindings go in the table and the ⌨️ Keys strings, never as a new `e.key ===` check in a component.
+- The one exception is the computer keyboard as a piano while 🎹 Wait for me is on (`computer-keys.ts`, ADR 0024):
+  its letters are a note map, not commands, and a unit test checks that none of them is in this table. K and M are
+  left out of it so Space, K and M keep their jobs.

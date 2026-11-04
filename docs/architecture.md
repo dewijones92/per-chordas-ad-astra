@@ -65,7 +65,9 @@ pushing → clean | push-failed`.
   `musicxml.ts` and `midi.ts` (Standard MIDI Files) fill one `ScoreModel`; `unroll.ts` decides the bar order; `performance.ts` turns it into
   notes in seconds; `transport.ts` (pure) schedules against the audio clock; `player.ts` plays the
   Salamander samples; `falling.ts` draws the notes and keyboard; `PlayAlong.tsx` and `BarStrip.tsx` are
-  the panel. Notation (ADR 0015): `to-musicxml.ts` converts MuseScore to MusicXML, `notation.worker.ts`
+  the panel. Wait for me (ADR 0024): `wait-for-me.ts` (pure targets and session), `key-input.ts` (the one seam),
+  `midi-input.ts`, `computer-keys.ts`/`computer-key-input.ts`, `use-wait-for-me.ts`, `WaitForMePanel.tsx`;
+  `transport.ts` can hold at a limit and `player.ts` takes a gate and plays live keys. Notation (ADR 0015): `to-musicxml.ts` converts MuseScore to MusicXML, `notation.worker.ts`
   runs Verovio, `Notation.tsx` shows it and colours what is playing; `keys.ts` `intervalFor` keeps
   Verovio's key the same as ours.
 - `tuner/`, `looper/`, `practice/`, `library/`, `sync/`.

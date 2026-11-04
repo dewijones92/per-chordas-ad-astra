@@ -54,6 +54,8 @@ export class Transport<T extends Timed = Timed> {
   speed = 1;
   loop: Loop | null = null;
   ramp: Ramp | null = null;
+  limit: (() => number | null) | null = null;
+  onWrap: (() => void) | null = null;
 
   constructor(
     private readonly notes: readonly T[],
@@ -83,9 +85,13 @@ export class Transport<T extends Timed = Timed> {
     this.restartAt(from, this.startsAt, ctx);
   }
 
-  pause(ctx: number): void {
+  running(ctx: number): boolean {
+    return this.playing && ctx >= this.startsAt - 1e-9;
+  }
+
+  pause(ctx: number, song?: number): void {
     if (!this.playing) return;
-    this.paused = this.songAt(ctx);
+    this.paused = song ?? this.songAt(ctx);
     this.playing = false;
     this.anchors = [];
     this.passes = [];
@@ -143,6 +149,9 @@ export class Transport<T extends Timed = Timed> {
       if (!anchor) break;
       const songFrom = anchor.song + (this.scheduledUntil - anchor.ctx) * anchor.speed;
       let songTo = anchor.song + (until - anchor.ctx) * anchor.speed;
+      const cap = this.limit?.() ?? null;
+      const capped = cap !== null && cap >= songFrom - 1e-6 && cap < songTo;
+      if (capped) songTo = cap;
       const loop = this.loop;
       const wraps = loop !== null && songTo >= loop.end;
       if (wraps) songTo = loop.end;
@@ -173,6 +182,10 @@ export class Transport<T extends Timed = Timed> {
         this.anchors = this.anchors.filter((a, i, all) => i >= all.length - 3 || a.ctx > ctx - 1);
         this.cursor = firstAtOrAfter(this.notes, loop.start);
         this.scheduledUntil = wrapCtx;
+        this.onWrap?.();
+      } else if (capped) {
+        this.scheduledUntil = anchor.ctx + (songTo - anchor.song) / anchor.speed;
+        break;
       } else {
         this.scheduledUntil = until;
       }

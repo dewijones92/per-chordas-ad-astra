@@ -50,6 +50,8 @@ export const strings = {
     metronome: '⏱️ M: start or stop the metronome, anywhere',
     speed: '🐢 [ and ]: play-along slower or faster',
     bars: '⏮️ , and .: previous or next bar',
+    piano:
+      '🎹 With Wait for me on: A W S E D F T G Y H U J play C to B (K stays play and pause); Z and X move the octave',
     fingers: '✋ Click a falling note, then 1 to 5: its finger; Backspace clears it, Esc lets go',
     pages: '📄 ← and →, Page Up and Page Down: turn the page',
     tempo: '⏱️ + and −: metronome tempo, on a score page',
@@ -244,6 +246,32 @@ export const strings = {
     notation: '🎼 Notation',
     noteNames: '🔤 Note names',
     suggest: '🤖 Suggested fingering',
+    waitForMe: '🎹 Wait for me',
+    wait: {
+      midiAsking: '⏳ Asking the browser for MIDI…',
+      midiUnsupported:
+        '🚫 This browser has no MIDI, so only the on-screen keys and your computer keyboard play (Chrome and Edge have MIDI)',
+      midiDenied:
+        '🚫 MIDI was refused. Allow it in the site settings to use a keyboard; the on-screen keys and your computer keyboard still work',
+      midiFailed: (error: string) =>
+        `⚠️ MIDI could not start (${error}); the on-screen keys and your computer keyboard still work`,
+      midiNone: '🔌 No MIDI keyboard yet: plug one in and it connects by itself',
+      midiDevices: (names: string) => `🎹 MIDI keyboard: ${names}`,
+      computerKeys: (from: string, to: string) =>
+        `⌨️ Computer keys play ${from} to ${to} (Z and X move the octave)`,
+      ready: '▶️ Press Play: the notes stop at each of your notes until you play it',
+      waitingFor: (notes: string) => `🎯 Play ${notes}`,
+      playing: '🎶 Playing along; it stops at your next note',
+      live: (right: number, notes: number, wrong: number, seconds: number) =>
+        `✅ ${String(right)}/${String(notes)} first time · ❌ ${String(wrong)} wrong · ⏳ ${String(seconds)} s waited`,
+      doneTitle: '🏁 Finished',
+      soFarTitle: '⏸️ So far',
+      rightFirstTime: (right: number, notes: number) =>
+        `✅ ${String(right)} of ${String(notes)} notes right first time`,
+      wrongNotes: (count: number) => `❌ ${String(count)} wrong ${count === 1 ? 'note' : 'notes'}`,
+      waited: (seconds: number) => `⏳ Waited ${String(seconds)} s`,
+      again: '🔄 Start again',
+    },
     hardBits: '📌 Hard bits',
     hardBitsFailed: '❌ Saved hard bits could not be loaded:',
     hardBitsEmpty: '💡 Loop a passage, then save it here to come back to it.',
@@ -444,6 +472,10 @@ export const tips = {
     lookAheadMore: 'Show more seconds, to see further ahead',
     resize:
       'Drag to give the stave or the falling notes more room; double-click to go back to automatic',
+    waitForMe:
+      'The falling notes stop at each note or chord of yours until you play it, then carry on; play on a MIDI keyboard, the on-screen keys or your computer keyboard. With nothing muted you play every note you can see; mute a hand to play just that one, and a hidden hand is left to the app',
+    waitResult: 'How that went: notes right first time, wrong notes and time spent waiting',
+    waitInputs: 'Where your playing comes from',
     suggest:
       'Grey finger numbers worked out by the app wherever neither the file nor you has given one; red numbers always win',
     learnKey:

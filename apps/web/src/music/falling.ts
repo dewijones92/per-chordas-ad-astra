@@ -1,5 +1,11 @@
 import type { StaffColour } from './colours.ts';
-import { keyboardLayout, keyForPitch, type KeyboardLayout } from './keyboard.ts';
+import {
+  BLACK_KEY_HEIGHT_RATIO,
+  keyAtPoint,
+  keyboardLayout,
+  keyForPitch,
+  type KeyboardLayout,
+} from './keyboard.ts';
 import { noteName, pitchName, type KeyRange } from './keys.ts';
 import type { PerfNote, Performance } from './performance.ts';
 import { noteKey } from './model.ts';
@@ -16,6 +22,9 @@ export const SUGGESTED_COLOUR = '#6f6880';
 export const KEYBOARD_SHARE = 0.2;
 export const MAX_KEYBOARD_HEIGHT = 130;
 export const STRIKE_SECONDS = 0.2;
+export const EXPECTED_COLOUR = '#ff5d73';
+export const EXPECTED_FILL = '#ffe6ea';
+export const PLAYED_COLOUR = '#ffc53d';
 
 export function keyUpAt(n: PerfNote, tails: boolean): number {
   return tails ? Math.min(n.end, n.start + STRIKE_SECONDS) : n.end;
@@ -38,6 +47,8 @@ export interface FallingView {
   suggested?: ReadonlyMap<PerfNote, number>;
   chords?: readonly ChordLabel[];
   selected?: string | null;
+  expected?: ReadonlySet<number>;
+  played?: ReadonlySet<number>;
   width: number;
   height: number;
 }
@@ -81,6 +92,8 @@ export function soundingAt(
   );
 }
 
+export type GeometryView = Pick<FallingView, 'width' | 'height' | 'range' | 'lookAhead'>;
+
 export interface Geometry {
   notesHeight: number;
   keyboardHeight: number;
@@ -88,9 +101,7 @@ export interface Geometry {
   layout: KeyboardLayout;
 }
 
-export function geometry(
-  view: Pick<FallingView, 'width' | 'height' | 'range' | 'lookAhead'>,
-): Geometry {
+export function geometry(view: GeometryView): Geometry {
   const keyboardHeight = Math.min(MAX_KEYBOARD_HEIGHT, Math.max(48, view.height * KEYBOARD_SHARE));
   const notesHeight = Math.max(0, view.height - keyboardHeight);
   return {
@@ -255,6 +266,23 @@ export function noteAt(view: FallingView, px: number, py: number): PerfNote | nu
   return hit;
 }
 
+export function keyAt(view: GeometryView, px: number, py: number): number | null {
+  const g = geometry(view);
+  return keyAtPoint(g.layout, px, py, g.notesHeight + 1, g.keyboardHeight - 1);
+}
+
+export function keyTargets(view: GeometryView): string {
+  const g = geometry(view);
+  const top = g.notesHeight + 1;
+  const height = g.keyboardHeight - 1;
+  return g.layout.keys
+    .map((k) => {
+      const y = top + height * (k.black ? BLACK_KEY_HEIGHT_RATIO / 2 : 0.85);
+      return `${String(k.pitch)}:${String(Math.round(k.x + k.width / 2))}:${String(Math.round(y))}`;
+    })
+    .join(' ');
+}
+
 export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): FallingDrawn {
   const { width, height, perf, position, transpose } = view;
   const g = geometry(view);
@@ -401,15 +429,31 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
 
   const keyTop = notesHeight + 1;
   const keyHeight = g.keyboardHeight - 1;
+  const expected = view.expected ?? new Set<number>();
+  const played = view.played ?? new Set<number>();
+  const fillOf = (pitch: number, rest: string): string =>
+    played.has(pitch)
+      ? PLAYED_COLOUR
+      : expected.has(pitch)
+        ? EXPECTED_FILL
+        : (pressed.get(pitch) ?? rest);
+  const marker = (k: { x: number; width: number }, y: number, pitch: number) => {
+    if (!played.has(pitch)) return;
+    ctx.beginPath();
+    ctx.arc(k.x + k.width / 2, y, Math.max(3, Math.min(6, k.width / 3)), 0, Math.PI * 2);
+    ctx.fillStyle = '#1d1533';
+    ctx.fill();
+  };
   for (const k of layout.keys) {
     if (k.black) continue;
-    ctx.fillStyle = pressed.get(k.pitch) ?? '#ffffff';
+    ctx.fillStyle = fillOf(k.pitch, '#ffffff');
     ctx.fillRect(k.x, keyTop, k.width, keyHeight);
-    ctx.strokeStyle = '#1d1533';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = expected.has(k.pitch) && !played.has(k.pitch) ? EXPECTED_COLOUR : '#1d1533';
+    ctx.lineWidth = expected.has(k.pitch) && !played.has(k.pitch) ? 3 : 1;
     ctx.strokeRect(Math.round(k.x) + 0.5, keyTop + 0.5, Math.round(k.width), keyHeight - 1);
+    marker(k, keyTop + keyHeight - 14, k.pitch);
     if (k.pitch % 12 === 0 && k.width >= 14) {
-      ctx.fillStyle = pressed.has(k.pitch) ? '#ffffff' : '#5c5470';
+      ctx.fillStyle = pressed.has(k.pitch) && !played.has(k.pitch) ? '#ffffff' : '#5c5470';
       ctx.font = `700 ${String(Math.min(11, Math.floor(k.width * 0.55)))}px Nunito Variable, system-ui, sans-serif`;
       ctx.textAlign = 'center';
       ctx.fillText(noteName(k.pitch), k.x + k.width / 2, keyTop + keyHeight - 4);
@@ -418,14 +462,19 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
   }
   for (const k of layout.keys) {
     if (!k.black) continue;
-    ctx.fillStyle = pressed.get(k.pitch) ?? '#1d1533';
-    roundRect(ctx, k.x, keyTop, k.width, keyHeight * 0.62, 3);
+    ctx.fillStyle = played.has(k.pitch)
+      ? PLAYED_COLOUR
+      : expected.has(k.pitch)
+        ? EXPECTED_COLOUR
+        : (pressed.get(k.pitch) ?? '#1d1533');
+    roundRect(ctx, k.x, keyTop, k.width, keyHeight * BLACK_KEY_HEIGHT_RATIO, 3);
     ctx.fill();
-    if (pressed.has(k.pitch)) {
+    if (pressed.has(k.pitch) || played.has(k.pitch) || expected.has(k.pitch)) {
       ctx.strokeStyle = '#1d1533';
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }
+    marker(k, keyTop + keyHeight * BLACK_KEY_HEIGHT_RATIO - 10, k.pitch);
   }
   return {
     pressed,
