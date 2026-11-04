@@ -168,6 +168,10 @@ With no `DATA_REMOTE` it keeps a local-only git repo (dev mode).
   Tests that expect a file must first wait for the earlier state to reach the remote.
 - **Temporary files must live under `.state/tmp`, never beside their target.** The data dir is a git working tree, and
   `git add -A` would commit a half-written upload. (Independent review, 7 Oct 2026.)
+- **A test that changes a per-person setting must wait for the server to hold its reset.** Resume state is pushed
+  after a debounce and merged newest-wins, so a test that ticked 🎵 Start in C and unticked it at the end left the
+  next tests opening in C major on CI's slower runner (8 failures, 4 Nov 2026) while passing locally. Use
+  `learnKeySaved` (e2e helpers) or the same poll for any new setting.
 - **A commit holds the repo gate from gathering its messages to `git commit`.** Without it a save landing in that
   window was staged into the commit under another change's message, and its own message was lost (4 Nov 2026).
 - **Never send a whole document to change one part of it.** Loops were saved as the full `loops.json` from client

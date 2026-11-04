@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { strings } from '../apps/web/src/strings.ts';
 import { MUTOPIA_OP9_PATH } from './support/find-stub.ts';
-import { eventuallyInRemote, openLibrary } from './support/helpers.ts';
+import { eventuallyInRemote, learnKeySaved, openLibrary } from './support/helpers.ts';
 
 const stubOrigin = () =>
   readFileSync(join(import.meta.dirname, '.tmp', 'run', 'find-stub-origin.txt'), 'utf8').trim();
@@ -161,4 +161,5 @@ test('a found score honours Start in C major or A minor like the other ways of a
   await openLibrary(page);
   await page.getByTestId('new-piece').click();
   await dialog.getByTestId('learn-key').uncheck();
+  await learnKeySaved(page, false);
 });

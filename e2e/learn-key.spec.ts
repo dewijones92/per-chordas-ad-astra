@@ -1,6 +1,6 @@
 import { makeMusicXml, PIANO_WALTZ } from '../packages/fixtures/src/index.ts';
 import { expect, test } from '@playwright/test';
-import { createPiece, eventuallyInRemote, openLibrary } from './support/helpers.ts';
+import { createPiece, eventuallyInRemote, learnKeySaved, openLibrary } from './support/helpers.ts';
 import { tips } from '../apps/web/src/strings.ts';
 
 const waltzXml = (name: string) => ({
@@ -45,5 +45,6 @@ test('music added with Start in C major ticked opens in C major, and the choice 
   await openLibrary(page);
   await page.getByTestId('new-piece').click();
   await dialog.getByTestId('learn-key').uncheck();
+  await learnKeySaved(page, false);
   await expect(dialog.getByTestId('learn-key')).not.toBeChecked();
 });
