@@ -998,6 +998,20 @@ describe('DataRepo fingering', () => {
     ).rejects.toThrow();
   });
 
+  it('keeps a finger on a grace note before the first beat, whose tick is negative', async () => {
+    const piece = await repo.createPiece({ title: 'Grace' });
+    const a = await repo.addMusic(piece.id, 'a.mscz', new Blob([zip]));
+    const saved = await repo.putFinger(piece.id, a.file, {
+      note: 's0m0t-60p66',
+      finger: '2',
+      label: 'F♯4 in bar 1',
+    });
+    expect(saved).toEqual({ notes: { 's0m0t-60p66': '2' } });
+    expect((await repo.getFingering(piece.id)).files).toEqual({
+      'a.mscz': { 's0m0t-60p66': '2' },
+    });
+  });
+
   it('drops a music file’s fingering when the file is removed', async () => {
     const piece = await repo.createPiece({ title: 'Y' });
     const a = await repo.addMusic(piece.id, 'a.mscz', new Blob([zip]));

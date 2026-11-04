@@ -35,9 +35,13 @@ red numbers on the notes. The readers dropped fingering entirely.
   falling note (a click, not a drag, which still scrubs), press **1–5**; Backspace, Delete or 0 clears it and Esc lets
   go. It replaces the file's mark on that note. It is stored per music file in `fingering.json` in the data repo,
   keyed by the **written** note (`s<staff>m<measure>t<tick>p<pitch>`), so it follows the note through transposing,
-  speed, ✂️ thinning and hiding a hand. Each keypress saves just that note (never the whole file), and the commit
+  speed, ✂️ thinning and hiding a hand. A grace note before the first beat has a negative tick, so the key allows a
+  minus sign (`t-60`); every key already saved stays valid. Each keypress saves just that note (never the whole file), and the commit
   says which: "Finger 3 on B4 in bar 1 of 'Gran Vals' (gv.mscz)". The hint showing which note is picked floats over
-  the falling notes so nothing above them moves.
+  the falling notes so nothing above them moves. The number shows at once, and `FingerSaves` keeps the last
+  **confirmed** fingering: a save that fails (even when the reload fails too) puts the screen back to it, and replies
+  are applied by request order, so two quick saves answered the wrong way round never drop the second (red first,
+  4 Nov 2026).
 
 - **Your fingering on the stave** (4 Nov 2026, built by Claude as the follow-up to the above): your numbers are drawn
   red on the stave, exactly where a printed fingering goes, and a note picked on either view is marked on both.

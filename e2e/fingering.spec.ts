@@ -7,7 +7,7 @@ import {
 } from '../packages/fixtures/src/index.ts';
 import { Fingering } from '../packages/shared/src/index.ts';
 import { expect, test, type Page } from '@playwright/test';
-import { createPiece, eventuallyInRemote, remoteLog } from './support/helpers.ts';
+import { createPiece, eventuallyInRemote, remoteFile, remoteLog } from './support/helpers.ts';
 import { strings, tips, units } from '../apps/web/src/strings.ts';
 
 const waltzXml = () => ({
@@ -96,6 +96,40 @@ test('click a falling note and press a number to finger it; the finger is saved,
   await page.keyboard.press('Backspace');
   await expect(canvas).toHaveAttribute('data-fingers', '0');
   await eventuallyInRemote('pieces/fingering-etude/fingering.json', (t) => !t.includes('"3"'));
+});
+
+test('a finger that could not be saved goes back to the last saved one, even when the reload fails too', async ({
+  page,
+}) => {
+  await createPiece(page, 'Fingering Fails', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzXml());
+  const canvas = page.getByTestId('playalong-canvas');
+  await expect(canvas).toHaveAttribute('data-blocks', /71:/);
+  await page.getByTestId('playalong-compact').click();
+  await expect(canvas).toHaveAttribute('data-fingers', '0');
+  await expect(async () => {
+    await clickNote(page, 71);
+    await expect(page.getByTestId('finger-picked')).toBeVisible({ timeout: 1500 });
+  }).toPass();
+
+  await page.route('**/api/pieces/*/fingering**', async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: 'application/json',
+      body: '{"error":"disk"}',
+    });
+  });
+  const saveRefused = page.waitForResponse(
+    (r) => r.request().method() === 'PUT' && r.url().includes('/fingering/'),
+  );
+  const reloadRefused = page.waitForResponse(
+    (r) => r.request().method() === 'GET' && r.url().endsWith('/fingering'),
+  );
+  await page.keyboard.press('3');
+  expect((await saveRefused).status()).toBe(500);
+  expect((await reloadRefused).status()).toBe(500);
+  await expect(canvas).toHaveAttribute('data-fingers', '0');
+  expect(remoteFile('pieces/fingering-fails/fingering.json')).toBeNull();
 });
 
 test('suggested fingering shows in grey by default, can be switched off, and is remembered', async ({

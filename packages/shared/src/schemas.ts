@@ -303,7 +303,7 @@ export type HardBits = z.infer<typeof HardBits>;
 export const FINGERS = ['1', '2', '3', '4', '5'] as const;
 export const FingerText = z.enum(FINGERS);
 export type FingerText = z.infer<typeof FingerText>;
-export const NoteKey = z.string().regex(/^s\d{1,3}m\d{1,5}t\d{1,9}p\d{1,3}$/);
+export const NoteKey = z.string().regex(/^s\d{1,3}m\d{1,5}t-?\d{1,9}p\d{1,3}$/);
 
 export const FileFingering = z.object({ notes: z.record(NoteKey, FingerText) });
 export type FileFingering = z.infer<typeof FileFingering>;

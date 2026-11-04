@@ -28,6 +28,7 @@ import {
   type SetStateAction,
 } from 'react';
 import { api } from '../api/client.ts';
+import { FingerSaves } from './finger-saves.ts';
 import { DrawingStatus } from '../annotate/DrawingStatus.tsx';
 import { Toolbar } from '../annotate/Toolbar.tsx';
 import { fingerKeyOf, shortcutOf } from '../ui/shortcuts.ts';
@@ -569,6 +570,7 @@ export function PlayAlong({
   const fingering = useAsync(() => api.getFingering(pieceId), `fingering:${pieceId}`);
   const { setData: setFingeringData, reload: reloadFingering } = fingering;
   const fingeringLoaded = fingering.data !== undefined;
+  const fingerSaves = useRef(new FingerSaves());
   const fileFingers = fingering.data?.files[music.file];
   const userFingers = useMemo(() => new Map(Object.entries(fileFingers ?? {})), [fileFingers]);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
@@ -971,6 +973,7 @@ export function PlayAlong({
       }
       console.info('dewidebug finger set', { ...picked, finger, file: music.file });
       const change = { note: picked.key, finger, label: picked.label };
+      const ticket = fingerSaves.current.begin(fingering.data);
       setFingeringData((data) => {
         const { [picked.key]: _was, ...rest } = data?.files[music.file] ?? {};
         const notes = finger === null ? rest : { ...rest, [picked.key]: finger };
@@ -978,19 +981,31 @@ export function PlayAlong({
       });
       api.putFinger(pieceId, music.file, change).then(
         (saved) => {
-          setFingeringData((data) => ({
-            files: { ...(data?.files ?? {}), [music.file]: saved.notes },
-          }));
+          const settled = fingerSaves.current.succeeded(ticket, music.file, saved.notes);
+          console.info('dewidebug finger saved', { ticket, shownAgain: settled !== null });
+          if (settled) setFingeringData(() => settled);
         },
         (error: unknown) => {
-          console.warn('dewidebug finger save failed; reloading the saved fingering', {
+          const settled = fingerSaves.current.failed();
+          console.warn('dewidebug finger save failed; showing the last confirmed fingering', {
+            ticket,
             error: String(error),
+            shownAgain: settled !== null,
           });
+          if (settled) setFingeringData(() => settled);
           reloadFingering();
         },
       );
     },
-    [picked, fingeringLoaded, music.file, pieceId, setFingeringData, reloadFingering],
+    [
+      picked,
+      fingeringLoaded,
+      fingering.data,
+      music.file,
+      pieceId,
+      setFingeringData,
+      reloadFingering,
+    ],
   );
 
   useEffect(() => {

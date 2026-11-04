@@ -1,8 +1,9 @@
 import { makeMscx, makeMusicXml, PIANO_WALTZ, zipScore, type FixtureScore } from '@pcaa/fixtures';
+import { NoteKey } from '@pcaa/shared';
 import { describe, expect, it } from 'vitest';
 import { loadScore, parseScoreText, unpackScore } from '../src/music/load.ts';
 import { buildPerformance, countInFor } from '../src/music/performance.ts';
-import { instrumentFor } from '../src/music/model.ts';
+import { instrumentFor, noteKey } from '../src/music/model.ts';
 import { spell, toMusicXml } from '../src/music/to-musicxml.ts';
 import { exportName, performanceToMidi, transposeMusicXml } from '../src/music/export.ts';
 
@@ -645,5 +646,36 @@ describe('export file names', () => {
     expect(exportName('Gran Vals.mscz', 2, 'musicxml')).toBe('Gran Vals (+2).musicxml');
     expect(exportName('Gran Vals.mscz', -3, 'mid')).toBe('Gran Vals (-3).mid');
     expect(exportName('Gran Vals.mscz', 0, 'mid')).toBe('Gran Vals.mid');
+  });
+});
+
+describe('the key a fingering is saved under', () => {
+  const graceFirst: FixtureScore = {
+    ...PIANO_WALTZ,
+    measures: [
+      {
+        staves: [
+          [
+            { pitches: [66], dur: 'eighth', grace: true },
+            { pitches: [71], dur: 'quarter' },
+            { pitches: [67], dur: 'half' },
+          ],
+          [{ pitches: [43], dur: 'half', dots: 1 }],
+        ],
+      },
+    ],
+  };
+
+  it.each([
+    ['MuseScore 4.50', () => parseScoreText(makeMscx(graceFirst, '4.50'))],
+    ['MusicXML', () => parseScoreText(makeMusicXml(graceFirst))],
+  ])('is accepted by the server for a grace note before the first beat, in %s', (_name, parse) => {
+    const model = parse();
+    const grace = model.notes.find((n) => n.pitch === 66);
+    expect(grace?.tick).toBeLessThan(0);
+    for (const n of model.notes) {
+      const key = noteKey(n);
+      expect(NoteKey.safeParse(key).success, key).toBe(true);
+    }
   });
 });
