@@ -120,7 +120,9 @@ keyboard from above, like the bird's-eye piano videos.
   one is heard, plugging one in later works, the bar names them; it says so plainly if the browser has no MIDI or
   permission was refused), by **clicking the keys** at the bottom of the falling notes, or on the **computer
   keyboard**: A W S E D F T G Y H U J are C to B from middle C, Z and X move an octave (K stays play and pause, M the
-  metronome, and the drawing-tool letters do not fire while this is on). The keys to press are outlined in coral,
+  metronome). The letter keys go where you last clicked: in ✏️ Draw mode, or after a click on the PDF in the Both
+  view, they pick drawing tools instead, and the bar says so; a click on the play-along or Play gives them back to
+  the piano (4 Nov 2026). The keys to press are outlined in coral,
   the keys you press are yellow with a dot, and they sound with the piano. A chord needs all its keys, in any
   order, pressed together or still held. A wrong key is counted and the music still waits. Your notes are the
   lanes you can see, or only the muted ones if you have muted a hand to play it yourself; a hidden hand is left to

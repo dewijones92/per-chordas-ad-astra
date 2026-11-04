@@ -1,3 +1,4 @@
+import { useClaimedSurface, type DrawingSurface } from '../annotate/use-drawing.ts';
 import { strings, tips } from '../strings.ts';
 import { computerKeyRange } from './computer-keys.ts';
 import { noteName } from './keys.ts';
@@ -25,6 +26,12 @@ function midiText(status: MidiStatus): string {
 
 const seconds = (ms: number): number => Math.round(ms / 1000);
 
+function keysText(claimed: DrawingSurface | null, from: string, to: string): string {
+  if (claimed === 'score') return strings.playAlong.wait.keysOnScore;
+  if (claimed !== null) return strings.playAlong.wait.keysDrawing;
+  return strings.playAlong.wait.computerKeys(from, to);
+}
+
 export function WaitForMeBar({
   wait,
   playing,
@@ -35,6 +42,7 @@ export function WaitForMeBar({
   flats: boolean;
 }) {
   const { stats } = wait;
+  const claimed = useClaimedSurface();
   const [from, to] = computerKeyRange(wait.base);
   const now = wait.waiting
     ? strings.playAlong.wait.waitingFor(
@@ -73,8 +81,12 @@ export function WaitForMeBar({
       <span className="small-print" data-testid="wait-midi">
         {midiText(wait.midi)}
       </span>
-      <span className="muted small-print" data-testid="wait-computer-keys">
-        {strings.playAlong.wait.computerKeys(noteName(from, flats), noteName(to, flats))}
+      <span
+        className="muted small-print"
+        data-testid="wait-computer-keys"
+        data-keys={claimed ?? 'piano'}
+      >
+        {keysText(claimed, noteName(from, flats), noteName(to, flats))}
       </span>
     </div>
   );

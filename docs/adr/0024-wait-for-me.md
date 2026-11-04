@@ -61,7 +61,16 @@ be driveable from a virtual piano.
   is on** (on the stave or the falling notes): then the piano yields every key (`ComputerKeyInput`'s `yields`, fed
   by `drawingClaimed()`), so V P H E T L A R O S pick tools as the ⌨️ Keys help says, and plays again when Draw is
   done (red first, 4 Nov 2026: H, E, T, A and S played notes in Draw mode). They are not claimed in a
-  text or number box. A key held while the octave changes is released at the pitch it started.
+  text or number box.
+- **In the Both view the keys follow the last click** (Dewi, 4 Nov 2026; this replaces "the drawing-tool letters do
+  not fire on the PDF" above). The PDF has no Draw mode and should not need one, since it always draws. A pointer
+  down anywhere in the score area claims the keys for the score (`claimDrawing('score')`), so the piano yields and
+  V P H E T L A R O S pick the PDF's tools. A pointer down in the play-along (`releaseScore`, or a re-claim of the
+  stave or falling notes in Draw mode), the start of playback, and the play-along opening or closing give them back.
+  The wait bar names the owner in place of the computer-keys line (`data-keys`: `piano`, `score`, `notation` or
+  `falling`), because a letter that silently stops playing looks broken. A new ✏️ Draw button on the PDF was the
+  alternative; it was turned down as one more button for a surface that is always drawable. Red first: H played
+  A4 after a click on the PDF. A key held while the octave changes is released at the pitch it started.
 - **Preference.** `waitForMe` is part of the per-file Play-along preferences (default off), so it is remembered.
 
 ## Consequences

@@ -53,7 +53,7 @@ export const strings = {
     speed: '🐢 [ and ]: play-along slower or faster',
     bars: '⏮️ , and .: previous or next bar',
     piano:
-      '🎹 With Wait for me on: A W S E D F T G Y H U J play C to B (K stays play and pause); Z and X move the octave',
+      '🎹 With Wait for me on: A W S E D F T G Y H U J play C to B (K stays play and pause); Z and X move the octave. After a click on the score they pick its drawing tools until you click the falling notes or press Play',
     fingers:
       '✋ Click a falling note or a note on the stave, then 1 to 5: its finger; Backspace clears it, Esc lets go',
     pages: '📄 ← and →, Page Up and Page Down: turn the page',
@@ -299,6 +299,9 @@ export const strings = {
       midiDevices: (names: string) => `🎹 MIDI keyboard: ${names}`,
       computerKeys: (from: string, to: string) =>
         `⌨️ Computer keys play ${from} to ${to} (Z and X move the octave)`,
+      keysOnScore:
+        '✏️ Letter keys pick the score’s drawing tools: click the falling notes or press Play to play again',
+      keysDrawing: '✏️ Letter keys pick drawing tools while you draw; finish drawing to play again',
       ready: '▶️ Press Play: the notes stop at each of your notes until you play it',
       waitingFor: (notes: string) => `🎯 Play ${notes}`,
       playing: '🎶 Playing along; it stops at your next note',

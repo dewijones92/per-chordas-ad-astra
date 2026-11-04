@@ -19,7 +19,7 @@ import { api } from '../api/client.ts';
 import { Toolbar } from '../annotate/Toolbar.tsx';
 import { DrawingStatus } from '../annotate/DrawingStatus.tsx';
 import { shortcutOf } from '../ui/shortcuts.ts';
-import { useDrawing } from '../annotate/use-drawing.ts';
+import { claimDrawing, useDrawing } from '../annotate/use-drawing.ts';
 import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
 import { useWheelZoom } from '../score/use-wheel-zoom.ts';
 import { useAnnotations } from '../annotate/use-annotations.ts';
@@ -150,7 +150,12 @@ function ScoreArea({
   useWheelZoom(window, setZoom, 'score');
 
   return (
-    <div className="score-area">
+    <div
+      className="score-area"
+      onPointerDownCapture={() => {
+        claimDrawing('score');
+      }}
+    >
       <Toolbar
         {...toolbar}
         zoom={zoom}

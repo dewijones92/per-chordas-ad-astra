@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import type { History, HistoryAction } from './history.ts';
 import { ownsKey } from '../ui/shortcuts.ts';
 import { defaultToolState, TOOL_KEYS, type ToolState } from './tools.ts';
@@ -8,15 +15,38 @@ export type DrawingSurface = 'score' | 'notation' | 'falling';
 export type SharedTools = readonly [ToolState, Dispatch<SetStateAction<ToolState>>];
 
 let claimed: DrawingSurface | null = null;
+const watchers = new Set<() => void>();
 
 export function claimDrawing(surface: DrawingSurface | null): void {
-  if (claimed !== surface)
-    console.info('dewidebug drawing surface', { from: claimed, to: surface });
+  if (claimed === surface) return;
+  console.info('dewidebug drawing surface', { from: claimed, to: surface });
   claimed = surface;
+  for (const watcher of watchers) watcher();
+}
+
+export function releaseScore(why: string): void {
+  if (claimed !== 'score') return;
+  console.info('dewidebug keys leave the score', { why });
+  claimDrawing(null);
 }
 
 export function drawingClaimed(): boolean {
   return claimed !== null;
+}
+
+export function claimedSurface(): DrawingSurface | null {
+  return claimed;
+}
+
+function watch(onChange: () => void): () => void {
+  watchers.add(onChange);
+  return () => {
+    watchers.delete(onChange);
+  };
+}
+
+export function useClaimedSurface(): DrawingSurface | null {
+  return useSyncExternalStore(watch, claimedSurface);
 }
 
 function owns(surface: DrawingSurface): boolean {

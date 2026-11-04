@@ -33,7 +33,12 @@ import { DrawingStatus } from '../annotate/DrawingStatus.tsx';
 import { Toolbar } from '../annotate/Toolbar.tsx';
 import { fingerKeyOf, shortcutOf } from '../ui/shortcuts.ts';
 import { useAnnotations } from '../annotate/use-annotations.ts';
-import { claimDrawing, useDrawing, type DrawingSurface } from '../annotate/use-drawing.ts';
+import {
+  claimDrawing,
+  releaseScore,
+  useDrawing,
+  type DrawingSurface,
+} from '../annotate/use-drawing.ts';
 import { defaultToolState, type ToolState } from '../annotate/tools.ts';
 import { useRememberedZoom } from '../score/use-remembered-zoom.ts';
 import { useWheelZoom } from '../score/use-wheel-zoom.ts';
@@ -647,6 +652,15 @@ export function PlayAlong({
   const notationXmlKey = `${music.file}:${grandXml ? 'hands' : 'file'}`;
   const activeSurface = notationXml ? drawSurface : 'falling';
   useEffect(() => {
+    releaseScore('play-along opened');
+    return () => {
+      releaseScore('play-along closed');
+    };
+  }, []);
+  useEffect(() => {
+    if (playing) releaseScore('playing');
+  }, [playing]);
+  useEffect(() => {
     if (!drawMode) return;
     claimDrawing(activeSurface);
     return () => {
@@ -1078,6 +1092,10 @@ export function PlayAlong({
       className={`playalong${drawMode ? ' is-drawing' : ''}${prefs.compact ? ' is-compact' : ''}`}
       aria-label={tips.playAlong.panel}
       data-testid="playalong"
+      onPointerDownCapture={() => {
+        if (drawMode) claimDrawing(activeSurface);
+        else releaseScore('click on the play-along');
+      }}
     >
       <div className="playalong-bar">
         <button

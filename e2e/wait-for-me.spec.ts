@@ -456,3 +456,50 @@ test('Wait for me is remembered, and switching it off lets the music run', async
     .poll(() => number(canvas(page), 'data-position'), { timeout: 5000 })
     .toBeGreaterThan(0.3);
 });
+
+test('in the Both view, the letter keys follow your last click: the PDF gets its drawing tools, the falling notes get the piano', async ({
+  page,
+}) => {
+  await installFakeMidi(page, { mode: 'allowed', devices: [{ id: KB, name: 'Fake Piano' }] });
+  await createPiece(page, 'Both Keys');
+  await page.getByTestId('upload-music').setInputFiles(waltzXml());
+  await expect(page.locator('[data-piece-view="split"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(canvas(page)).toBeVisible();
+  await page.getByTestId('playalong-countin').uncheck();
+  await turnOn(page);
+  const keys = page.getByTestId('wait-computer-keys');
+
+  await page.locator('.score-area [data-tool="select"]').click();
+  await expect(keys).toHaveText(strings.playAlong.wait.keysOnScore);
+  for (const [key, tool] of [
+    ['KeyH', 'highlighter'],
+    ['KeyE', 'eraser'],
+    ['KeyA', 'arrow'],
+  ] as const) {
+    await page.keyboard.press(key);
+    await expect(page.locator(`.score-area [data-tool="${tool}"]`)).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(panel(page)).toHaveAttribute('data-played', '');
+  }
+
+  await canvas(page).click({ position: { x: 5, y: 5 } });
+  await expect(keys).not.toHaveText(strings.playAlong.wait.keysOnScore);
+  await page.keyboard.down('KeyH');
+  await expect(panel(page)).toHaveAttribute('data-played', '69');
+  await page.keyboard.up('KeyH');
+  await expect(page.locator('.score-area [data-tool="arrow"]')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  await page.getByTestId('annotation-layer-1').click({ position: { x: 20, y: 20 } });
+  await expect(keys).toHaveText(strings.playAlong.wait.keysOnScore);
+  await page.keyboard.press('Space');
+  await expect(page.getByTestId('playalong-play')).toHaveAttribute('aria-pressed', 'true');
+  await expect(keys).not.toHaveText(strings.playAlong.wait.keysOnScore);
+  await page.keyboard.down('KeyH');
+  await expect.poll(() => pitchesOf(panel(page), 'data-played')).toContain(69);
+  await page.keyboard.up('KeyH');
+});
