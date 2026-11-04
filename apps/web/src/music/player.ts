@@ -1,12 +1,15 @@
 import { countInFor, type PerfClick, type PerfNote, type Performance } from './performance.ts';
 import { chooseSample, gainFor, SampleManifest, sampleFile } from './samples.ts';
 import { playClick } from '../metronome/click.ts';
+import { countInHits, drumHits, type DrumHit } from '../drums/grooves.ts';
+import { playDrum } from '../drums/voices.ts';
 import { START_LEAD_SECONDS, Transport, type Loop, type Ramp } from './transport.ts';
 
 const SAMPLE_BASE = '/piano/';
 const PUMP_MS = 25;
 const HORIZON_SECONDS = 0.15;
 const RELEASE_TIME_CONSTANT = 0.09;
+const BEAT_VOLUME = 0.8;
 
 interface Voice {
   source: AudioScheduledSourceNode;
@@ -96,6 +99,7 @@ export class PianoPlayer {
   private readonly clicks: Transport<PerfClick>;
   private clickOn = false;
   private halfBeats = false;
+  private drums = false;
   private readonly perf: Performance;
   private timer: number | undefined;
   private voices = new Set<Voice>();
@@ -199,15 +203,9 @@ export class PianoPlayer {
       : null;
     if (count) {
       for (let k = 0; k < count.beats; k++) {
-        keep(
-          this.countInClicks,
-          playClick(
-            ctx,
-            master,
-            now + START_LEAD_SECONDS + k * count.seconds,
-            k === 0 ? 'bar' : 'beat',
-          ),
-        );
+        const when = now + START_LEAD_SECONDS + k * count.seconds;
+        if (this.drums) this.playHits(this.countInClicks, when, countInHits(k === 0));
+        else keep(this.countInClicks, playClick(ctx, master, when, k === 0 ? 'bar' : 'beat'));
       }
     }
     const delay = count ? count.beats * count.seconds : 0;
@@ -223,6 +221,7 @@ export class PianoPlayer {
       countIn: count,
       click: this.clickOn,
       halfBeats: this.halfBeats,
+      drums: this.drums,
     });
     this.onEvent({ kind: 'state', playing: true });
   }
@@ -262,11 +261,12 @@ export class PianoPlayer {
     this.passListener = listener;
   }
 
-  setClick(on: boolean, halfBeats: boolean): void {
-    if (on !== this.clickOn || halfBeats !== this.halfBeats)
-      console.info('dewidebug play-along click', { on, halfBeats });
+  setClick(on: boolean, halfBeats: boolean, drums: boolean): void {
+    if (on !== this.clickOn || halfBeats !== this.halfBeats || drums !== this.drums)
+      console.info('dewidebug play-along click', { on, halfBeats, drums });
     this.clickOn = on;
     this.halfBeats = halfBeats;
+    this.drums = drums;
   }
 
   setRamp(ramp: Ramp | null): void {
@@ -327,8 +327,16 @@ export class PianoPlayer {
           HORIZON_SECONDS,
           (c) => halves || c.kind !== 'sub',
         )) {
-          if (this.master)
-            keep(this.trackClicks, playClick(ctx, this.master, c.when, c.note.kind, 0.8));
+          if (!this.master) continue;
+          if (this.drums) {
+            this.playHits(
+              this.trackClicks,
+              c.when,
+              drumHits(c.note.groove, c.note.slot, c.note.kind === 'bar'),
+            );
+          } else {
+            keep(this.trackClicks, playClick(ctx, this.master, c.when, c.note.kind, BEAT_VOLUME));
+          }
         }
       } else {
         this.clicks.pump(ctx.currentTime, HORIZON_SECONDS, () => false);
@@ -349,6 +357,15 @@ export class PianoPlayer {
     };
     tick();
     this.timer = window.setInterval(tick, PUMP_MS);
+  }
+
+  private playHits(nodes: Set<AudioScheduledSourceNode>, when: number, hits: DrumHit[]): void {
+    const ctx = this.ctx;
+    const master = this.master;
+    if (!ctx || !master) return;
+    for (const hit of hits)
+      for (const node of playDrum(ctx, master, when, hit.voice, hit.level * BEAT_VOLUME))
+        keep(nodes, node);
   }
 
   private stopPump(): void {

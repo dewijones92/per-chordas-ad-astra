@@ -1,6 +1,6 @@
 ---
 title: Architecture
-updated: 2026-10-24
+updated: 2026-11-04
 ---
 
 # Architecture
@@ -54,6 +54,8 @@ pushing → clean | push-failed`.
   groups), `geometry.ts` (hit-testing, paths), `use-annotations.ts` (load and autosave),
   `use-pdf-marks.ts` (one-time import of a PDF's marks on first open).
 - `metronome/`: `scheduler.ts` (pure), `engine.ts` (Web Audio), `MetronomeProvider` (app-wide).
+- `drums/`: `grooves.ts` (pure patterns and the tick-to-hits function), `voices.ts` (synthesised drum sounds); used by the
+  metronome and the play-along (ADR 0022).
 - `music/`: Play-along (ADR 0014). `load.ts` unzips and picks the reader; `mscx.ts` (MuseScore 2–4) and
   `musicxml.ts` fill one `ScoreModel`; `unroll.ts` decides the bar order; `performance.ts` turns it into
   notes in seconds; `transport.ts` (pure) schedules against the audio clock; `player.ts` plays the

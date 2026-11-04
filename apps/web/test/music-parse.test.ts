@@ -469,6 +469,61 @@ describe('clicks and count-in', () => {
     ]);
   });
 
+  it('gives every click the drum groove for its meter: waltz in three, rock in four, 6/8 counted in eighths', () => {
+    const level = (c: {
+      groove: string;
+      slot: { beat: number; sub: number; subdivision: number };
+    }) => `${c.groove} ${String(c.slot.beat)}.${String(c.slot.sub)}/${String(c.slot.subdivision)}`;
+    const waltz = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
+    expect(waltz.clicks.slice(0, 7).map(level)).toEqual([
+      'waltz 0.0/2',
+      'waltz 0.1/2',
+      'waltz 1.0/2',
+      'waltz 1.1/2',
+      'waltz 2.0/2',
+      'waltz 2.1/2',
+      'waltz 0.0/2',
+    ]);
+    const four = buildPerformance(
+      parseScoreText(
+        makeMscx(
+          {
+            ...PIANO_WALTZ,
+            time: [4, 4],
+            measures: [{ staves: [[{ pitches: [67], dur: 'whole' }], []] }],
+          },
+          '3.02',
+        ),
+      ),
+    );
+    expect(four.clicks.filter((c) => c.kind !== 'sub').map(level)).toEqual([
+      'rock 0.0/2',
+      'rock 1.0/2',
+      'rock 2.0/2',
+      'rock 3.0/2',
+    ]);
+    const jig = buildPerformance(
+      parseScoreText(
+        makeMscx(
+          {
+            ...PIANO_WALTZ,
+            time: [6, 8],
+            measures: [{ staves: [[{ pitches: [67], dur: 'half', dots: 1 }], []] }],
+          },
+          '3.02',
+        ),
+      ),
+    );
+    expect(jig.clicks.map(level)).toEqual([
+      'sixeight 0.0/1',
+      'sixeight 1.0/1',
+      'sixeight 2.0/1',
+      'sixeight 3.0/1',
+      'sixeight 4.0/1',
+      'sixeight 5.0/1',
+    ]);
+  });
+
   it('counts in one bar at the playing speed, using the next full bar after a pickup', () => {
     const waltz = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
     expect(countInFor(waltz, 0, 1)).toEqual({ beats: 3, seconds: 0.5 });

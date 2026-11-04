@@ -1,3 +1,5 @@
+const soundNames = { click: '🔊 Click', drums: '🥁 Drums' } as const;
+
 export const strings = {
   common: {
     play: '▶️ Play',
@@ -165,7 +167,8 @@ export const strings = {
     ramp: '📈 Speed up each loop',
     fullKeyboard: '🎹 All 88 keys',
     countIn: '🥁 Count-in',
-    click: '🔊 Click',
+    click: soundNames.click,
+    drums: soundNames.drums,
     halfBeats: '🎶 Half-beats',
     playOn: '🙋 I play on',
     hands: '🖐️ Hands',
@@ -222,6 +225,17 @@ export const strings = {
     stop: '⏹️ Stop',
     tap: '👆 Tap',
     beats: '🥁 Beats',
+    sound: '🎚️ Sound',
+    sounds: soundNames,
+    groove: '🎼 Groove',
+    grooves: {
+      rock: '🎸 Rock/pop',
+      ballad: '🌙 Ballad',
+      waltz: '💃 Waltz',
+      sixeight: '🌊 6/8',
+      swing: '🎷 Swing/shuffle',
+      bossa: '🌴 Bossa nova',
+    },
     accent: '💥 Accent 1',
     trainer: '🏋️ Speed trainer',
   },
@@ -405,6 +419,8 @@ export const tips = {
       `Each time the loop comes round, play it ${String(step)}% faster until ${String(target)}%`,
     countIn: 'One bar of clicks before the music starts',
     click: 'A metronome click on every beat while it plays',
+    drums:
+      'A drum beat on every beat while it plays, instead of the click: waltz for three beats, 6/8 for compound time, rock/pop otherwise; the count-in becomes side sticks and a hat',
     playOn: 'The instrument you play this on; guitar shows capo hints',
     hands: 'Which hand plays each note',
     handModes: {
@@ -422,7 +438,8 @@ export const tips = {
       'Where the tune is written in octaves, leave out the lower copy (not drawn, not played), so one hand is not stretched over an octave and the other is free for the bass and chords',
     tails:
       'Draw each note as a short strike with a thin tail while it rings, so long notes do not look like keys to hold down; catch them with the pedal',
-    halfBeats: 'A softer click between the beats too (three per beat in 6/8), at the same tempo',
+    halfBeats:
+      'A softer click between the beats too, or a lighter hat with drums (three per beat in 6/8), at the same tempo',
     hardBits: 'Hard bits',
     hardBit: (from: number, to: number) => `Loop bars ${String(from)}–${String(to)}`,
     forget: (name: string) => `Forget ${name}`,
@@ -471,6 +488,20 @@ export const tips = {
     eighth: 'Eighth notes',
     triplet: 'Triplets',
     sixteenth: 'Sixteenth notes',
+    sound: 'What the beat sounds like',
+    sounds: {
+      click: 'A plain click on every tick',
+      drums: 'A drum beat; the note buttons set how busy the hi-hat is',
+    },
+    groove: 'The drum pattern; picking one sets the beats per bar to match',
+    grooves: {
+      rock: 'Kick on 1 and 3, snare on 2 and 4, in four',
+      ballad: 'Sparse: kick on 1, side stick on 2 and 4, in four',
+      waltz: 'Kick on 1, snare chips on 2 and 3, in three',
+      sixeight: 'Six eighth notes: kick on 1, snare on 4, in six',
+      swing: 'A swung ride, hat on 2 and 4, in four; eighths swing and triplets shuffle',
+      bossa: 'A lilting kick over a rim clave, in four',
+    },
   },
   looper: {
     panel: 'Slow-down looper',

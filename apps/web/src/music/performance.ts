@@ -7,6 +7,8 @@ import {
   type ScoreStaff,
 } from './model.ts';
 import { unroll } from './unroll.ts';
+import { clickSlot, grooveForMeter, type DrumSlot } from '../drums/grooves.ts';
+import type { Groove } from '@pcaa/shared';
 
 export interface PerfNote {
   pitch: number;
@@ -31,6 +33,8 @@ export interface PerfClick {
   start: number;
   end: number;
   kind: 'bar' | 'beat' | 'sub';
+  groove: Groove;
+  slot: DrumSlot;
 }
 
 export interface Performance {
@@ -191,14 +195,27 @@ export function buildPerformance(score: ScoreModel): Performance {
   for (const b of barTicks) {
     const beat = Math.max(1, b.beat);
     const parts = beat === TPQ * 1.5 ? 3 : 2;
+    const groove = grooveForMeter(Math.round((b.end - b.start) / beat), parts === 3);
     for (let t = b.start, k = 0; t < b.end - 1; t += beat, k++) {
       const start = toSeconds(t);
-      clicks.push({ start, end: start + 0.05, kind: k === 0 ? 'bar' : 'beat' });
+      clicks.push({
+        start,
+        end: start + 0.05,
+        kind: k === 0 ? 'bar' : 'beat',
+        groove,
+        slot: clickSlot(groove, k, 0, parts),
+      });
       for (let p = 1; p < parts; p++) {
         const at = t + (beat * p) / parts;
         if (at >= b.end - 1) break;
         const sub = toSeconds(at);
-        clicks.push({ start: sub, end: sub + 0.05, kind: 'sub' });
+        clicks.push({
+          start: sub,
+          end: sub + 0.05,
+          kind: 'sub',
+          groove,
+          slot: clickSlot(groove, k, p, parts),
+        });
       }
     }
   }

@@ -8,6 +8,12 @@ updated: 2026-11-04
 
 - 20–400 bpm, 1–12 beats, subdivisions (♩ ♫ triplets ♬), accent on beat 1, tap tempo (averages the last
   4 intervals, resets after 2 s).
+- **🔊 Click / 🥁 Drums.** The Sound choice swaps the click for a synthesised drum beat; the ♩ ♫ 3 ♬ buttons keep
+  working for both (with drums they set how busy the hi-hat is). Six grooves ([ADR 0022](../adr/0022-drum-beats.md)):
+  🎸 Rock/pop, 🌙 Ballad, 💃 Waltz (3), 🌊 6/8 (six eighth-note beats), 🎷 Swing/shuffle (swung ride at eighths,
+  shuffled at triplets) and 🌴 Bossa nova. Picking a groove sets the beats per bar to its own meter; changing the
+  beats afterwards is fine and the groove cycles by its own length. Accent 1 lifts the bar's first beat, and the
+  speed trainer works as before. The choice and groove are saved in `settings.json` like the rest.
 - **Speed trainer**: +N bpm every M bars up to a ceiling, applied from the bar it changes on.
 - Scheduling: a pure `TickScheduler` computes each tick as `anchor + n × interval` (no accumulated
   drift; an hour at 97 bpm triplets is checked to 9 decimal places). The engine schedules 120 ms ahead
@@ -17,5 +23,5 @@ updated: 2026-11-04
   and follow you to every device; the newest change wins and each commit says what changed
   ([ADR 0013](../adr/0013-where-preferences-live.md)).
 
-Files: `apps/web/src/metronome/*`. Tests: `test/metronome.test.ts`, `test/settings-store.test.ts`, the metronome settings tests in
+Files: `apps/web/src/metronome/*`, `apps/web/src/drums/*`. Tests: `test/metronome.test.ts`, `test/drums.test.ts`, `test/settings-store.test.ts`, the metronome settings tests in
 `apps/server/test/data-repo.test.ts`, `e2e/tools.spec.ts`, `e2e/devices.spec.ts`.

@@ -1,4 +1,6 @@
 import { playClick } from './click.ts';
+import { drumHits, hitSeconds } from '../drums/grooves.ts';
+import { playDrum } from '../drums/voices.ts';
 import { TickScheduler, type MetronomeSettings, type Tick } from './scheduler.ts';
 
 const LOOKAHEAD_SEC = 0.12;
@@ -11,6 +13,9 @@ export class MetronomeEngine {
   private timer: number | undefined;
   private scheduled: Tick[] = [];
   private ticksPlayed = 0;
+  private settings: MetronomeSettings | null = null;
+  private voices = new Set<AudioScheduledSourceNode>();
+  private drumStats = { hits: 0, silentTicks: 0 };
   volume = 0.8;
 
   get running(): boolean {
@@ -25,11 +30,15 @@ export class MetronomeEngine {
     this.ctx ??= new AudioContext({ latencyHint: 'interactive' });
     if (this.ctx.state !== 'running') await this.ctx.resume();
     this.scheduler = new TickScheduler(settings, this.ctx.currentTime + START_DELAY_SEC);
+    this.settings = settings;
     this.scheduled = [];
+    this.drumStats = { hits: 0, silentTicks: 0 };
     console.info('dewidebug metronome start', {
       bpm: settings.bpm,
       beatsPerBar: settings.beatsPerBar,
       subdivision: settings.subdivision,
+      sound: settings.sound,
+      groove: settings.sound === 'drums' ? settings.groove : null,
       trainer: settings.trainer.enabled,
       sampleRate: this.ctx.sampleRate,
       baseLatency: this.ctx.baseLatency,
@@ -46,7 +55,21 @@ export class MetronomeEngine {
     const at = Math.max(this.scheduler.peekTime(), this.ctx.currentTime + START_DELAY_SEC);
     const from = this.scheduler.position();
     this.scheduler = new TickScheduler(settings, at, from);
-    console.info('dewidebug metronome retuned in place', { from, bpm: settings.bpm });
+    if (
+      this.settings &&
+      (this.settings.sound !== settings.sound || this.settings.groove !== settings.groove)
+    )
+      console.info('dewidebug metronome sound changed while running', {
+        from: { sound: this.settings.sound, groove: this.settings.groove },
+        to: { sound: settings.sound, groove: settings.groove },
+      });
+    this.settings = settings;
+    console.info('dewidebug metronome retuned in place', {
+      from,
+      bpm: settings.bpm,
+      beatsPerBar: settings.beatsPerBar,
+      subdivision: settings.subdivision,
+    });
   }
 
   stop(): void {
@@ -54,7 +77,21 @@ export class MetronomeEngine {
     this.timer = undefined;
     this.scheduler = null;
     this.scheduled = [];
-    console.info('dewidebug metronome stop', { ticksPlayed: this.ticksPlayed });
+    const ringing = this.voices.size;
+    for (const node of this.voices) {
+      try {
+        node.stop();
+      } catch (error) {
+        console.info('dewidebug metronome drum voice already stopped', { error: String(error) });
+      }
+    }
+    this.voices.clear();
+    console.info('dewidebug metronome stop', {
+      ticksPlayed: this.ticksPlayed,
+      drumHits: this.drumStats.hits,
+      silentDrumTicks: this.drumStats.silentTicks,
+      voicesCut: ringing,
+    });
   }
 
   currentTick(): Tick | null {
@@ -79,7 +116,33 @@ export class MetronomeEngine {
   }
 
   private click(tick: Tick): void {
-    if (!this.ctx) return;
-    playClick(this.ctx, this.ctx.destination, tick.time, tick.kind, this.volume);
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const settings = this.settings;
+    if (settings?.sound !== 'drums') {
+      playClick(ctx, ctx.destination, tick.time, tick.kind, this.volume);
+      return;
+    }
+    const hits = drumHits(
+      settings.groove,
+      { beat: tick.beat, sub: tick.sub, subdivision: settings.subdivision },
+      tick.kind === 'bar',
+    );
+    if (hits.length === 0) this.drumStats.silentTicks += 1;
+    for (const hit of hits) {
+      this.drumStats.hits += 1;
+      for (const node of playDrum(
+        ctx,
+        ctx.destination,
+        tick.time + hitSeconds(hit, tick.bpm),
+        hit.voice,
+        hit.level * this.volume,
+      )) {
+        this.voices.add(node);
+        node.addEventListener('ended', () => {
+          this.voices.delete(node);
+        });
+      }
+    }
   }
 }

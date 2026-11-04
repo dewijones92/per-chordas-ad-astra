@@ -566,7 +566,10 @@ describe('DataRepo metronome settings', () => {
     expect(await repo.getSettings()).toBeNull();
     const at = Date.parse('2026-10-14T10:00:00.000Z');
     const saved = await repo.putMetronome({ settings, at });
-    expect(saved).toEqual({ metronome: settings, updatedAt: '2026-10-14T10:00:00.000Z' });
+    expect(saved).toEqual({
+      metronome: { ...settings, sound: 'click', groove: 'rock' },
+      updatedAt: '2026-10-14T10:00:00.000Z',
+    });
     expect(changes.descriptions.at(-1)).toBe('Save metronome settings');
     expect(JSON.parse(await readFile(join(dir, 'settings.json'), 'utf8'))).toEqual(saved);
   });
@@ -579,6 +582,21 @@ describe('DataRepo metronome settings', () => {
     });
     expect(changes.descriptions.at(-1)).toBe(
       'Metronome: bpm 80 → 92, trainer.enabled false → true',
+    );
+  });
+
+  it('describes a switch to drums, and reads a settings.json written before drums existed', async () => {
+    await writeFile(
+      join(dir, 'settings.json'),
+      JSON.stringify({ metronome: settings, updatedAt: '2026-10-14T10:00:00.000Z' }),
+    );
+    expect((await repo.getSettings())?.metronome).toMatchObject({ sound: 'click', groove: 'rock' });
+    await repo.putMetronome({
+      settings: { ...settings, sound: 'drums', groove: 'waltz', beatsPerBar: 3 },
+      at: Date.parse('2026-10-15T10:00:00.000Z'),
+    });
+    expect(changes.descriptions.at(-1)).toBe(
+      'Metronome: beatsPerBar 4 → 3, sound click → drums, groove rock → waltz',
     );
   });
 

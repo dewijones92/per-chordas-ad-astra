@@ -1,4 +1,10 @@
-import type { MetronomeSave, MetronomeSettings, SettingsFile } from '@pcaa/shared';
+import {
+  Groove,
+  MetronomeSound,
+  type MetronomeSave,
+  type MetronomeSettings,
+  type SettingsFile,
+} from '@pcaa/shared';
 import { clampBpm, defaultSettings } from './scheduler.ts';
 
 const KEY = 'pcaa.metronome.v2';
@@ -18,6 +24,8 @@ function normalise(raw: unknown): MetronomeSettings {
     ...parsed,
     bpm: clampBpm(typeof parsed.bpm === 'number' ? parsed.bpm : base.bpm),
     trainer: { ...base.trainer, ...parsed.trainer },
+    sound: MetronomeSound.catch(base.sound).parse(parsed.sound),
+    groove: Groove.catch(base.groove).parse(parsed.groove),
   };
 }
 

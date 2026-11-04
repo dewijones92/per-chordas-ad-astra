@@ -26,6 +26,7 @@ updated: 2026-11-04
 | [0018](0018-piano-hands-for-guitar-scores.md)               | Piano hands for guitar scores: an automatic split, By part / By hand                | accepted           |
 | [0019](0019-people-behind-the-gate.md)                      | People: the gate's email says who; place, settings, log and bests per person        | accepted           |
 | [0021](0021-fingering.md)                                   | Fingering read from the file and shown in red; a File check says what a file is for | accepted           |
+| [0022](0022-drum-beats.md)                                  | Drum beats instead of the click: pure grooves, synthesised voices, one meter rule   | accepted           |
 | [0020](0020-one-shortcut-table.md)                          | One shortcut table; Space plays whatever is on screen, M runs the metronome         | accepted           |
 | [0012](0012-library-sort-facts.md)                          | Library sorts read recorded facts (edited, opened, pinned)                          | accepted           |
 

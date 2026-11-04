@@ -102,3 +102,29 @@ export async function waitForGitHub(page: Page): Promise<void> {
     timeout: 15_000,
   });
 }
+
+export interface Voice {
+  kind: 'osc' | 'noise';
+  type: string;
+  hz: number;
+}
+
+export const CLICK_PITCHES = [1760, 1175, 784];
+
+export async function watchVoices(page: Page): Promise<() => Promise<Voice[]>> {
+  await page.addInitScript(() => {
+    const started: Voice[] = [];
+    (window as unknown as { voices: Voice[] }).voices = started;
+    const osc = OscillatorNode.prototype.start;
+    OscillatorNode.prototype.start = function (this: OscillatorNode, when?: number) {
+      started.push({ kind: 'osc', type: this.type, hz: Math.round(this.frequency.value) });
+      osc.call(this, when);
+    };
+    const noise = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function (this: AudioBufferSourceNode, when?: number) {
+      started.push({ kind: 'noise', type: 'noise', hz: 0 });
+      noise.call(this, when);
+    };
+  });
+  return () => page.evaluate(() => (window as unknown as { voices: Voice[] }).voices.slice());
+}

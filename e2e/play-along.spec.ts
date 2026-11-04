@@ -7,7 +7,14 @@ import {
   zipScore,
 } from '../packages/fixtures/src/index.ts';
 import { expect, test, type Page } from '@playwright/test';
-import { createPiece, eventuallyInRemote, openLibrary, remoteLog } from './support/helpers.ts';
+import {
+  CLICK_PITCHES,
+  createPiece,
+  eventuallyInRemote,
+  openLibrary,
+  remoteLog,
+  watchVoices,
+} from './support/helpers.ts';
 import { strings, tips, units } from '../apps/web/src/strings.ts';
 
 const waltzMscz = () => ({
@@ -515,6 +522,47 @@ test('half-beats adds a softer click between the beats at the same tempo, and is
 
   await page.reload();
   await expect(page.getByTestId('playalong-half-beats')).toBeChecked();
+});
+
+test('drums play the beat instead of the click, count the bar in with side sticks, and are remembered', async ({
+  page,
+}) => {
+  const voices = await watchVoices(page);
+  await createPiece(page, 'Drum Waltz', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await expect(page.getByTestId('playalong-drums')).not.toBeChecked();
+  await expect(page.getByTestId('playalong-half-beats')).toHaveCount(0);
+  await page.getByTestId('playalong-drums').check();
+  await expect(page.getByTestId('playalong-click')).not.toBeChecked();
+  await expect(page.getByTestId('playalong-half-beats')).toBeVisible();
+
+  await expect(page.getByTestId('playalong-countin')).toBeChecked();
+  await page.getByTestId('playalong-play').click();
+  await expect(page.getByTestId('playalong-play')).toHaveAttribute('aria-pressed', 'true');
+  await page.waitForTimeout(900);
+  expect(await position(page)).toBeLessThan(0.05);
+  const sticks = (await voices()).filter((v) => v.type === 'square');
+  expect(sticks).toHaveLength(3);
+  await page.getByTestId('playalong-play').click();
+
+  await page.getByTestId('playalong-countin').uncheck();
+  const before = (await voices()).length;
+  await page.getByTestId('playalong-play').click();
+  await expect.poll(() => position(page), { timeout: 8000 }).toBeGreaterThan(1.8);
+  await page.getByTestId('playalong-play').click();
+  const heard = (await voices()).slice(before);
+  expect(heard.filter((v) => v.type === 'square')).toHaveLength(0);
+  expect(heard.filter((v) => v.type === 'sine').length).toBeGreaterThanOrEqual(2);
+  expect(heard.filter((v) => v.type === 'triangle' && CLICK_PITCHES.includes(v.hz))).toHaveLength(
+    0,
+  );
+
+  await page.reload();
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await expect(page.getByTestId('playalong-drums')).toBeChecked();
+  await expect(page.getByTestId('playalong-click')).not.toBeChecked();
+  await expect(page.getByTestId('playalong-half-beats')).toBeVisible();
 });
 
 test('pausing while the piano is still loading stops it from starting', async ({ page }) => {

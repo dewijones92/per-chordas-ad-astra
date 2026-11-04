@@ -1,7 +1,10 @@
+import { GROOVES, METRONOME_SOUNDS, type Groove } from '@pcaa/shared';
 import { MAX_BPM, MIN_BPM, type Subdivision } from './scheduler.ts';
 import { useMetronome } from './MetronomeProvider.tsx';
 import './metronome.css';
+import { pickGroove } from '../drums/grooves.ts';
 import { strings, tips, units } from '../strings.ts';
+import { Choice } from '../ui/Choice.tsx';
 
 const SUBDIVISIONS: { value: Subdivision; label: string; title: string }[] = [
   { value: 1, label: '♩', title: tips.metronome.quarter },
@@ -75,6 +78,48 @@ export function MetronomePanel({ compact = false }: { compact?: boolean }) {
             className={`beat${b === 0 && settings.accentFirstBeat ? ' accent' : ''}${b === activeBeat ? ' on' : ''}`}
           />
         ))}
+      </div>
+
+      <div className="row">
+        <Choice
+          label={strings.metronome.sound}
+          title={tips.metronome.sound}
+          value={settings.sound}
+          options={METRONOME_SOUNDS.map((sound) => ({
+            value: sound,
+            label: strings.metronome.sounds[sound],
+            tip: tips.metronome.sounds[sound],
+          }))}
+          testId="metronome-sound"
+          onChange={(sound) => {
+            m.update({ sound });
+          }}
+        />
+        {settings.sound === 'drums' && (
+          <label className="row small-field groove-field" title={tips.metronome.groove}>
+            <span className="muted">{strings.metronome.groove}</span>
+            <select
+              className="input groove-select"
+              value={settings.groove}
+              data-testid="metronome-groove"
+              onChange={(e) => {
+                const groove = e.target.value as Groove;
+                const patch = pickGroove(groove);
+                console.info('dewidebug metronome groove picked', {
+                  groove,
+                  beatsPerBar: { from: settings.beatsPerBar, to: patch.beatsPerBar },
+                });
+                m.update(patch);
+              }}
+            >
+              {GROOVES.map((g) => (
+                <option key={g} value={g} title={tips.metronome.grooves[g]}>
+                  {strings.metronome.grooves[g]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       <div className="row">

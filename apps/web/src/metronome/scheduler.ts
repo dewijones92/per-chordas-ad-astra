@@ -29,6 +29,8 @@ export const defaultSettings = (): MetronomeSettings => ({
   subdivision: 1,
   accentFirstBeat: true,
   trainer: { enabled: false, stepBpm: 5, everyBars: 4, maxBpm: 160 },
+  sound: 'click',
+  groove: 'rock',
 });
 
 export function bpmForBar(settings: MetronomeSettings, bar: number): number {

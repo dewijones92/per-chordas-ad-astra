@@ -6,6 +6,14 @@ export const MAX_BPM = 400;
 export const Subdivision = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
 export type Subdivision = z.infer<typeof Subdivision>;
 
+export const METRONOME_SOUNDS = ['click', 'drums'] as const;
+export const MetronomeSound = z.enum(METRONOME_SOUNDS);
+export type MetronomeSound = z.infer<typeof MetronomeSound>;
+
+export const GROOVES = ['rock', 'ballad', 'waltz', 'sixeight', 'swing', 'bossa'] as const;
+export const Groove = z.enum(GROOVES);
+export type Groove = z.infer<typeof Groove>;
+
 export const SpeedTrainer = z.object({
   enabled: z.boolean(),
   stepBpm: z.number().min(1).max(1000),
@@ -20,6 +28,8 @@ export const MetronomeSettings = z.object({
   subdivision: Subdivision,
   accentFirstBeat: z.boolean(),
   trainer: SpeedTrainer,
+  sound: MetronomeSound.default('click'),
+  groove: Groove.default('rock'),
 });
 export type MetronomeSettings = z.infer<typeof MetronomeSettings>;
 
@@ -93,6 +103,7 @@ export const PlayAlongPrefs = z.object({
   countIn: z.boolean().default(true),
   click: z.boolean().default(false),
   halfBeats: z.boolean().default(false),
+  drums: z.boolean().default(false),
   playOn: Instrument.nullable().default(null),
   byHand: z.boolean().nullable().default(null),
   handHidden: z.array(z.int().min(0).max(1)).max(2).default([]),
@@ -121,6 +132,7 @@ export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
   countIn: true,
   click: false,
   halfBeats: false,
+  drums: false,
   playOn: null,
   byHand: null,
   handHidden: [],
