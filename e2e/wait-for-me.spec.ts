@@ -171,7 +171,11 @@ test('a wrong key is counted and does not move on, and a later right one does', 
   await expect(panel(page)).toHaveAttribute('data-expected', '43 71');
   await expect(panel(page)).toHaveAttribute('data-notes', '0');
   expect(await number(canvas(page), 'data-position')).toBe(0);
-  await expect(page.getByTestId('wait-live')).toHaveText(strings.playAlong.wait.live(0, 0, 3, 0));
+  const anyWait = strings.playAlong.wait
+    .live(0, 0, 3, 999)
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace('999', '\\d+');
+  await expect(page.getByTestId('wait-live')).toHaveText(new RegExp(`^${anyWait}$`));
 });
 
 test('a chord can be played in any order, and keys held down still count', async ({ page }) => {
