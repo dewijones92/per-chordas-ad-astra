@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { drawingClaimed } from '../annotate/use-drawing.ts';
 import { ComputerKeyInput } from './computer-key-input.ts';
 import { DEFAULT_BASE } from './computer-keys.ts';
 import type { Lanes } from './hands.ts';
@@ -137,7 +138,11 @@ export function useWaitForMe(options: {
       session.release(e.pitch);
       player.keyUp(e.pitch);
     };
-    const inputs = [new MidiKeyInput(setMidi), new ComputerKeyInput(setBase), screen];
+    const inputs = [
+      new MidiKeyInput(setMidi),
+      new ComputerKeyInput(setBase, drawingClaimed),
+      screen,
+    ];
     for (const input of inputs) input.start(onKey);
     return () => {
       for (const input of inputs) input.stop();

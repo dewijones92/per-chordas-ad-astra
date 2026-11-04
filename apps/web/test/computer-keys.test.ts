@@ -95,6 +95,39 @@ describe('the computer keyboard input', () => {
     input.stop();
   });
 
+  it('yields every key to the drawing tools while drawing, then plays again', () => {
+    const events: KeyEvent[] = [];
+    let drawing = true;
+    const input = new ComputerKeyInput(
+      () => undefined,
+      () => drawing,
+    );
+    input.start((e) => events.push(e));
+    const windowSaw = vi.fn();
+    window.addEventListener('keydown', windowSaw);
+    const keys = ['KeyH', 'KeyE', 'KeyT', 'KeyA', 'KeyS', 'KeyX'];
+    const presses = keys.map((code) => {
+      const e = new KeyboardEvent('keydown', {
+        code,
+        key: code.slice(3).toLowerCase(),
+        bubbles: true,
+        cancelable: true,
+      });
+      document.body.dispatchEvent(e);
+      return e;
+    });
+    expect(events).toEqual([]);
+    expect(windowSaw).toHaveBeenCalledTimes(keys.length);
+    expect(presses.some((e) => e.defaultPrevented)).toBe(false);
+    drawing = false;
+    document.body.dispatchEvent(
+      new KeyboardEvent('keydown', { code: 'KeyH', key: 'h', bubbles: true, cancelable: true }),
+    );
+    window.removeEventListener('keydown', windowSaw);
+    expect(events.map((e) => [e.kind, e.pitch])).toEqual([['down', 69]]);
+    input.stop();
+  });
+
   it('ignores key repeat, modified keys and typing in a text box', () => {
     const { events, input, fire } = setup();
     fire('keydown', 'KeyD');

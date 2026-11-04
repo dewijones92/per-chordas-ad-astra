@@ -57,7 +57,10 @@ be driveable from a virtual piano.
   is left out on purpose, so **Space and K stay play and pause**, and **M stays the metronome**. The keys are read
   by `code`, so the layout is the same on any keyboard language. While Wait for me is on, these keys are claimed
   before any other handler (`preventDefault` and `stopPropagation` on `document`), which means the drawing-tool
-  letters (A, S, E, T) do not fire on the PDF in the Both view; the toolbar still works. They are not claimed in a
+  letters (A, S, E, T) do not fire on the PDF in the Both view; the toolbar still works. **Except while ✏️ Draw mode
+  is on** (on the stave or the falling notes): then the piano yields every key (`ComputerKeyInput`'s `yields`, fed
+  by `drawingClaimed()`), so V P H E T L A R O S pick tools as the ⌨️ Keys help says, and plays again when Draw is
+  done (red first, 4 Nov 2026: H, E, T, A and S played notes in Draw mode). They are not claimed in a
   text or number box. A key held while the octave changes is released at the pitch it started.
 - **Preference.** `waitForMe` is part of the per-file Play-along preferences (default off), so it is remembered.
 

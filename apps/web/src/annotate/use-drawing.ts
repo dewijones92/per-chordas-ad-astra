@@ -15,6 +15,10 @@ export function claimDrawing(surface: DrawingSurface | null): void {
   claimed = surface;
 }
 
+export function drawingClaimed(): boolean {
+  return claimed !== null;
+}
+
 function owns(surface: DrawingSurface): boolean {
   return claimed === surface || (claimed === null && surface === 'score');
 }

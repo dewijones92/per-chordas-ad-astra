@@ -995,7 +995,7 @@ export function PlayAlong({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const finger = picked ? fingerKeyOf(e) : null;
+      const finger = picked && !drawMode ? fingerKeyOf(e) : null;
       if (finger) {
         e.preventDefault();
         setFinger(finger === 'clear' ? null : finger);
@@ -1027,7 +1027,7 @@ export function PlayAlong({
     return () => {
       document.removeEventListener('keydown', onKey);
     };
-  }, [toggle, setSpeed, stepBar, prefs.speed, picked, setFinger]);
+  }, [toggle, setSpeed, stepBar, prefs.speed, picked, setFinger, drawMode]);
 
   if (loaded.error) {
     return (
@@ -1520,9 +1520,11 @@ export function PlayAlong({
               file: music.file,
               zoom: notationZoom,
               notatable,
+              pickedLetGo: picked?.label ?? null,
             });
             if (notatable) setNotationZoom((z) => Math.max(z, DRAW_MIN_ZOOM));
             chooseDrawSurface(notatable ? 'notation' : 'falling');
+            setPicked(null);
             setDrawMode(true);
           }}
         >

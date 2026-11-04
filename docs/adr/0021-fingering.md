@@ -57,6 +57,8 @@ red numbers on the notes. The readers dropped fingering entirely.
     nothing to hit, picks the nearest head within 8 px (`nearestNote`).
   - _Seeking and drawing._ A note click also seeks to its bar, as every click on the stave always has; a click on the
     bar anywhere else seeks and lets go of the picked note; in Draw mode stave clicks are drawing's and pick nothing.
+    Starting Draw mode lets go of the picked note, and the finger keys (1-5, Delete, Backspace) are not read while
+    drawing, so Delete removes the selected mark and never a saved finger (red first, 4 Nov 2026).
   - _The stave does not flash or jump._ Its identity key no longer depends on the XML text, so a finger change keeps the
     old drawing on screen until the new one is ready, and the stave does not scroll back to the playing bar.
   - _Limits._ A grace note is not matched, and picking is off when our bar count and Verovio's disagree.

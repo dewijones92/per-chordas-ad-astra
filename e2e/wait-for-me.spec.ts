@@ -331,6 +331,37 @@ test('the computer keyboard plays, moves octave with Z and X, and leaves Space, 
   await expect(panel(page)).toHaveAttribute('data-played', '');
 });
 
+test('while drawing, the drawing-tool letters pick tools and play no piano notes', async ({
+  page,
+}) => {
+  await open(page, 'Draw Keys', undefined, false);
+  await turnOn(page);
+  await page.getByTestId('notation-draw').click();
+  await expect(page.locator('.playalong [data-tool="pen"]')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  for (const [key, tool] of [
+    ['KeyH', 'highlighter'],
+    ['KeyE', 'eraser'],
+    ['KeyT', 'text'],
+    ['KeyA', 'arrow'],
+    ['KeyS', 'stamp'],
+  ] as const) {
+    await page.keyboard.press(key);
+    await expect(page.locator(`.playalong [data-tool="${tool}"]`)).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(panel(page)).toHaveAttribute('data-played', '');
+  }
+
+  await page.getByTestId('notation-draw-done').click();
+  await page.keyboard.down('KeyH');
+  await expect(panel(page)).toHaveAttribute('data-played', '69');
+  await page.keyboard.up('KeyH');
+});
+
 test('pausing shows how it went so far, and Start again begins afresh', async ({ page }) => {
   await open(page, 'Pause Result');
   await turnOn(page);

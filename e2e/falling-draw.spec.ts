@@ -191,6 +191,57 @@ test('a click on the falling notes outside Draw mode still picks a note, and Dra
   await expect(page.getByTestId('falling-marks')).toHaveAttribute('data-items', '1');
 });
 
+test('Delete and the number keys in Draw mode act on the drawing, never on a note you had picked', async ({
+  page,
+}) => {
+  await createPiece(page, 'Draw Keeps Fingers', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzXml());
+  const canvas = page.getByTestId('playalong-canvas');
+  await expect(canvas).toHaveAttribute('data-blocks', /71:/);
+  await page.getByTestId('playalong-compact').click();
+  await settle(page);
+  const fingerFile = 'pieces/draw-keeps-fingers/fingering.json';
+
+  await expect(async () => {
+    const at = await blockCentre(page, 71);
+    await page.mouse.click(at.x, at.y);
+    await expect(page.getByTestId('finger-picked')).toBeVisible({ timeout: 1500 });
+  }).toPass();
+  await page.keyboard.press('3');
+  await expect(canvas).toHaveAttribute('data-fingers', /^[1-9]/);
+  await eventuallyInRemote(fingerFile, (t) => t.includes('"3"'));
+
+  await page.getByTestId('playalong-compact').click();
+  await page.getByTestId('notation-draw').click();
+  await expect(page.getByTestId('finger-picked')).toHaveCount(0);
+  await settle(page);
+  const note = await blockCentre(page, 71);
+  const marks = page.getByTestId('falling-marks');
+  await page.locator('.playalong [data-tool="stamp"]').click();
+  await page.mouse.click(note.x, note.y);
+  await expect(marks).toHaveAttribute('data-items', '1');
+  await eventuallyInRemote(fallingFile.replace('falling-marks', 'draw-keeps-fingers'), (t) =>
+    t.includes('"stamp"'),
+  );
+
+  await page.keyboard.press('v');
+  await settle(page);
+  const stamp = await centre(marks.locator('text', { hasText: /^1$/ }).first());
+  await page.mouse.click(stamp.x, stamp.y);
+  await page.keyboard.press('5');
+  await page.keyboard.press('Delete');
+  await expect(marks).toHaveAttribute('data-items', '0');
+  await eventuallyInRemote(
+    fallingFile.replace('falling-marks', 'draw-keeps-fingers'),
+    (t) => !t.includes('"stamp"'),
+  );
+
+  await expect(canvas).toHaveAttribute('data-fingers', /^[1-9]/);
+  const kept = await eventuallyInRemote(fingerFile, (t) => t.includes('"3"'));
+  expect(kept).not.toContain('"5"');
+  expect(remoteLog('%B').join('\n')).not.toContain('Clear finger');
+});
+
 test('a MIDI file has no notation to draw on, but its falling notes can be drawn on', async ({
   page,
 }) => {

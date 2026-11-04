@@ -8,7 +8,10 @@ export class ComputerKeyInput implements KeyInput {
   private readonly held = new HeldKeys('computer');
   private readonly byCode = new Map<string, number>();
 
-  constructor(private readonly onBase: (base: number) => void) {}
+  constructor(
+    private readonly onBase: (base: number) => void,
+    private readonly yields: () => boolean = () => false,
+  ) {}
 
   start(handler: KeyHandler): void {
     this.handler = handler;
@@ -32,6 +35,10 @@ export class ComputerKeyInput implements KeyInput {
     const shift = octaveShiftOf(e.code);
     const pitch = computerKeyPitch(e.code, this.base);
     if (shift === null && pitch === null) return;
+    if (this.yields()) {
+      console.info('dewidebug computer key left to the drawing tools', { code: e.code });
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     if (e.repeat) return;
