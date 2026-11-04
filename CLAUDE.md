@@ -166,6 +166,8 @@ With no `DATA_REMOTE` it keeps a local-only git repo (dev mode).
   Tests that expect a file must first wait for the earlier state to reach the remote.
 - **Temporary files must live under `.state/tmp`, never beside their target.** The data dir is a git working tree, and
   `git add -A` would commit a half-written upload. (Independent review, 7 Oct 2026.)
+- **A commit holds the repo gate from gathering its messages to `git commit`.** Without it a save landing in that
+  window was staged into the commit under another change's message, and its own message was lost (4 Nov 2026).
 - **Never send a whole document to change one part of it.** Loops were saved as the full `loops.json` from client
   state, so a save before the load (or after a track was removed) wiped other tracks' loops; it is per track now.
 - **After a failed save, keep the last _confirmed_ version, not null.** One 502 used to stop every later drawing

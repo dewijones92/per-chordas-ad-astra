@@ -192,6 +192,48 @@ describe('SyncEngine against a bare remote', () => {
     await engine.close();
   });
 
+  it('never folds a save into a commit that is already being made under another message', async () => {
+    const gate = new RepoGate();
+    let paused: (() => void) | null = null;
+    let pauseNextAdd = false;
+    const engine = engineFor(dir, remote, { idleMs: 60_000 }, gate, (git) => async (args) => {
+      if (args[0] === 'add' && pauseNextAdd) {
+        pauseNextAdd = false;
+        await new Promise<void>((resume) => {
+          paused = resume;
+        });
+      }
+      return git(args);
+    });
+    await engine.init();
+    await waitFor(() => engine.status().phase === 'clean');
+
+    await gate.write(async () => {
+      await writeFile(join(dir, 'a.txt'), 'a');
+      engine.markDirty('Annotate A');
+    });
+    pauseNextAdd = true;
+    const committing = engine.flush('test');
+    const saving = gate.write(async () => {
+      await writeFile(join(dir, 'b.txt'), 'b');
+      engine.markDirty('Pin B');
+    });
+    await waitFor(() => paused !== null || !pauseNextAdd);
+    await new Promise((r) => setTimeout(r, 50));
+    (paused as (() => void) | null)?.();
+    await Promise.all([committing, saving]);
+    await engine.flush('test');
+
+    const log = gitIn(remote, 'log', '--format=@@%s', '--name-only', 'main');
+    const commits = log
+      .split('@@')
+      .filter(Boolean)
+      .map((c) => c.split('\n').filter(Boolean));
+    const withB = commits.find((c) => c.includes('b.txt'));
+    expect(withB?.[0]).toContain('Pin B');
+    await engine.close();
+  });
+
   it('waits for an in-flight save before rebasing over a remote edit', async () => {
     const gate = new RepoGate();
     const engine = engineFor(dir, remote, { idleMs: 60_000 }, gate);

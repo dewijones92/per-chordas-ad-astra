@@ -189,7 +189,11 @@ export class SyncEngine {
     return run;
   }
 
-  private async commit(reason: string): Promise<boolean> {
+  private commit(reason: string): Promise<boolean> {
+    return this.gate.exclusive(() => this.commitHeld(reason));
+  }
+
+  private async commitHeld(reason: string): Promise<boolean> {
     const descriptions = this.pending.splice(0);
     this.activity = 'committing';
     try {

@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pino } from 'pino';
-import { createGit } from '../src/store/git.ts';
+import { createGit, type Git } from '../src/store/git.ts';
 import type { RepoGate } from '../src/store/repo-gate.ts';
 import { SyncEngine } from '../src/store/sync-engine.ts';
 
@@ -41,9 +41,10 @@ export function engineFor(
   remote: string,
   overrides: Partial<{ idleMs: number; retryDelaysMs: number[] }> = {},
   gate?: RepoGate,
+  wrapGit: (git: Git) => Git = (git) => git,
 ): SyncEngine {
   return new SyncEngine({
-    git: createGit({ cwd: dir, authorName: 'tester', authorEmail: 'tester@example.com' }),
+    git: wrapGit(createGit({ cwd: dir, authorName: 'tester', authorEmail: 'tester@example.com' })),
     dir,
     remote,
     branch: 'main',
