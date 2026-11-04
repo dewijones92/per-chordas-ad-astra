@@ -29,6 +29,11 @@ const Env = z.object({
     .string()
     .regex(/^([a-z0-9][a-z0-9._-]{0,63})?$/)
     .default(''),
+  FIND_MUTOPIA_BASE: z.url().default('https://www.mutopiaproject.org'),
+  FIND_COMMONS_API: z.url().default('https://commons.wikimedia.org/w/api.php'),
+  FIND_COMMONS_FILE_ORIGIN: z.url().default('https://upload.wikimedia.org'),
+  FIND_MIN_GAP_MS: z.coerce.number().int().min(0).max(60_000).default(1_000),
+  FIND_TIMEOUT_MS: z.coerce.number().int().min(100).max(120_000).default(20_000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
 

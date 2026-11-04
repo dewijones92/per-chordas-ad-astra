@@ -5,3 +5,4 @@ export * from './ids.ts';
 export * from './resume.ts';
 export * from './prefs.ts';
 export * from './files.ts';
+export * from './find.ts';

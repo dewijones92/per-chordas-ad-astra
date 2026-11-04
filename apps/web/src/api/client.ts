@@ -1,5 +1,8 @@
 import {
   Annotations,
+  FindImportResponse,
+  FindSearchResponse,
+  type FoundScore,
   type PdfImportRequest,
   Health,
   Loops,
@@ -37,18 +40,20 @@ export class ApiError extends Error {
 
 const ErrorBody = z.object({ error: z.string() });
 
+async function failure(path: string, res: Response): Promise<ApiError> {
+  const parsed = ErrorBody.safeParse(await res.json().catch(() => null));
+  const message = parsed.success ? parsed.data.error : `${String(res.status)} ${res.statusText}`;
+  console.info('dewidebug api error', { path, status: res.status, message });
+  return new ApiError(res.status, message);
+}
+
 async function request<S extends z.ZodType>(
   path: string,
   schema: S,
   init: RequestInit = {},
 ): Promise<z.output<S>> {
   const res = await fetch(path, { credentials: 'same-origin', ...init });
-  if (!res.ok) {
-    const parsed = ErrorBody.safeParse(await res.json().catch(() => null));
-    const message = parsed.success ? parsed.data.error : `${String(res.status)} ${res.statusText}`;
-    console.info('dewidebug api error', { path, status: res.status, message });
-    throw new ApiError(res.status, message);
-  }
+  if (!res.ok) throw await failure(path, res);
   if (res.status === 204) return schema.parse(undefined);
   return schema.parse(await res.json());
 }
@@ -171,5 +176,17 @@ export const api = {
   syncStatus: () => request('/api/sync', SyncStatus),
   flush: (reason: string, keepalive = false) =>
     request(`/api/sync/flush?reason=${enc(reason)}`, SyncStatus, { method: 'POST', keepalive }),
+  findScores: (query: string) => request(`/api/find?q=${enc(query)}`, FindSearchResponse),
+  findMusic: async (url: string): Promise<Uint8Array> => {
+    const path = `/api/find/file?url=${enc(url)}`;
+    const res = await fetch(path, { credentials: 'same-origin' });
+    if (!res.ok) throw await failure(path, res);
+    return new Uint8Array(await res.arrayBuffer());
+  },
+  importFound: (result: FoundScore) =>
+    tracked(
+      'import',
+      request('/api/find/import', FindImportResponse, jsonInit('POST', { result })),
+    ),
   health: () => request('/healthz', Health),
 };

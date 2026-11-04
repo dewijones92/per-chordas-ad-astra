@@ -501,6 +501,20 @@ export function PiecePage({ id }: { id: string }) {
             {current.title}
           </h1>
           {current.artist && <span className="muted">{current.artist}</span>}
+          {current.source && (
+            <span className="piece-source small-print" data-testid="piece-source">
+              <a href={current.source.url} target="_blank" rel="noreferrer">
+                {strings.find.fromSite(current.source.name)}
+              </a>{' '}
+              {current.source.licenceUrl ? (
+                <a href={current.source.licenceUrl} target="_blank" rel="noreferrer">
+                  {strings.find.attribution(current.source.licence)}
+                </a>
+              ) : (
+                strings.find.attribution(current.source.licence)
+              )}
+            </span>
+          )}
           <button
             type="button"
             className="btn small ghost pin-toggle"

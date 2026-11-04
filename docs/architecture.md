@@ -42,12 +42,16 @@ browser (React SPA) ──/api──▶ nginx_dewi (Google gate) ──▶ app c
 - `store/sync-engine.ts`: one serial queue of git operations; phases `clean → dirty → committing →
 pushing → clean | push-failed`.
 - `store/data-repo.ts`: domain operations with per-key locks; each mutation calls `markDirty(description)`.
+- `find/`: Find a score (ADR 0026). `mutopia.ts` and `commons.ts` normalise each site's answer (pure), `polite-fetch.ts` is
+  the only code that fetches (origin list, spacing, size caps), `service.ts` searches, previews and imports through
+  `DataRepo`, `ttl-cache.ts` remembers answers; `create.ts` wires the origins from `FIND_*` settings.
 - `app.ts`: `/healthz` (open), trusted-network guard, `/api/*`, SPA with immutable hashed assets.
 
 ## Web
 
 - `api/client.ts`: fetch wrapper that parses every response with the shared schemas, and tracks saves
   for the status pill.
+- `library/FindScore.tsx`: the 🔍 Find a score panel in the New piece dialog; `find-view.ts` holds its pure text.
 - `score/`: `pdf.ts` (lazy legacy pdf.js), `ScoreViewer` (layouts, page turning, text editor),
   `PageView` (lazy canvas render per page plus the annotation layer), `turn.ts` (pure),
   `pdf-marks.ts` (converts a PDF's own annotations into drawings, ADR 0011).

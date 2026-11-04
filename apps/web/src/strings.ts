@@ -71,6 +71,39 @@ export const strings = {
     creating: '⏳ Creating…',
     cancel: '✖️ Cancel',
   },
+  find: {
+    summary: '🔍 Find a score (free, public domain or openly licensed)',
+    intro:
+      '💡 Searches Mutopia and Wikimedia Commons for scores you may legally use. Nothing is paid for, and nothing is imported until you press Import.',
+    search: '🔍 Search',
+    searching: '⏳ Searching…',
+    found: (n: number) => `✅ ${String(n)} found`,
+    nothingFound:
+      '🤷 Nothing found. Try the composer and one word of the title, for example “chopin nocturne”.',
+    failed: (message: string) => `❌ ${message}`,
+    siteFailed: (site: string, message: string) => `⚠️ ${site} could not be searched: ${message}`,
+    siteHidden: (site: string, n: number) =>
+      `💡 ${site}: ${String(n)} more hidden because the licence is not clearly open or the file is too big.`,
+    licence: (name: string) => `📜 ${name}`,
+    sourcePage: '🔗 Source page',
+    scoreFormat: (label: string) => `📄 ${label}`,
+    musicFormat: (label: string) => `🎹 ${label}`,
+    choose: '👉 Choose',
+    chosen: '⬅️ Back to the results',
+    checking: '⏳ Checking the file…',
+    checked: '✅ File read',
+    checkFailed: (message: string) => `❌ This file could not be read for a check: ${message}`,
+    noMusic: '💡 This result is a PDF only, so there is no File check and no Play-along.',
+    willImport: (parts: string) => `⬇️ Will import: ${parts}`,
+    import: '⬇️ Import',
+    importing: '⏳ Importing…',
+    imported: (title: string) => `✅ Imported “${title}”`,
+    importFailed: (message: string) => `❌ Could not import: ${message}`,
+    skipped: (label: string, reason: string) => `⚠️ ${label} was skipped: ${reason}`,
+    open: '➡️ Open the piece',
+    attribution: (licence: string) => `📜 Shared under ${licence}`,
+    fromSite: (name: string) => `🔗 From ${name}`,
+  },
   library: {
     title: '📚 Your library',
     newPiece: '➕ New piece',
@@ -351,6 +384,13 @@ export const tips = {
   },
   common: {
     help: (what: string) => `Explain: ${what}`,
+  },
+  find: {
+    placeholder: 'chopin nocturne',
+    searchLabel: 'Search free scores by composer or title',
+    sourcePage: 'Opens the page this score came from, in a new tab',
+    licence: 'Opens the licence this score is shared under, in a new tab',
+    results: 'Scores found',
   },
   library: {
     tagsPlaceholder: 'fingerstyle, learning',

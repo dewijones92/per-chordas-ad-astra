@@ -21,6 +21,12 @@
   min-width: 0;
 }
 
+.piece-source {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .piece-title h1 {
   font-size: 24px;
   cursor: text;

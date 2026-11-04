@@ -84,6 +84,27 @@ export interface DataRepoOptions {
   gate?: RepoGate;
 }
 
+export function musicHeadProblem(name: string, head: Uint8Array): RejectedError | null {
+  const ext = extensionOf(name);
+  if ((ZIPPED_MUSIC_EXTENSIONS as readonly string[]).includes(ext)) {
+    return isZip(head) ? null : new RejectedError(`That .${ext} file is not a zip archive`);
+  }
+  if (isMidiFile(name)) {
+    return isMidi(head) ? null : new RejectedError(`That .${ext} file is not a MIDI file`);
+  }
+  const text = new TextDecoder()
+    .decode(head.subarray(0, 64))
+    .replace(/^\uFEFF/, '')
+    .trimStart();
+  return text.startsWith('<') ? null : new RejectedError(`That .${ext} file is not XML`);
+}
+
+export function scoreHeadProblem(head: Uint8Array): RejectedError | null {
+  return new TextDecoder().decode(head.subarray(0, 5)) === '%PDF-'
+    ? null
+    : new RejectedError('That file is not a PDF');
+}
+
 export function kindOf(file: FileName): FileKind {
   return kindOfFile(file) ?? 'tracks';
 }
@@ -313,10 +334,7 @@ export class DataRepo {
     return this.addFile(id, originalName, source, 'scores', {
       maxBytes: MAX_SCORE_BYTES,
       tooLarge,
-      checkHead: (head) =>
-        new TextDecoder().decode(head.subarray(0, 5)) === '%PDF-'
-          ? null
-          : new RejectedError('That file is not a PDF'),
+      checkHead: scoreHeadProblem,
     });
   }
 
@@ -339,25 +357,11 @@ export class DataRepo {
     const tooLarge = () =>
       new RejectedError(`Music file is over ${String(MAX_MUSIC_BYTES / 1024 / 1024)} MB`);
     if (source instanceof Blob && source.size > MAX_MUSIC_BYTES) throw tooLarge();
-    const ext = extensionOf(originalName);
     if (kindOfFile(originalName) !== 'music') throw new RejectedError(KIND_RULES.music);
-    const zipped = (ZIPPED_MUSIC_EXTENSIONS as readonly string[]).includes(ext);
     const ref = await this.addFile(id, originalName, source, 'music', {
       maxBytes: MAX_MUSIC_BYTES,
       tooLarge,
-      checkHead: (head) => {
-        if (zipped) {
-          return isZip(head) ? null : new RejectedError(`That .${ext} file is not a zip archive`);
-        }
-        if (isMidiFile(originalName)) {
-          return isMidi(head) ? null : new RejectedError(`That .${ext} file is not a MIDI file`);
-        }
-        const text = new TextDecoder()
-          .decode(head.subarray(0, 64))
-          .replace(/^\uFEFF/, '')
-          .trimStart();
-        return text.startsWith('<') ? null : new RejectedError(`That .${ext} file is not XML`);
-      },
+      checkHead: (head) => musicHeadProblem(originalName, head),
     });
     return { ...ref, transpose: 0 };
   }

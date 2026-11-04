@@ -33,4 +33,17 @@ describe('loadConfig', () => {
       /PUSH_RETRY_DELAYS_MS/,
     );
   });
+
+  it('points Find a score at the real sites unless told otherwise, and spaces requests by a second', () => {
+    const c = loadConfig({ DATA_DIR: '/d' });
+    expect(c).toMatchObject({
+      FIND_MUTOPIA_BASE: 'https://www.mutopiaproject.org',
+      FIND_COMMONS_API: 'https://commons.wikimedia.org/w/api.php',
+      FIND_COMMONS_FILE_ORIGIN: 'https://upload.wikimedia.org',
+      FIND_MIN_GAP_MS: 1_000,
+    });
+    expect(() => loadConfig({ DATA_DIR: '/d', FIND_MUTOPIA_BASE: 'not a url' })).toThrow(
+      /FIND_MUTOPIA_BASE/,
+    );
+  });
 });

@@ -23,6 +23,7 @@ import {
   savedLibrarySort,
 } from '../resume/resume.ts';
 import { useAsync } from '../ui/use-async.ts';
+import { FindScore } from './FindScore.tsx';
 import { allTags, buildPieceIndex, filterPieces } from './search.ts';
 import {
   ago,
@@ -116,6 +117,12 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
 
   return (
     <dialog ref={ref} className="dialog card" onClose={onClose} data-testid="new-piece-dialog">
+      <FindScore
+        onImported={(id) => {
+          console.info('dewidebug new piece imported from a found score', { id });
+          navigate(`/piece/${id}`);
+        }}
+      />
       <form
         className="stack"
         onSubmit={(e) => {

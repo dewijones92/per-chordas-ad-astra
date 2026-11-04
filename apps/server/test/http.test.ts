@@ -8,6 +8,7 @@ import { ipInCidr, isTrusted } from '../src/http/ip.ts';
 import { parseRange } from '../src/http/serve-file.ts';
 import { DataRepo } from '../src/store/data-repo.ts';
 import { ResumeStore } from '../src/store/resume-store.ts';
+import { findFor, stubFetch } from './find-helpers.ts';
 import { engineFor, silentLog, tempDir } from './helpers.ts';
 
 describe('ipInCidr', () => {
@@ -66,6 +67,7 @@ describe('HTTP API', () => {
     caller = '172.21.0.7';
     app = createApp({
       repo,
+      find: findFor(repo, stubFetch()),
       resume: new ResumeStore(data, silentLog),
       sync,
       log: silentLog,
@@ -332,8 +334,10 @@ describe('HTTP API with two people', () => {
     const data = join(dir, 'data');
     const sync = engineFor(data, '', { idleMs: 60_000 });
     await sync.init();
+    const repo = new DataRepo({ dir: data, changes: sync, log: silentLog });
     app = createApp({
-      repo: new DataRepo({ dir: data, changes: sync, log: silentLog }),
+      repo,
+      find: findFor(repo, stubFetch()),
       resume: new ResumeStore(data, silentLog),
       sync,
       log: silentLog,

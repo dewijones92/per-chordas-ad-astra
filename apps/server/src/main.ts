@@ -1,6 +1,7 @@
 import { serve } from '@hono/node-server';
 import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
+import { createFindService } from './find/create.ts';
 import { createLogger } from './log.ts';
 import { DataRepo } from './store/data-repo.ts';
 import { RepoGate } from './store/repo-gate.ts';
@@ -50,6 +51,7 @@ const repo = new DataRepo({ dir: config.DATA_DIR, changes: sync, log, gate });
 const resume = new ResumeStore(config.DATA_DIR, log);
 const app = createApp({
   repo,
+  find: createFindService(config, repo, log),
   resume,
   sync,
   log,

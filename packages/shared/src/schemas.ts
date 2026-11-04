@@ -60,6 +60,14 @@ export const Bookmark = z.object({
 });
 export type Bookmark = z.infer<typeof Bookmark>;
 
+export const PieceSource = z.object({
+  name: z.string().trim().min(1).max(60),
+  url: z.url(),
+  licence: z.string().trim().min(1).max(100),
+  licenceUrl: z.url().nullable(),
+});
+export type PieceSource = z.infer<typeof PieceSource>;
+
 export const Piece = z.object({
   id: Slug,
   title: z.string().trim().min(1).max(200),
@@ -72,6 +80,7 @@ export const Piece = z.object({
   music: z.array(MusicRef).default([]),
   bookmarks: z.array(Bookmark).default([]),
   pinned: z.boolean().default(false),
+  source: PieceSource.optional(),
   createdAt: isoTimestamp,
   updatedAt: isoTimestamp,
 });
@@ -83,6 +92,7 @@ export const PieceDraft = Piece.pick({
   tags: true,
   notes: true,
   targetBpm: true,
+  source: true,
 }).partial({ artist: true, tags: true, notes: true, targetBpm: true });
 export type PieceDraft = z.input<typeof PieceDraft>;
 

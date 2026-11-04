@@ -3,7 +3,9 @@ import { join } from 'node:path';
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { serveStatic } from '@hono/node-server/serve-static';
 import {
+  contentTypeFor,
   FileName,
+  FindImportRequest,
   NewPracticeSession,
   personFromEmail,
   Slug,
@@ -12,6 +14,8 @@ import {
 } from '@pcaa/shared';
 import { Hono, type Context } from 'hono';
 import { ZodError } from 'zod';
+import type { FindService } from './find/service.ts';
+import { UpstreamError } from './find/polite-fetch.ts';
 import { isTrusted } from './http/ip.ts';
 import { serveFile } from './http/serve-file.ts';
 import type { Logger } from './log.ts';
@@ -31,6 +35,7 @@ export interface SyncControl {
 
 export interface AppDeps {
   repo: DataRepo;
+  find: FindService;
   resume: ResumeStore;
   sync: SyncControl;
   log: Logger;
@@ -108,6 +113,10 @@ export function createApp(deps: AppDeps): Hono {
     }
     if (error instanceof RejectedError) return c.json({ error: error.message }, 422);
     if (error instanceof NotFoundError) return c.json({ error: error.message }, 404);
+    if (error instanceof UpstreamError) {
+      log.warn({ err: error, path: c.req.path }, 'dewidebug http upstream site failed');
+      return c.json({ error: error.message }, 502);
+    }
     if (error instanceof InvalidDataError) {
       log.error({ err: error }, 'dewidebug http data file failed validation');
       return c.json({ error: 'A data file is invalid; see the server log' }, 500);
@@ -210,6 +219,20 @@ export function createApp(deps: AppDeps): Hono {
   );
   api.put('/pieces/:id/loops/:file', async (c) =>
     c.json(await repo.putTrackLoops(slug(c), file(c), await c.req.json())),
+  );
+
+  api.get('/find', async (c) => c.json(await deps.find.search(c.req.query('q') ?? '')));
+  api.get('/find/file', async (c) => {
+    const url = c.req.query('url') ?? '';
+    if (url.length > 2000) throw new RejectedError('That address is too long');
+    const { bytes, name } = await deps.find.music(url);
+    return c.body(bytes as Uint8Array<ArrayBuffer>, 200, {
+      'content-type': contentTypeFor(name),
+      'cache-control': 'private, max-age=600',
+    });
+  });
+  api.post('/find/import', async (c) =>
+    c.json(await deps.find.importScore(FindImportRequest.parse(await c.req.json()).result), 201),
   );
 
   api.get('/setlists', async (c) => c.json(await repo.getSetlists()));
