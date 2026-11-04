@@ -10,6 +10,37 @@ export const strings = {
     metronome: '⏱️ Metronome',
     practiceLog: '📝 Practice log',
   },
+  fileCheck: {
+    label: '🔎 File check',
+    verdict: {
+      piano: '✅ written for piano',
+      guitar: '🎸 written for guitar',
+      unclear: '⚠️ not clearly piano',
+    },
+    declared: {
+      piano: '🎹 names piano',
+      guitar: '🎸 names guitar',
+      other: '🎼 names another instrument',
+      unknown: '❔ names no instrument',
+    },
+    layout: {
+      grand: '🎹 one part on two joined staves',
+      tab: '🎸 has guitar tab',
+      single: '🎼 single staves, like guitar music',
+    },
+    noFingers: '✋ no fingering',
+    pianoFingers: (n: number) => `✋ ${String(n)} piano fingering ${n === 1 ? 'mark' : 'marks'}`,
+    guitarFingers: (n: number) => `🎸 ${String(n)} guitar fingering ${n === 1 ? 'mark' : 'marks'}`,
+    bothFingers: (piano: number, guitar: number) =>
+      `✋ ${String(piano)} piano and ${String(guitar)} guitar fingering marks`,
+    help: [
+      '🔎 No file says for certain who it was written for, so this shows the three clues a file carries.',
+      '🎹 The instrument the file names. A guitar piece can still be saved as Piano, as the popular Gran Vals file is.',
+      '🎼 The layout. Piano music is one part on two staves joined by a brace, right hand above and left below; separate single staves, or guitar tab, point to guitar.',
+      '✋ Fingering. 1 to 5 are piano fingers (1 is the thumb); p i m a, string numbers and 0 for an open string are guitar fingering. Piano fingering in the file shows as red numbers on the notes.',
+      '✅ Written for piano needs piano named and the two-staff layout, with no guitar clues.',
+    ],
+  },
   keys: {
     button: '⌨️ Keys',
     playPause:
@@ -279,6 +310,9 @@ export const strings = {
 } as const;
 
 export const tips = {
+  fileCheck: {
+    title: 'What the file says about the instrument it was written for',
+  },
   keys: {
     help: 'Every keyboard shortcut. Keys never fire while you type in a text box; Space still plays after you click a tick box, slider or button',
   },

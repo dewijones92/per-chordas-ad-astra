@@ -1,4 +1,5 @@
 import { beatTicks } from '../metronome/click.ts';
+import { fingerKind, isGuitarName } from './file-check.ts';
 import {
   firstPerTick,
   GRACE_TICKS,
@@ -22,6 +23,7 @@ import {
   type ScoreStaff,
   type TempoMark,
   type Volta,
+  type Finger,
 } from './model.ts';
 import {
   child,
@@ -111,6 +113,16 @@ function noteTiesForward(note: Element): boolean {
   return childrenNamed(note, 'Spanner').some(
     (s) => s.getAttribute('type') === 'Tie' && child(s, 'next') !== null,
   );
+}
+
+function readFinger(note: Element, guitarPart: boolean): Finger | undefined {
+  const mark = child(note, 'Fingering');
+  if (!mark) return undefined;
+  const textEl = child(mark, 'text');
+  const text = (textEl ? textEl.textContent : mark.textContent).trim();
+  const style = childText(mark, 'style') || childText(mark, 'subtype');
+  const kind = fingerKind(text, style, guitarPart);
+  return kind ? { text, kind } : undefined;
 }
 
 function notePlays(note: Element): boolean {
@@ -221,7 +233,14 @@ function readStaffDefs(score: Element): { parts: ScorePart[]; defs: StaffDef[]; 
       (instrument ? childText(instrument, 'longName') || childText(instrument, 'trackName') : '') ||
       `Part ${String(partIndex + 1)}`;
     names.push(name);
-    parts.push({ name, staves: [] });
+    const instrumentId =
+      (instrument
+        ? childText(instrument, 'instrumentId') || (instrument.getAttribute('id') ?? '')
+        : '') || '';
+    const tab = childrenNamed(part, 'Staff').some(
+      (st) => child(st, 'StaffType')?.getAttribute('group') === 'tablature',
+    );
+    parts.push({ name, staves: [], instrument: instrumentId, tab });
     const instrumentClefs = instrument ? childrenNamed(instrument, 'clef') : [];
     childrenNamed(part, 'Staff').forEach((staff, position) => {
       const id = Number(staff.getAttribute('id'));
@@ -263,6 +282,14 @@ export function parseMscx(doc: Document): ScoreModel {
     parts[def.part]?.staves.push(staves.length - 1);
   }
   if (parts.length === 0) parts.push({ name: 'Music', staves: staves.map((s) => s.index) });
+  const fingerOf = (note: Element, staff: number): { finger?: Finger } => {
+    const part = parts[staves[staff]?.part ?? -1];
+    const finger = readFinger(
+      note,
+      part ? isGuitarName(`${part.instrument ?? ''} ${part.name}`) : false,
+    );
+    return finger ? { finger } : {};
+  };
   for (const part of parts) {
     part.staves.forEach((s, i) => {
       const staff = staves[s];
@@ -431,6 +458,7 @@ export function parseMscx(doc: Document): ScoreModel {
                           tpc: childNumber(note, 'tpc'),
                           tieForward: noteTiesForward(note),
                           silent: !notePlays(note),
+                          ...fingerOf(note, w.staff),
                         },
                       ];
                 }),
@@ -466,6 +494,7 @@ export function parseMscx(doc: Document): ScoreModel {
               ticks,
               tieForward: noteTiesForward(note),
               grace,
+              ...fingerOf(note, w.staff),
             });
           }
         };

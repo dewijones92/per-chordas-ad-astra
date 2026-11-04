@@ -10,6 +10,8 @@ export interface FixtureChord {
   grace?: boolean;
   triplet?: boolean;
   slur?: 'start' | 'stop';
+  fingers?: (string | null)[];
+  fingerStyle?: 'fingering' | 'lhGuitarFingering' | 'rhGuitarFingering' | 'stringNumber';
 }
 
 export interface FixtureMeasure {
@@ -28,7 +30,7 @@ export interface FixtureScore {
   tempo: number;
   time: [number, number];
   fifths: number;
-  parts: { name: string; staves: number }[];
+  parts: { name: string; staves: number; instrument?: string; tab?: boolean }[];
   measures: FixtureMeasure[];
 }
 
@@ -73,9 +75,12 @@ export function makeMscx(score: FixtureScore, version: MuseScoreVersion): string
     .map((p) => {
       const defs = Array.from({ length: p.staves }, () => {
         staffId += 1;
-        return `<Staff id="${String(staffId)}"><StaffType group="pitched"><name>stdNormal</name></StaffType></Staff>`;
+        return p.tab
+          ? `<Staff id="${String(staffId)}"><StaffType group="tablature"><name>tab6StrCommon</name></StaffType></Staff>`
+          : `<Staff id="${String(staffId)}"><StaffType group="pitched"><name>stdNormal</name></StaffType></Staff>`;
       }).join('');
-      return `<Part>${defs}<trackName>${esc(p.name)}</trackName><Instrument><longName>${esc(p.name)}</longName><trackName>${esc(p.name)}</trackName></Instrument></Part>`;
+      const id = p.instrument ? (p.instrument.split('.').at(-1) ?? '') : '';
+      return `<Part>${defs}<trackName>${esc(p.name)}</trackName><Instrument${v4 && id ? ` id="${id}"` : ''}><longName>${esc(p.name)}</longName><trackName>${esc(p.name)}</trackName>${p.instrument ? `<instrumentId>${p.instrument}</instrumentId>` : ''}</Instrument></Part>`;
     })
     .join('');
 
@@ -145,13 +150,17 @@ export function makeMscx(score: FixtureScore, version: MuseScoreVersion): string
           continue;
         }
         const notes = c.pitches
-          .map((p) => {
+          .map((p, pi) => {
+            const finger = c.fingers?.[pi];
+            const fingering = finger
+              ? `<Fingering>${c.fingerStyle && c.fingerStyle !== 'fingering' ? `<style>${c.fingerStyle}</style>` : ''}<text>${esc(finger)}</text></Fingering>`
+              : '';
             const tie = c.tie
               ? v2
                 ? `<Tie id="${String((spannerId += 1))}"/>`
                 : `<Spanner type="Tie"><Tie/><next><location><fractions>1/4</fractions></location></next></Spanner>`
               : '';
-            return `<Note>${tie}<pitch>${String(p)}</pitch><tpc>${String(SHARP_TPC[((p % 12) + 12) % 12] ?? 14)}</tpc></Note>`;
+            return `<Note>${fingering}${tie}<pitch>${String(p)}</pitch><tpc>${String(SHARP_TPC[((p % 12) + 12) % 12] ?? 14)}</tpc></Note>`;
           })
           .join('');
         const slur = !c.slur
@@ -182,7 +191,7 @@ export function makeMusicXml(score: FixtureScore): string {
   const partList = score.parts
     .map(
       (p, i) =>
-        `<score-part id="P${String(i + 1)}"><part-name>${esc(p.name)}</part-name></score-part>`,
+        `<score-part id="P${String(i + 1)}"><part-name>${esc(p.name)}</part-name>${p.instrument ? `<score-instrument id="P${String(i + 1)}-I1"><instrument-name>${esc(p.name)}</instrument-name><instrument-sound>${p.instrument}</instrument-sound></score-instrument>` : ''}</score-part>`,
     )
     .join('');
   let base = 0;
@@ -239,8 +248,17 @@ export function makeMusicXml(score: FixtureScore): string {
             const pc = ((pitch % 12) + 12) % 12;
             const alter = ALTERS[pc] ? `<alter>${String(ALTERS[pc])}</alter>` : '';
             const tie = c.tie ? '<tie type="start"/>' : '';
+            const finger = c.fingers?.[k];
+            const technical = !finger
+              ? ''
+              : c.fingerStyle === 'rhGuitarFingering'
+                ? `<technical><pluck>${esc(finger)}</pluck></technical>`
+                : c.fingerStyle === 'stringNumber'
+                  ? `<technical><string>${esc(finger)}</string></technical>`
+                  : `<technical><fingering>${esc(finger)}</fingering></technical>`;
+            const slurMark = c.slur && k === 0 ? `<slur type="${c.slur}" number="1"/>` : '';
             const slur =
-              c.slur && k === 0 ? `<notations><slur type="${c.slur}" number="1"/></notations>` : '';
+              slurMark || technical ? `<notations>${slurMark}${technical}</notations>` : '';
             const grace = c.grace ? '<grace slash="yes"/>' : '';
             const dur = c.grace ? '' : `<duration>${String(duration)}</duration>`;
             out.push(

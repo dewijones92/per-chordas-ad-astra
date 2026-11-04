@@ -2,6 +2,7 @@ import { beatTicks } from '../metronome/click.ts';
 import { sectionsOf } from './unroll.ts';
 import {
   TPQ,
+  type Finger,
   type Notation,
   type NotationEvent,
   type ScoreMeasure,
@@ -188,6 +189,12 @@ function jumpXml(measure: ScoreMeasure): string {
   return `<direction placement="above"><direction-type><words>${name}${until}</words></direction-type><sound ${sound}/></direction>`;
 }
 
+function technicalXml(finger: Finger): string {
+  const tag =
+    finger.kind === 'guitarRight' ? 'pluck' : finger.kind === 'string' ? 'string' : 'fingering';
+  return `<technical><${tag}>${esc(finger.text)}</${tag}></technical>`;
+}
+
 export function toMusicXml(score: ScoreModel, notation: Notation): string {
   const tiedInto = new Set<string>();
   const byStaff = new Map<number, NotationEvent[]>();
@@ -333,6 +340,7 @@ export function toMusicXml(score: ScoreModel, notation: Notation): string {
                   i === 0 && e.tuplet?.stop ? '<tuplet type="stop"/>' : '',
                   i === 0 && e.slurStart ? '<slur type="start" number="1"/>' : '',
                   i === 0 && e.slurStop ? '<slur type="stop" number="1"/>' : '',
+                  n.finger ? technicalXml(n.finger) : '',
                 ].join('');
                 out.push(
                   `<note${n.silent ? ' dynamics="0"' : ''}>${grace}${i > 0 ? '<chord/>' : ''}<pitch><step>${step}</step>${alter !== 0 ? `<alter>${String(alter)}</alter>` : ''}<octave>${String(octave)}</octave></pitch>${duration}${ties}<voice>${String(voiceNo)}</voice>${type}${tm}<staff>${String(k + 1)}</staff>${i === 0 ? beamXml : ''}${notations ? `<notations>${notations}</notations>` : ''}</note>`,

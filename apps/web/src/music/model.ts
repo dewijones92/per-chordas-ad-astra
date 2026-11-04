@@ -14,6 +14,15 @@ export interface ScoreStaff {
 export interface ScorePart {
   name: string;
   staves: number[];
+  instrument?: string;
+  tab?: boolean;
+}
+
+export type FingerKind = 'piano' | 'guitarLeft' | 'guitarRight' | 'string';
+
+export interface Finger {
+  text: string;
+  kind: FingerKind;
 }
 
 export interface Jump {
@@ -50,6 +59,7 @@ export interface ScoreNote {
   ticks: number;
   tieForward: boolean;
   grace: boolean;
+  finger?: Finger;
 }
 
 export interface TempoMark {
@@ -167,6 +177,7 @@ export interface EventNote {
   tpc: number | null;
   tieForward: boolean;
   silent: boolean;
+  finger?: Finger;
 }
 
 export type BeamMode = 'auto' | 'begin' | 'mid' | 'no' | 'begin32' | 'begin64';

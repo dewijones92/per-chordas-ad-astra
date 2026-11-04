@@ -280,3 +280,10 @@
 .playalong-label {
   white-space: nowrap;
 }
+
+.notation g.fing,
+.notation g.fing text,
+.notation g.fing tspan {
+  fill: #d7263d;
+  font-weight: 800;
+}

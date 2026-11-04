@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { tips } from '../strings.ts';
+import { useHelp } from './Help.tsx';
 
 export function Choice<T extends string>({
   label,
@@ -20,7 +19,7 @@ export function Choice<T extends string>({
   note?: string | null;
   onChange: (value: T) => void;
 }) {
-  const [helpOpen, setHelpOpen] = useState(false);
+  const helpParts = useHelp(title, testId, help);
   return (
     <>
       <span className="playalong-field" role="group" aria-label={title} data-testid={testId}>
@@ -47,28 +46,9 @@ export function Choice<T extends string>({
             {note}
           </span>
         )}
-        {help && (
-          <button
-            type="button"
-            className="btn small ghost icon"
-            aria-label={tips.common.help(title)}
-            aria-expanded={helpOpen}
-            data-testid={`${testId}-help`}
-            onClick={() => {
-              setHelpOpen((open) => !open);
-            }}
-          >
-            ❓
-          </button>
-        )}
+        {helpParts.button}
       </span>
-      {help && helpOpen && (
-        <div className="choice-help" data-testid={`${testId}-help-text`}>
-          {help.map((line) => (
-            <p key={line}>{line}</p>
-          ))}
-        </div>
-      )}
+      {helpParts.text}
     </>
   );
 }

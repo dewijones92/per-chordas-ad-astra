@@ -44,6 +44,8 @@ import { staffColours } from './colours.ts';
 import { drawFalling, geometry, keyUpAt } from './falling.ts';
 import { capoFor, fitRange, keyName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip } from './BarStrip.tsx';
+import { checkFile } from './file-check.ts';
+import { FileCheckLine } from './FileCheckLine.tsx';
 import { ResizeHandle } from './ResizeHandle.tsx';
 import { parseScoreText, unpackScore } from './load.ts';
 import { instrumentFor } from './model.ts';
@@ -181,7 +183,7 @@ function FallingCanvas({
     const draw = () => {
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       const position = player?.position() ?? prefs.position;
-      const pressed = drawFalling(ctx, {
+      const drawn = drawFalling(ctx, {
         perf,
         position,
         transpose,
@@ -198,7 +200,8 @@ function FallingCanvas({
         height: size.height,
       });
       el.dataset['position'] = position.toFixed(3);
-      el.dataset['pressed'] = [...pressed]
+      el.dataset['fingers'] = String(drawn.fingers);
+      el.dataset['pressed'] = [...drawn.pressed]
         .map(([pitch, fill]) => `${String(pitch)}:${fill}`)
         .join(' ');
       if (playing) frame = requestAnimationFrame(draw);
@@ -342,6 +345,8 @@ export function PlayAlong({
     [updatePrefs],
   );
   const [dragHeight, setDragHeight] = useState<number | null>(null);
+  const checkedScore = loaded.data?.score;
+  const fileCheck = useMemo(() => (checkedScore ? checkFile(checkedScore) : null), [checkedScore]);
   const notationHeight = dragHeight ?? prefs.notationHeight;
 
   const byHand =
@@ -879,6 +884,7 @@ export function PlayAlong({
             updatePrefs((p) => ({ ...p, playOn: next === 'auto' ? null : next }));
           }}
         />
+        {fileCheck && <FileCheckLine check={fileCheck} />}
         <span className="playalong-field" data-testid="playalong-export">
           <span>{strings.playAlong.export}</span>
           <button

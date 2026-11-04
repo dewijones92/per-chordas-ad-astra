@@ -1,4 +1,5 @@
 import { beatTicks } from '../metronome/click.ts';
+import { fingerKind, isGuitarName } from './file-check.ts';
 import {
   firstPerTick,
   GRACE_TICKS,
@@ -12,6 +13,7 @@ import {
   type ScoreMeasure,
   type ScoreModel,
   type ScoreNote,
+  type Finger,
   type ScorePart,
   type ScoreStaff,
   type TempoMark,
@@ -42,6 +44,22 @@ interface MeasureFacts {
   endings: { numbers: number[]; start: boolean; stop: boolean } | null;
 }
 
+function fingerOf(note: Element, guitarPart: boolean): { finger?: Finger } {
+  const technical = childrenNamed(note, 'notations').flatMap((n) => childrenNamed(n, 'technical'));
+  for (const t of technical) {
+    for (const [tag, style] of [
+      ['fingering', ''],
+      ['pluck', 'rhGuitarFingering'],
+      ['string', 'stringNumber'],
+    ] as const) {
+      const text = childText(t, tag);
+      const kind = text ? fingerKind(text, style, guitarPart) : null;
+      if (kind) return { finger: { text: text.trim(), kind } };
+    }
+  }
+  return {};
+}
+
 interface PendingNote {
   staff: number;
   measure: number;
@@ -50,6 +68,7 @@ interface PendingNote {
   pitch: number;
   tieForward: boolean;
   grace: boolean;
+  finger?: Finger;
 }
 
 interface Pending<T> {
@@ -104,9 +123,14 @@ export function parseMusicXml(doc: Document): ScoreModel {
       ?.textContent.trim() ?? '';
 
   const names = new Map<string, string>();
+  const instruments = new Map<string, string>();
   const partList = child(root, 'part-list');
   if (partList) {
     for (const sp of childrenNamed(partList, 'score-part')) {
+      const sound = childrenNamed(sp, 'score-instrument')
+        .map((si) => childText(si, 'instrument-sound') || childText(si, 'instrument-name'))
+        .find((x) => x !== '');
+      if (sound) instruments.set(sp.getAttribute('id') ?? '', sound);
       names.set(
         sp.getAttribute('id') ?? '',
         childText(sp, 'part-name') || childText(sp, 'part-abbreviation'),
@@ -137,7 +161,9 @@ export function parseMusicXml(doc: Document): ScoreModel {
     const listed = names.get(id) ?? '';
     const name = listed !== '' ? listed : `Part ${String(partIndex + 1)}`;
     const base = staves.length;
-    const part: ScorePart = { name, staves: [] };
+    const instrument = instruments.get(id) ?? '';
+    const guitarPart = isGuitarName(instrument || name);
+    const part: ScorePart = { name, staves: [], instrument };
     for (let s = 0; s < staffCount; s++) {
       const role = roleFor(staffCount, s);
       staves.push({
@@ -251,6 +277,7 @@ export function parseMusicXml(doc: Document): ScoreModel {
                 pitch: 12 * (octave + 1) + step + alter + transpose,
                 tieForward,
                 grace,
+                ...fingerOf(el, guitarPart),
               };
               if (grace) pendingGrace.push(note);
               else {
@@ -408,6 +435,7 @@ export function parseMusicXml(doc: Document): ScoreModel {
     ticks: n.ticks,
     tieForward: n.tieForward,
     grace: n.grace,
+    ...(n.finger ? { finger: n.finger } : {}),
   }));
   const tempos: TempoMark[] = pendingTempos.map((t) => ({ tick: at(t), bpm: t.value }));
   const dynamics: DynamicMark[] = pendingDynamics.map((d) => ({ tick: at(d), ...d.value }));

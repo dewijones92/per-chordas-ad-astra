@@ -4,6 +4,8 @@ import { noteName, pitchName, type KeyRange } from './keys.ts';
 import type { PerfNote, Performance } from './performance.ts';
 
 export const LABEL_PX = 12;
+export const FINGER_PX = 14;
+export const FINGER_COLOUR = '#d7263d';
 export const KEYBOARD_SHARE = 0.2;
 export const MAX_KEYBOARD_HEIGHT = 130;
 export const STRIKE_SECONDS = 0.2;
@@ -135,10 +137,37 @@ function drawLabel(
   ctx.textAlign = 'start';
 }
 
-export function drawFalling(
+function drawFinger(
   ctx: CanvasRenderingContext2D,
-  view: FallingView,
-): ReadonlyMap<number, string> {
+  text: string,
+  centre: number,
+  baseline: number,
+): void {
+  ctx.font = `900 ${String(FINGER_PX)}px Nunito Variable, system-ui, sans-serif`;
+  const width = Math.max(FINGER_PX, ctx.measureText(text).width + 6);
+  roundRect(ctx, centre - width / 2, baseline - FINGER_PX - 1, width, FINGER_PX + 2, 4);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.strokeStyle = FINGER_COLOUR;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillStyle = FINGER_COLOUR;
+  ctx.fillText(text, centre, baseline);
+  ctx.textAlign = 'start';
+}
+
+export interface FallingDrawn {
+  pressed: ReadonlyMap<number, string>;
+  fingers: number;
+}
+
+export function fingerOf(n: PerfNote): string | null {
+  return n.source?.finger?.kind === 'piano' ? n.source.finger.text : null;
+}
+
+export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): FallingDrawn {
   const { width, height, perf, position, transpose, range } = view;
   const g = geometry(view);
   const { layout, notesHeight, pxPerSecond } = g;
@@ -188,6 +217,7 @@ export function drawFalling(
 
   const notes = visibleNotes(perf.notes, position, top, longest);
   const labelTops = new Map<number, number>();
+  let fingers = 0;
   for (const n of notes) {
     if (view.hidden.has(view.laneOf(n))) continue;
     const key = keyForPitch(layout, n.pitch + transpose, range);
@@ -221,17 +251,27 @@ export function drawFalling(
     ctx.strokeStyle = '#1d1533';
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    const onBlock = h >= LABEL_PX + 4 && w >= LABEL_PX;
-    const baseline = onBlock ? yBottom - 2 : yBottom - h - 1;
-    if (view.names && baseline <= (labelTops.get(key.pitch) ?? Infinity) - 1) {
-      drawLabel(
-        ctx,
-        pitchName(n.pitch + transpose, view.names.flats),
-        x + w / 2,
-        baseline,
-        onBlock,
-      );
-      labelTops.set(key.pitch, baseline - LABEL_PX);
+    const finger = fingerOf(n);
+    const stack = (finger ? FINGER_PX + 2 : 0) + (view.names ? LABEL_PX : 0);
+    const onBlock = h >= stack + 4 && w >= LABEL_PX;
+    let baseline = onBlock ? yBottom - 2 : yBottom - h - 1;
+    if (stack > 0 && baseline <= (labelTops.get(key.pitch) ?? Infinity) - 1) {
+      if (finger) {
+        drawFinger(ctx, finger, x + w / 2, baseline);
+        fingers += 1;
+        baseline -= FINGER_PX + 2;
+      }
+      if (view.names) {
+        drawLabel(
+          ctx,
+          pitchName(n.pitch + transpose, view.names.flats),
+          x + w / 2,
+          baseline,
+          onBlock,
+        );
+        baseline -= LABEL_PX;
+      }
+      labelTops.set(key.pitch, baseline);
     }
     ctx.globalAlpha = 1;
   }
@@ -274,5 +314,5 @@ export function drawFalling(
       ctx.stroke();
     }
   }
-  return pressed;
+  return { pressed, fingers };
 }

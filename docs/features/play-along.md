@@ -33,6 +33,10 @@ keyboard from above, like the bird's-eye piano videos.
   all 88 keys. Sounding keys light up in their part's colour: right hand violet, left hand teal, other
   parts coral, blue, amber. Bar lines carry their numbers. Drag or scroll the notes to move through the
   piece.
+- **🔎 File check**: a line under 🙋 I play on says whether the file was written for piano (✅), guitar (🎸) or is not
+  clearly piano (⚠️), from the three clues a file carries: the instrument it names, its layout (one part on two joined
+  staves, single staves, guitar tab) and its fingering marks by kind; ❓ explains. Piano fingering in the file shows
+  as red numbers on the stave and on the falling notes ([ADR 0021](../adr/0021-fingering.md)).
 - **🔭 Look ahead** (Dewi, 4 Nov 2026: "zoom out and see quite a lot"): how many seconds the falling notes show, from
   1 to 20 (3 to start), by − / + on the play bar or Ctrl + scroll over the falling notes, which leaves the PDF's zoom
   alone. Note names stay 12 px however far you zoom out: on a note too thin to hold one, the name sits just above it,

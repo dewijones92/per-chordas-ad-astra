@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_LOOK_AHEAD, MAX_LOOK_AHEAD, MIN_LOOK_AHEAD, stepLookAhead } from '@pcaa/shared';
 import { wheelLookAhead } from '../src/score/zoom.ts';
-import { drawFalling, geometry, LABEL_PX, type FallingView } from '../src/music/falling.ts';
+import {
+  drawFalling,
+  FINGER_PX,
+  geometry,
+  LABEL_PX,
+  type FallingView,
+} from '../src/music/falling.ts';
 import type { PerfNote, Performance } from '../src/music/performance.ts';
 
 interface Text {
@@ -20,6 +26,7 @@ function recordingContext(): { ctx: CanvasRenderingContext2D; texts: Text[] } {
         return (text: string, x: number, y: number) => {
           texts.push({ text, x, y, font: String(target['font']) });
         };
+      if (prop === 'measureText') return (text: string) => ({ width: text.length * 7 });
       if (prop in target) return target[prop];
       return () => undefined;
     },
@@ -131,5 +138,45 @@ describe('labels when zoomed out', () => {
     const { ctx, texts } = recordingContext();
     drawFalling(ctx, view(perfOf(run.slice(0, 8)), MIN_LOOK_AHEAD * 2));
     expect(texts.filter((t) => t.text === 'C')).toHaveLength(8);
+  });
+});
+
+describe('finger numbers on the falling notes', () => {
+  const withFinger = (
+    pitch: number,
+    start: number,
+    text: string,
+    kind: 'piano' | 'guitarRight',
+  ) => ({
+    ...note(pitch, start, start + 0.4),
+    source: {
+      staff: 0,
+      measure: 0,
+      pitch,
+      tick: 0,
+      ticks: 480,
+      tieForward: false,
+      grace: false,
+      finger: { text, kind },
+    },
+  });
+
+  it('draws piano fingering as a red number, the same size zoomed in or out, and leaves guitar fingering off', () => {
+    for (const lookAhead of [MIN_LOOK_AHEAD * 2, MAX_LOOK_AHEAD]) {
+      const { ctx, texts } = recordingContext();
+      const drawn = drawFalling(
+        ctx,
+        view(
+          perfOf([withFinger(60, 0, '3', 'piano'), withFinger(64, 0.5, 'p', 'guitarRight')]),
+          lookAhead,
+        ),
+      );
+      expect(drawn.fingers).toBe(1);
+      const finger = texts.find((t) => t.text === '3');
+      expect(finger).toBeDefined();
+      expect(fontPx(finger?.font ?? '')).toBe(FINGER_PX);
+      expect(texts.some((t) => t.text === 'p')).toBe(false);
+      expect(texts.filter((t) => t.text === 'C')).toHaveLength(1);
+    }
   });
 });
