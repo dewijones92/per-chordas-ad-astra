@@ -703,7 +703,12 @@ export function PiecePage({ id }: { id: string }) {
                 testId="upload-music"
                 onFile={async (f) => {
                   const ref = await api.uploadMusic(current.id, f);
-                  if (learnKey) await startInLearnKey(current.id, ref.file, f);
+                  if (learnKey)
+                    await startInLearnKey(
+                      current.id,
+                      ref.file,
+                      new Uint8Array(await f.arrayBuffer()),
+                    );
                   piece.reload();
                   chooseView(scoreFile ? 'split' : 'notes', ref.file);
                 }}

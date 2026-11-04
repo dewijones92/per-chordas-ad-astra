@@ -19,11 +19,11 @@ export function learnKeyShift(key: WrittenKey): number {
 export async function startInLearnKey(
   pieceId: string,
   file: string,
-  upload: File,
+  bytes: Uint8Array,
 ): Promise<number> {
   let key: WrittenKey;
   try {
-    const { score } = readScore(new Uint8Array(await upload.arrayBuffer()));
+    const { score } = readScore(bytes);
     key = score.keys[0] ?? { fifths: 0, minor: false };
   } catch (error) {
     console.info('dewidebug learn key skipped: the file could not be read here', {

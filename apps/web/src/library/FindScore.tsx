@@ -1,3 +1,4 @@
+import { startInLearnKey } from '../music/learn-key.ts';
 import { type FindImportResponse, type FindSearchResponse, type FoundScore } from '@pcaa/shared';
 import { useRef, useState } from 'react';
 import { api } from '../api/client.ts';
@@ -107,7 +108,13 @@ function ResultRow({
   );
 }
 
-export function FindScore({ onImported }: { onImported: (pieceId: string) => void }) {
+export function FindScore({
+  learnKey,
+  onImported,
+}: {
+  learnKey: boolean;
+  onImported: (pieceId: string) => void;
+}) {
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState<Search>({ phase: 'idle' });
   const [chosen, setChosen] = useState<FoundScore | null>(null);
@@ -154,6 +161,11 @@ export function FindScore({ onImported }: { onImported: (pieceId: string) => voi
         imported: done.imported,
         skipped: done.skipped,
       });
+      const music = musicToCheck(result);
+      const added = done.piece.music[0];
+      if (learnKey && music && added) {
+        await startInLearnKey(done.piece.id, added.file, await api.findMusic(music.url));
+      }
       if (done.skipped.length === 0) onImported(done.piece.id);
       else setImported({ phase: 'done', result: done });
     } catch (e) {

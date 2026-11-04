@@ -99,7 +99,8 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
       }
       if (music && uploaded.music !== music) {
         const ref = await api.uploadMusic(id, music);
-        if (learnKey) await startInLearnKey(id, ref.file, music);
+        if (learnKey)
+          await startInLearnKey(id, ref.file, new Uint8Array(await music.arrayBuffer()));
         setUploaded((u) => ({ ...u, music }));
       }
       console.info('dewidebug new piece created', {
@@ -118,6 +119,7 @@ function NewPieceDialog({ open, onClose }: { open: boolean; onClose: () => void 
   return (
     <dialog ref={ref} className="dialog card" onClose={onClose} data-testid="new-piece-dialog">
       <FindScore
+        learnKey={learnKey}
         onImported={(id) => {
           console.info('dewidebug new piece imported from a found score', { id });
           navigate(`/piece/${id}`);

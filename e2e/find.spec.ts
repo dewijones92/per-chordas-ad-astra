@@ -140,3 +140,25 @@ test('the search box does not submit the New piece form, and Back returns to the
   await panel.getByRole('button', { name: strings.find.chosen }).click();
   await expect(panel.getByTestId('find-result')).toHaveCount(6);
 });
+
+test('a found score honours Start in C major or A minor like the other ways of adding music', async ({
+  page,
+}) => {
+  const panel = await openFinder(page);
+  const dialog = page.getByTestId('new-piece-dialog');
+  await dialog.getByTestId('learn-key').check();
+  await search(page, panel, 'chopin nocturne');
+  await panel
+    .locator('[data-testid="find-result"][data-id="mutopia:582"]')
+    .getByTestId('find-choose')
+    .click();
+  await panel.getByTestId('find-chosen').getByTestId('find-import').click();
+  await expect(page).toHaveURL(/\/piece\//);
+  const id = new URL(page.url()).pathname.split('/').pop() ?? '';
+  await expect(page.getByTestId('playalong-key')).toContainText('C major');
+  await eventuallyInRemote(`pieces/${id}/piece.json`, (t) => t.includes('"transpose": 5'));
+
+  await openLibrary(page);
+  await page.getByTestId('new-piece').click();
+  await dialog.getByTestId('learn-key').uncheck();
+});
