@@ -10,3 +10,5 @@ e2e/.tmp/
 .env.*
 apps/web/public/pdfjs/
 *.tsbuildinfo
+
+.claude/worktrees/

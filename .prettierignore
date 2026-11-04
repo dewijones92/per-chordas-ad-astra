@@ -5,3 +5,4 @@ playwright-report
 test-results
 e2e/.tmp
 apps/web/public/pdfjs
+.claude
