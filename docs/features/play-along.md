@@ -40,6 +40,8 @@ keyboard from above, like the bird's-eye piano videos.
 - **✋ Your fingering**: click a falling note and press 1–5 (Backspace clears, Esc lets go). It shows as a red number
   on the note, replaces the file's own mark, and is saved to GitHub for everyone who opens the piece
   ([ADR 0021](../adr/0021-fingering.md)).
+- **🤖 Suggested fingering** (on by default): grey finger numbers worked out by the app where neither the file nor you
+  has given one; red always wins. Untick to hide them; remembered per file ([ADR 0021](../adr/0021-fingering.md)).
 - **🔭 Look ahead** (Dewi, 4 Nov 2026: "zoom out and see quite a lot"): how many seconds the falling notes show, from
   1 to 20 (3 to start), by − / + on the play bar or Ctrl + scroll over the falling notes, which leaves the PDF's zoom
   alone. Note names stay 12 px however far you zoom out: on a note too thin to hold one, the name sits just above it,

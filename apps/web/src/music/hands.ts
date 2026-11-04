@@ -12,7 +12,7 @@ const CHORD_SPLIT_COST = 20;
 const MAX_NOTES = 5;
 const LEFT_CEILING = 64;
 const RIGHT_FLOOR = 55;
-const MIDDLE_C = 60;
+export const MIDDLE_C = 60;
 const OCTAVE = 12;
 
 export const LEFT_OUT = -1;

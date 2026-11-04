@@ -45,12 +45,21 @@ import { staffColours } from './colours.ts';
 import { drawFalling, geometry, keyUpAt, noteAt, type FallingView } from './falling.ts';
 import { capoFor, fitRange, keyName, noteName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip } from './BarStrip.tsx';
+import { suggestBySide } from './suggest-fingering.ts';
 import { checkFile } from './file-check.ts';
 import { FileCheckLine } from './FileCheckLine.tsx';
 import { ResizeHandle } from './ResizeHandle.tsx';
 import { parseScoreText, unpackScore } from './load.ts';
 import { instrumentFor, noteKey } from './model.ts';
-import { assignHands, handLanes, LEFT_OUT, partLanes, thinOctaves, type Lanes } from './hands.ts';
+import {
+  assignHands,
+  handLanes,
+  LEFT_OUT,
+  MIDDLE_C,
+  partLanes,
+  thinOctaves,
+  type Lanes,
+} from './hands.ts';
 import { grandStaff, scoreHands } from './grand-staff.ts';
 import { DRAW_MIN_ZOOM, Notation } from './Notation.tsx';
 import { toMusicXml } from './to-musicxml.ts';
@@ -120,6 +129,7 @@ function FallingCanvas({
   onScrub,
   onLookAhead,
   userFingers,
+  suggested,
   selectedNote,
   onPick,
   pickedLabel,
@@ -136,6 +146,7 @@ function FallingCanvas({
   onScrub: (seconds: number) => void;
   onLookAhead: Dispatch<SetStateAction<number>>;
   userFingers: ReadonlyMap<string, string>;
+  suggested: ReadonlyMap<PerfNote, number> | null;
   selectedNote: string | null;
   onPick: (note: PerfNote | null) => void;
   pickedLabel: string | null;
@@ -209,6 +220,7 @@ function FallingCanvas({
         names,
         lookAhead: prefs.lookAhead,
         userFingers,
+        ...(suggested ? { suggested } : {}),
         selected: selectedNote,
         width: size.width,
         height: size.height,
@@ -216,6 +228,7 @@ function FallingCanvas({
       lastView.current = view;
       const drawn = drawFalling(ctx, view);
       el.dataset['selected'] = String(drawn.selected);
+      el.dataset['suggested'] = String(drawn.suggested);
       el.dataset['blocks'] = playing
         ? ''
         : drawn.blocks.map((b) => `${String(b.pitch)}:${String(b.x)}:${String(b.y)}`).join(' ');
@@ -247,6 +260,7 @@ function FallingCanvas({
     prefs.position,
     prefs.lookAhead,
     userFingers,
+    suggested,
     selectedNote,
   ]);
 
@@ -426,6 +440,16 @@ export function PlayAlong({
     [hands, perf],
   );
   const colours = useMemo(() => (lanes ? staffColours(lanes.lanes) : []), [lanes]);
+  const suggestOn = prefs.suggest;
+  const suggested = useMemo(() => {
+    if (!perf || !lanes || !suggestOn) return null;
+    const playable = leftOut ? perf.notes.filter((n) => !leftOut.has(n)) : perf.notes;
+    return suggestBySide(playable, (n) => {
+      const role = lanes.lanes[lanes.laneOf(n)]?.role;
+      if (role === 'left' || role === 'right') return role;
+      return n.pitch < MIDDLE_C ? 'left' : 'right';
+    });
+  }, [perf, lanes, leftOut, suggestOn]);
   const grandXml = useMemo(() => {
     const score = loaded.data?.score;
     if (!hands || !score?.notation || !prefs.notation) return null;
@@ -1223,6 +1247,18 @@ export function PlayAlong({
           />
           {strings.playAlong.noteNames}
         </label>
+        <label className="playalong-field" title={tips.playAlong.suggest}>
+          <input
+            type="checkbox"
+            checked={prefs.suggest}
+            data-testid="playalong-suggest"
+            onChange={(e) => {
+              const suggest = e.target.checked;
+              updatePrefs((p) => ({ ...p, suggest }));
+            }}
+          />
+          {strings.playAlong.suggest}
+        </label>
         <label className="playalong-field" title={tips.playAlong.tails}>
           <input
             type="checkbox"
@@ -1513,6 +1549,7 @@ export function PlayAlong({
         onScrub={seekTo}
         onLookAhead={setLookAhead}
         userFingers={userFingers}
+        suggested={suggested}
         selectedNote={picked?.key ?? null}
         onPick={pickNote}
         pickedLabel={picked?.label ?? null}

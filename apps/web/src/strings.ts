@@ -192,6 +192,7 @@ export const strings = {
     handNames: { right: '🫱 Right hand', left: '🫲 Left hand' },
     notation: '🎼 Notation',
     noteNames: '🔤 Note names',
+    suggest: '🤖 Suggested fingering',
     hardBits: '📌 Hard bits',
     hardBitsFailed: '❌ Saved hard bits could not be loaded:',
     hardBitsEmpty: '💡 Loop a passage, then save it here to come back to it.',
@@ -374,6 +375,8 @@ export const tips = {
     lookAheadMore: 'Show more seconds, to see further ahead',
     resize:
       'Drag to give the stave or the falling notes more room; double-click to go back to automatic',
+    suggest:
+      'Grey finger numbers worked out by the app wherever neither the file nor you has given one; red numbers always win',
     compact: 'Hide or show the settings rows, to give the falling notes more room',
     barStrip: 'Bars: click to jump, drag across bars to loop them',
     play: 'Play or pause (K)',

@@ -3,7 +3,9 @@ import { DEFAULT_LOOK_AHEAD, MAX_LOOK_AHEAD, MIN_LOOK_AHEAD, stepLookAhead } fro
 import { wheelLookAhead } from '../src/score/zoom.ts';
 import {
   drawFalling,
+  FINGER_COLOUR,
   FINGER_PX,
+  SUGGESTED_COLOUR,
   geometry,
   LABEL_PX,
   noteAt,
@@ -16,6 +18,7 @@ interface Text {
   x: number;
   y: number;
   font: string;
+  fill?: string;
 }
 
 function recordingContext(): { ctx: CanvasRenderingContext2D; texts: Text[] } {
@@ -25,7 +28,13 @@ function recordingContext(): { ctx: CanvasRenderingContext2D; texts: Text[] } {
     get(target, prop: string) {
       if (prop === 'fillText')
         return (text: string, x: number, y: number) => {
-          texts.push({ text, x, y, font: String(target['font']) });
+          texts.push({
+            text,
+            x,
+            y,
+            font: String(target['font']),
+            fill: String(target['fillStyle']),
+          });
         };
       if (prop === 'measureText') return (text: string) => ({ width: text.length * 7 });
       if (prop in target) return target[prop];
@@ -233,5 +242,50 @@ describe('picking a falling note and fingering it', () => {
     expect(texts.some((t) => t.text === '3')).toBe(false);
     expect(drawn.fingers).toBe(2);
     expect(drawn.selected).toBe(1);
+  });
+});
+
+describe('suggested fingering on the falling notes', () => {
+  it('draws a suggestion in grey, and a red finger wins on the same note', () => {
+    const a = {
+      ...note(60, 0, 0.5),
+      source: {
+        staff: 0,
+        measure: 0,
+        pitch: 60,
+        tick: 0,
+        ticks: 480,
+        tieForward: false,
+        grace: false,
+      },
+    };
+    const b = {
+      ...note(64, 1, 1.5),
+      source: {
+        staff: 0,
+        measure: 0,
+        pitch: 64,
+        tick: 960,
+        ticks: 480,
+        tieForward: false,
+        grace: false,
+      },
+    };
+    const { ctx, texts } = recordingContext();
+    const drawn = drawFalling(ctx, {
+      ...view(perfOf([a, b]), DEFAULT_LOOK_AHEAD),
+      userFingers: new Map([['s0m0t960p64', '4']]),
+      suggested: new Map([
+        [a, 1],
+        [b, 3],
+      ]),
+    });
+    const one = texts.find((t) => t.text === '1');
+    const four = texts.find((t) => t.text === '4');
+    expect(one?.fill).toBe(SUGGESTED_COLOUR);
+    expect(four?.fill).toBe(FINGER_COLOUR);
+    expect(texts.some((t) => t.text === '3')).toBe(false);
+    expect(drawn.suggested).toBe(1);
+    expect(drawn.fingers).toBe(1);
   });
 });

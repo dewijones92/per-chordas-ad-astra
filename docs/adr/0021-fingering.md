@@ -39,7 +39,20 @@ red numbers on the notes. The readers dropped fingering entirely.
   says which: "Finger 3 on B4 in bar 1 of 'Gran Vals' (gv.mscz)". The hint showing which note is picked floats over
   the falling notes so nothing above them moves.
 
+- **🤖 Suggested fingering** (Dewi approved the idea, 4 Nov 2026): wherever neither the file nor you has given a
+  finger, the app draws its own suggestion in **grey** (red always wins). Our own code, no library
+  (`suggest-fingering.ts`): per hand, the notes are grouped into onsets and a best-path (Viterbi) search over finger
+  choices minimises a cost adapted from Parncutt-style rules: stretch away from a relaxed span for each finger pair,
+  past a comfortable span costs more, thumb-under and finger-over only with the thumb (3 cheapest, then 4, then 2),
+  thumb on a black key, same finger on a new key; chords take rising fingers in the right hand and falling in the
+  left. A leap wider than a fifth is a lift of the hand, not a stretch, landing on the outer finger when it moves
+  outward (so a waltz bass gets 5 and its chords 3-1). Checked against the C major scale in each hand, a five-finger
+  position, triads, Gran Vals and Chopin's C minor Prelude. A tick box switches it off, per file.
+
 ## Consequences
+
+- The suggestion is a sensible first guess, not an edition: the first note of a piece has no context and may get
+  an odd finger, and repeats are fingered pass by pass.
 
 - Fingering added by clicking the stave, and your fingering drawn on the stave, are a follow-up; today your numbers
   show on the falling notes (the file's show on both).

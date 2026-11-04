@@ -10,6 +10,21 @@ const waltzXml = () => ({
   buffer: Buffer.from(makeMusicXml(PIANO_WALTZ)),
 });
 
+async function settledBox(page: Page) {
+  const canvas = page.getByTestId('playalong-canvas');
+  let last = JSON.stringify(await canvas.boundingBox());
+  await expect
+    .poll(async () => {
+      await page.waitForTimeout(300);
+      const now = JSON.stringify(await canvas.boundingBox());
+      const same = now === last;
+      last = now;
+      return same;
+    })
+    .toBe(true);
+  return canvas.boundingBox();
+}
+
 async function clickNote(page: Page, pitch: number): Promise<void> {
   const canvas = page.getByTestId('playalong-canvas');
   const blocks = (await canvas.getAttribute('data-blocks')) ?? '';
@@ -34,7 +49,7 @@ test('click a falling note and press a number to finger it; the finger is saved,
   await expect(canvas).toBeInViewport();
   await expect(canvas).toHaveAttribute('data-fingers', '0');
 
-  const before = await canvas.boundingBox();
+  const before = await settledBox(page);
   await clickNote(page, 71);
   const label = units.noteInBar('B4', 1);
   await expect(page.getByTestId('finger-picked')).toBeVisible();
@@ -69,4 +84,26 @@ test('click a falling note and press a number to finger it; the finger is saved,
   await page.keyboard.press('Backspace');
   await expect(canvas).toHaveAttribute('data-fingers', '0');
   await eventuallyInRemote('pieces/fingering-etude/fingering.json', (t) => !t.includes('"3"'));
+});
+
+test('suggested fingering shows in grey by default, can be switched off, and is remembered', async ({
+  page,
+}) => {
+  await createPiece(page, 'Suggested Etude', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzXml());
+  const canvas = page.getByTestId('playalong-canvas');
+  const box = page.getByTestId('playalong-suggest');
+  await expect(box).toBeChecked();
+  await expect(page.locator('label', { has: box })).toHaveAttribute(
+    'title',
+    tips.playAlong.suggest,
+  );
+  await expect(canvas).toHaveAttribute('data-suggested', /^[1-9]/);
+  await expect(canvas).toHaveAttribute('data-fingers', '0');
+
+  await box.uncheck();
+  await expect(canvas).toHaveAttribute('data-suggested', '0');
+  await page.reload();
+  await expect(page.getByTestId('playalong-suggest')).not.toBeChecked();
+  await expect(canvas).toHaveAttribute('data-suggested', '0');
 });

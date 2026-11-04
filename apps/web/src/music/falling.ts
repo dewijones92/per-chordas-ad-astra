@@ -8,6 +8,7 @@ export const LABEL_PX = 12;
 export const FINGER_PX = 14;
 const MAX_REPORTED_BLOCKS = 64;
 export const FINGER_COLOUR = '#d7263d';
+export const SUGGESTED_COLOUR = '#6f6880';
 export const KEYBOARD_SHARE = 0.2;
 export const MAX_KEYBOARD_HEIGHT = 130;
 export const STRIKE_SECONDS = 0.2;
@@ -30,6 +31,7 @@ export interface FallingView {
   names: { flats: boolean } | null;
   lookAhead: number;
   userFingers?: ReadonlyMap<string, string>;
+  suggested?: ReadonlyMap<PerfNote, number>;
   selected?: string | null;
   width: number;
   height: number;
@@ -146,18 +148,19 @@ function drawFinger(
   text: string,
   centre: number,
   baseline: number,
+  colour: string,
 ): void {
   ctx.font = `900 ${String(FINGER_PX)}px Nunito Variable, system-ui, sans-serif`;
   const width = Math.max(FINGER_PX, ctx.measureText(text).width + 6);
   roundRect(ctx, centre - width / 2, baseline - FINGER_PX - 1, width, FINGER_PX + 2, 4);
   ctx.fillStyle = '#ffffff';
   ctx.fill();
-  ctx.strokeStyle = FINGER_COLOUR;
+  ctx.strokeStyle = colour;
   ctx.lineWidth = 1.5;
   ctx.stroke();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
-  ctx.fillStyle = FINGER_COLOUR;
+  ctx.fillStyle = colour;
   ctx.fillText(text, centre, baseline);
   ctx.textAlign = 'start';
 }
@@ -165,16 +168,23 @@ function drawFinger(
 export interface FallingDrawn {
   pressed: ReadonlyMap<number, string>;
   fingers: number;
+  suggested: number;
   selected: number;
   blocks: readonly { pitch: number; x: number; y: number }[];
 }
 
-export function fingerOf(n: PerfNote, user?: ReadonlyMap<string, string>): string | null {
+export function fingerOf(
+  n: PerfNote,
+  user?: ReadonlyMap<string, string>,
+  suggested?: ReadonlyMap<PerfNote, number>,
+): { text: string; suggested: boolean } | null {
   const source = n.source;
-  if (!source) return null;
-  return (
-    user?.get(noteKey(source)) ?? (source.finger?.kind === 'piano' ? source.finger.text : null)
-  );
+  const given =
+    (source ? user?.get(noteKey(source)) : undefined) ??
+    (source?.finger?.kind === 'piano' ? source.finger.text : undefined);
+  if (given !== undefined) return { text: given, suggested: false };
+  const guess = suggested?.get(n);
+  return guess === undefined ? null : { text: String(guess), suggested: true };
 }
 
 interface Block {
@@ -273,6 +283,7 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
   const labelTops = new Map<number, number>();
   let fingers = 0;
   let selectedDrawn = 0;
+  let suggestedDrawn = 0;
   const blocks: { pitch: number; x: number; y: number }[] = [];
   for (const n of notes) {
     if (view.hidden.has(view.laneOf(n))) continue;
@@ -311,14 +322,21 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
     ctx.lineWidth = chosen ? 4 : 1.5;
     ctx.stroke();
     if (chosen) selectedDrawn += 1;
-    const finger = fingerOf(n, view.userFingers);
+    const finger = fingerOf(n, view.userFingers, view.suggested);
     const stack = (finger ? FINGER_PX + 2 : 0) + (view.names ? LABEL_PX : 0);
     const onBlock = h >= stack + 4 && w >= LABEL_PX;
     let baseline = onBlock ? yBottom - 2 : yBottom - h - 1;
     if (stack > 0 && baseline <= (labelTops.get(key.pitch) ?? Infinity) - 1) {
       if (finger) {
-        drawFinger(ctx, finger, x + w / 2, baseline);
-        fingers += 1;
+        drawFinger(
+          ctx,
+          finger.text,
+          x + w / 2,
+          baseline,
+          finger.suggested ? SUGGESTED_COLOUR : FINGER_COLOUR,
+        );
+        if (finger.suggested) suggestedDrawn += 1;
+        else fingers += 1;
         baseline -= FINGER_PX + 2;
       }
       if (view.names) {
@@ -374,5 +392,5 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
       ctx.stroke();
     }
   }
-  return { pressed, fingers, selected: selectedDrawn, blocks };
+  return { pressed, fingers, suggested: suggestedDrawn, selected: selectedDrawn, blocks };
 }

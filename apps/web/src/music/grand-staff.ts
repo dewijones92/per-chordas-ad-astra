@@ -1,9 +1,9 @@
+import { MIDDLE_C } from './hands.ts';
 import type { Hand } from './hands.ts';
 import { markTupletEnds, type NotationEvent, type ScoreModel, type ScoreNote } from './model.ts';
 import type { PerfNote } from './performance.ts';
 
 const HAND_STAFF: Record<Hand, number> = { right: 0, left: 1 };
-const MIDDLE_C = 60;
 
 function noteKey(staff: number, pitch: number, tick: number): string {
   return `${String(staff)}:${String(pitch)}:${String(Math.round(tick))}`;
