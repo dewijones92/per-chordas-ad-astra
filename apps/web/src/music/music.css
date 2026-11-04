@@ -229,6 +229,16 @@
   stroke: var(--violet);
 }
 
+.notation-svg .pa-picked,
+.notation-svg .pa-picked * {
+  fill: #d7263d;
+  stroke: #d7263d;
+}
+
+.notation-svg .pa-picked {
+  filter: drop-shadow(0 0 3px #d7263d);
+}
+
 .notation-message {
   margin: 0;
   padding: 10px 14px;

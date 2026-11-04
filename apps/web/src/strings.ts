@@ -52,7 +52,8 @@ export const strings = {
     bars: '⏮️ , and .: previous or next bar',
     piano:
       '🎹 With Wait for me on: A W S E D F T G Y H U J play C to B (K stays play and pause); Z and X move the octave',
-    fingers: '✋ Click a falling note, then 1 to 5: its finger; Backspace clears it, Esc lets go',
+    fingers:
+      '✋ Click a falling note or a note on the stave, then 1 to 5: its finger; Backspace clears it, Esc lets go',
     pages: '📄 ← and →, Page Up and Page Down: turn the page',
     tempo: '⏱️ + and −: metronome tempo, on a score page',
     zoom: '🔍 Ctrl + and Ctrl −, or Ctrl + scroll: zoom',

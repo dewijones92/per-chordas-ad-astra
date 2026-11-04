@@ -39,6 +39,28 @@ red numbers on the notes. The readers dropped fingering entirely.
   says which: "Finger 3 on B4 in bar 1 of 'Gran Vals' (gv.mscz)". The hint showing which note is picked floats over
   the falling notes so nothing above them moves.
 
+- **Your fingering on the stave** (4 Nov 2026, built by Claude as the follow-up to the above): your numbers are drawn
+  red on the stave, exactly where a printed fingering goes, and a note picked on either view is marked on both.
+  - _Into the stave, one rule, two producers._ The stave is drawn from MusicXML, so your fingers are merged into that
+    XML as `<technical><fingering>`, replacing any fingering, pluck or string mark the file had on the same note. A
+    MuseScore file's XML is generated from our score model, so `withUserFingers` sets `finger` on the model's notation
+    notes before the XML is written (and before the by-hand grand staff splits the hands, because your keys use the
+    staff the file wrote the note on, not the hand it is redrawn in). A MusicXML file's own text is kept, so
+    `fingeredMusicXml` re-reads it with `parseMusicXml`, which now hands back each note's source element, and writes
+    the mark into that element. Both are reached through `staveSourceXml`; with nothing fingered the file's own text
+    or XML is used untouched. Verovio transposes at draw time, so the fingers ride along at any transposition.
+  - _Click a stave note._ The worker asks Verovio for each drawn note's sounding pitch next to the time map
+    (`getMIDIValuesForElement`); `matchStaveNotes` matches a drawn note to a written one by bar, place in the bar
+    (within 3 ticks) and pitch minus the transposition, giving two unison notes their own written note. Staff is not
+    used, because the grand staff changes it. The pick is the one the falling notes use (`pickWritten` in
+    PlayAlong, the same hint, keys and save). A click that lands on the empty middle of a hollow head, which draws
+    nothing to hit, picks the nearest head within 8 px (`nearestNote`).
+  - _Seeking and drawing._ A note click also seeks to its bar, as every click on the stave always has; a click on the
+    bar anywhere else seeks and lets go of the picked note; in Draw mode stave clicks are drawing's and pick nothing.
+  - _The stave does not flash or jump._ Its identity key no longer depends on the XML text, so a finger change keeps the
+    old drawing on screen until the new one is ready, and the stave does not scroll back to the playing bar.
+  - _Limits._ A grace note is not matched, and picking is off when our bar count and Verovio's disagree.
+
 - **🤖 Suggested fingering** (Dewi approved the idea, 4 Nov 2026): wherever neither the file nor you has given a
   finger, the app draws its own suggestion in **grey** (red always wins). Our own code, no library
   (`suggest-fingering.ts`): per hand, the notes are grouped into onsets and a best-path (Viterbi) search over finger
@@ -54,6 +76,4 @@ red numbers on the notes. The readers dropped fingering entirely.
 - The suggestion is a sensible first guess, not an edition: the first note of a piece has no context and may get
   an odd finger, and repeats are fingered pass by pass.
 
-- Fingering added by clicking the stave, and your fingering drawn on the stave, are a follow-up; today your numbers
-  show on the falling notes (the file's show on both).
 - If the music file is replaced by a different edition, keys that match no note are simply not drawn.

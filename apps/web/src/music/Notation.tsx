@@ -7,9 +7,11 @@ import { useWheelZoom } from '../score/use-wheel-zoom.ts';
 import { ZoomControl } from '../score/ZoomControl.tsx';
 import { strings, tips } from '../strings.ts';
 import { intervalFor } from './keys.ts';
-import { TPQ, type ScoreMeasure } from './model.ts';
+import { TPQ, type ScoreMeasure, type ScoreNote } from './model.ts';
 import { soundingIds, type NotationRequest, type NotationResult } from './notation-protocol.ts';
+import { nearestNote } from './notation-hit.ts';
 import { barAt, type Performance } from './performance.ts';
+import { matchStaveNotes } from './stave-notes.ts';
 
 const BASE_SCALE = 38;
 export const DRAW_MIN_ZOOM = 1.5;
@@ -115,9 +117,13 @@ export function scoreQuarter(
 
 export function Notation({
   xml,
+  xmlKey,
   transpose,
   perf,
   measures,
+  notes,
+  pickedKey,
+  onPickNote,
   playing,
   position,
   onSeek,
@@ -128,9 +134,13 @@ export function Notation({
   marks,
 }: {
   xml: string;
+  xmlKey: string;
   transpose: number;
   perf: Performance;
   measures: readonly ScoreMeasure[];
+  notes: readonly ScoreNote[];
+  pickedKey: string | null;
+  onPickNote: (note: ScoreNote | null) => void;
   playing: boolean;
   position: () => number;
   onSeek: (seconds: number) => void;
@@ -146,11 +156,12 @@ export function Notation({
     value: NotationResult;
   } | null>(null);
   const interval = intervalFor(perf.keyFifths, transpose);
-  const key = `${interval}:${String(xml.length)}:${xml.slice(0, 64)}`;
+  const key = `${interval}:${xmlKey}`;
   const scale = Math.round(BASE_SCALE * zoom);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const holder = useRef<HTMLDivElement>(null);
+  const lastScrolled = useRef<{ key: string; measure: number }>({ key: '', measure: -1 });
   const current = result?.key === key ? result.value : null;
   const shownScale = result?.key === key ? result.scale : scale;
   const k = shownScale / 100;
@@ -209,6 +220,34 @@ export function Notation({
     return measures.map((m) => m.tick / TPQ);
   }, [current, measures]);
 
+  const staveNotes = useMemo(() => {
+    if (!current || !barsAgree) return null;
+    return matchStaveNotes(current.notes, starts, measures, notes, transpose);
+  }, [current, barsAgree, starts, measures, notes, transpose]);
+
+  useEffect(() => {
+    const box = holder.current;
+    const ids = pickedKey === null ? [] : (staveNotes?.idsOf.get(pickedKey) ?? []);
+    if (!box) return;
+    const lit: Element[] = [];
+    for (const id of ids) {
+      const el = box.querySelector(`#${CSS.escape(id)}`);
+      if (el) {
+        el.classList.add('pa-picked');
+        lit.push(el);
+      }
+    }
+    if (pickedKey !== null)
+      console.info('dewidebug notation picked note highlighted', {
+        pickedKey,
+        drawn: ids.length,
+        lit: lit.length,
+      });
+    return () => {
+      for (const el of lit) el.classList.remove('pa-picked');
+    };
+  }, [current, staveNotes, pickedKey]);
+
   const longest = useMemo(
     () => (current ? Math.max(0, ...current.notes.map((n) => n.off - n.on)) : 0),
     [current],
@@ -220,7 +259,9 @@ export function Notation({
     if (!current || !box || !view) return;
     let frame = 0;
     let lit: Element[] = [];
-    let shownMeasure = -1;
+    const scrolled = lastScrolled.current;
+    const scrollKey = `${key}@${String(shownScale)}`;
+    let shownMeasure = scrolled.key === scrollKey ? scrolled.measure : -1;
     const paint = () => {
       const at = scoreQuarter(perf, measures, starts, position());
       for (const el of lit) el.classList.remove('pa-playing');
@@ -235,6 +276,7 @@ export function Notation({
         }
         if (at.measure !== shownMeasure) {
           shownMeasure = at.measure;
+          lastScrolled.current = { key: scrollKey, measure: shownMeasure };
           const id = current.measures[at.measure]?.id;
           const el = id ? box.querySelector(`#${CSS.escape(id)}`) : null;
           if (el) {
@@ -254,7 +296,7 @@ export function Notation({
       cancelAnimationFrame(frame);
       for (const el of lit) el.classList.remove('pa-playing');
     };
-  }, [current, perf, measures, starts, longest, playing, position]);
+  }, [current, perf, measures, starts, longest, playing, position, key, shownScale]);
 
   if (current?.error) {
     return (
@@ -295,7 +337,19 @@ export function Notation({
               className="notation-svg"
               data-testid="notation-svg"
               onClick={(e) => {
-                const target = e.target instanceof Element ? e.target.closest('g.measure') : null;
+                const hit = e.target instanceof Element ? e.target : null;
+                const noteEl = drawing
+                  ? null
+                  : (hit?.closest('g.note') ?? nearestNote(e.currentTarget, e.clientX, e.clientY));
+                const picked = noteEl ? staveNotes?.byId.get(noteEl.id) : undefined;
+                console.info('dewidebug notation clicked', {
+                  note: noteEl?.id ?? null,
+                  matched: picked !== undefined,
+                  drawing,
+                });
+                if (picked) onPickNote(picked);
+                else if (!drawing) onPickNote(null);
+                const target = hit ? hit.closest('g.measure') : null;
                 const index = target ? current.measures.findIndex((m) => m.id === target.id) : -1;
                 if (index < 0) return;
                 const now = position();

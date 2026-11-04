@@ -20,6 +20,7 @@ declare module 'verovio/esm' {
     getPageCount(): number;
     renderToSVG(page: number): string;
     renderToTimemap(options?: Record<string, unknown>): TimemapEntry[];
+    getMIDIValuesForElement(id: string): { pitch?: number; time?: number; duration?: number };
     getVersion(): string;
     getLog(): string;
   }

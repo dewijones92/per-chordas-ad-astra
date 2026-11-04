@@ -9,6 +9,7 @@ export interface NotationNoteSpan {
   id: string;
   on: number;
   off: number;
+  pitch: number;
 }
 
 export interface NotationResult {
@@ -22,6 +23,7 @@ export interface NotationResult {
 
 export function notationSpans(
   entries: readonly { qstamp: number; on?: string[]; off?: string[]; measureOn?: string }[],
+  pitchOf: (id: string) => number,
 ): { measures: NotationResult['measures']; notes: NotationNoteSpan[] } {
   const started = new Map<string, number>();
   const notes: NotationNoteSpan[] = [];
@@ -31,13 +33,13 @@ export function notationSpans(
     for (const id of e.off ?? []) {
       const on = started.get(id);
       if (on !== undefined) {
-        notes.push({ id, on, off: e.qstamp });
+        notes.push({ id, on, off: e.qstamp, pitch: pitchOf(id) });
         started.delete(id);
       }
     }
     for (const id of e.on ?? []) started.set(id, e.qstamp);
   }
-  for (const [id, on] of started) notes.push({ id, on, off: on + 0.25 });
+  for (const [id, on] of started) notes.push({ id, on, off: on + 0.25, pitch: pitchOf(id) });
   return { measures, notes: notes.sort((a, b) => a.on - b.on) };
 }
 

@@ -61,6 +61,7 @@ function fingerOf(note: Element, guitarPart: boolean): { finger?: Finger } {
 }
 
 interface PendingNote {
+  source: Element;
   staff: number;
   measure: number;
   rel: number;
@@ -108,7 +109,7 @@ function wordsJump(words: string): { kind: 'dacapo' | 'dalsegno' } | 'fine' | 't
   return null;
 }
 
-export function parseMusicXml(doc: Document): ScoreModel {
+export function parseMusicXml(doc: Document, sources?: Map<ScoreNote, Element>): ScoreModel {
   const root = doc.documentElement;
   if (root.tagName !== 'score-partwise') throw new Error('Not a partwise MusicXML file');
   const version = root.getAttribute('version') ?? '';
@@ -270,6 +271,7 @@ export function parseMusicXml(doc: Document): ScoreModel {
               const octave = childNumber(pitchEl, 'octave') ?? 4;
               const alter = Math.round(childNumber(pitchEl, 'alter') ?? 0);
               const note: PendingNote = {
+                source: el,
                 staff: base + staffNo - 1,
                 measure: mIndex,
                 rel: start,
@@ -437,6 +439,12 @@ export function parseMusicXml(doc: Document): ScoreModel {
     grace: n.grace,
     ...(n.finger ? { finger: n.finger } : {}),
   }));
+  if (sources) {
+    for (const [i, pending] of pendingNotes.entries()) {
+      const note = notes[i];
+      if (note) sources.set(note, pending.source);
+    }
+  }
   const tempos: TempoMark[] = pendingTempos.map((t) => ({ tick: at(t), bpm: t.value }));
   const dynamics: DynamicMark[] = pendingDynamics.map((d) => ({ tick: at(d), ...d.value }));
   const keys: KeyMark[] = pendingKeys.map((k) => ({ tick: at(k), ...k.value }));

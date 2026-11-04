@@ -30,7 +30,10 @@ self.onmessage = (event: MessageEvent<NotationRequest>) => {
       if (!tk.loadData(request.xml))
         throw new Error(`Verovio could not read the score: ${tk.getLog()}`);
       const svg = tk.renderToSVG(1);
-      const spans = notationSpans(tk.renderToTimemap({ includeMeasures: true }));
+      const spans = notationSpans(
+        tk.renderToTimemap({ includeMeasures: true }),
+        (id) => tk.getMIDIValuesForElement(id).pitch ?? -1,
+      );
       const result: NotationResult = {
         id: request.id,
         svg,

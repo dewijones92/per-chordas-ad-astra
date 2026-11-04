@@ -409,21 +409,24 @@ describe('falling notes geometry', () => {
 
 describe('notation follow-along', () => {
   it('turns a timemap into note spans and bar starts', () => {
-    const spans = notationSpans([
-      { qstamp: 0, measureOn: 'm1', on: ['a', 'b'] },
-      { qstamp: 1, off: ['a'], on: ['c'] },
-      { qstamp: 2, off: ['b', 'c'] },
-      { qstamp: 3, measureOn: 'm2', on: ['d'] },
-    ]);
+    const spans = notationSpans(
+      [
+        { qstamp: 0, measureOn: 'm1', on: ['a', 'b'] },
+        { qstamp: 1, off: ['a'], on: ['c'] },
+        { qstamp: 2, off: ['b', 'c'] },
+        { qstamp: 3, measureOn: 'm2', on: ['d'] },
+      ],
+      (id) => ({ a: 60, b: 64, c: 67, d: 72 })[id] ?? -1,
+    );
     expect(spans.measures).toEqual([
       { id: 'm1', q: 0 },
       { id: 'm2', q: 3 },
     ]);
     expect(spans.notes).toEqual([
-      { id: 'a', on: 0, off: 1 },
-      { id: 'b', on: 0, off: 2 },
-      { id: 'c', on: 1, off: 2 },
-      { id: 'd', on: 3, off: 3.25 },
+      { id: 'a', on: 0, off: 1, pitch: 60 },
+      { id: 'b', on: 0, off: 2, pitch: 64 },
+      { id: 'c', on: 1, off: 2, pitch: 67 },
+      { id: 'd', on: 3, off: 3.25, pitch: 72 },
     ]);
     expect(soundingIds(spans.notes, 1.5, 2)).toEqual(['b', 'c']);
     expect(soundingIds(spans.notes, 2.5, 2)).toEqual([]);

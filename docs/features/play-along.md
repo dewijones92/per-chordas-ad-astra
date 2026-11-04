@@ -49,8 +49,12 @@ keyboard from above, like the bird's-eye piano videos.
   clearly piano (⚠️), from the three clues a file carries: the instrument it names, its layout (one part on two joined
   staves, single staves, guitar tab) and its fingering marks by kind; ❓ explains. Piano fingering in the file shows
   as red numbers on the stave and on the falling notes ([ADR 0021](../adr/0021-fingering.md)).
-- **✋ Your fingering**: click a falling note and press 1–5 (Backspace clears, Esc lets go). It shows as a red number
-  on the note, replaces the file's own mark, and is saved to GitHub for everyone who opens the piece
+- **✋ Your fingering**: click a falling note, or a note on the stave, and press 1–5 (Backspace clears, Esc lets go).
+  It shows as a red number on the falling note and on the stave, replaces the file's own mark on both, follows a
+  transposition and the Split-for-piano grand staff, and is saved to GitHub for everyone who opens the piece. A picked
+  note is outlined on the falling notes and drawn red on the stave. Clicking a note on the stave also moves to its bar;
+  clicking the bar anywhere else moves to the bar and lets go of the note; in Draw mode the stave belongs to drawing.
+  Clicking just beside a hollow note head still picks it. A grace note cannot be picked on the stave
   ([ADR 0021](../adr/0021-fingering.md)).
 - **🤖 Suggested fingering** (on by default): grey finger numbers worked out by the app where neither the file nor you
   has given one; red always wins. Untick to hide them; remembered per file ([ADR 0021](../adr/0021-fingering.md)).
@@ -170,6 +174,6 @@ MuseScore's repeat orders, and the Nocturne MIDI), `apps/server/test/data-repo.t
 
 Known gaps: a MIDI file's hand split is decided by the app, as for guitar scores, because MIDI does not say
 which hand plays what beyond its track order; MIDI has no notation, key spelling or ties, so notes that were tied
-in the source arrive as one long note or as two notes, as the file wrote them; lyrics, fingering, articulations and dynamics marks are not in the notation yet; ottava
+in the source arrive as one long note or as two notes, as the file wrote them; lyrics, articulations and dynamics marks are not in the notation yet; ottava
 lines, swing, pedal and grace-note timing are approximate; two of MuseScore's 69 repeat cases (a jump into
 an ending that has its own repeats) differ.

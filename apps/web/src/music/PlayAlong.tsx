@@ -61,7 +61,7 @@ import { checkFile } from './file-check.ts';
 import { FileCheckLine } from './FileCheckLine.tsx';
 import { ResizeHandle } from './ResizeHandle.tsx';
 import { readScore } from './load.ts';
-import { instrumentFor, noteKey } from './model.ts';
+import { instrumentFor, noteKey, type ScoreNote } from './model.ts';
 import {
   assignHands,
   handLanes,
@@ -73,6 +73,7 @@ import {
 } from './hands.ts';
 import { grandStaff, scoreHands } from './grand-staff.ts';
 import { DRAW_MIN_ZOOM, Notation } from './Notation.tsx';
+import { NO_FINGERS, staveSourceXml, withUserFingers } from './stave-fingers.ts';
 import { toMusicXml } from './to-musicxml.ts';
 import { download, exportName, performanceToMidi, transposeMusicXml } from './export.ts';
 import { barAt, buildPerformance, type Performance, type PerfNote } from './performance.ts';
@@ -450,9 +451,7 @@ export function PlayAlong({
   const notatable = loaded.data?.score.format !== 'midi';
   const sourceXml = useMemo(() => {
     const data = loaded.data;
-    if (!data) return null;
-    if (data.score.format === 'musicxml') return data.text;
-    return data.score.notation ? toMusicXml(data.score, data.score.notation) : null;
+    return data ? staveSourceXml(data.score, data.text, NO_FINGERS) : null;
   }, [loaded.data]);
 
   const updatePrefs = useCallback(
@@ -478,6 +477,11 @@ export function PlayAlong({
     },
     [updatePrefs],
   );
+  const fingering = useAsync(() => api.getFingering(pieceId), `fingering:${pieceId}`);
+  const { setData: setFingeringData, reload: reloadFingering } = fingering;
+  const fingeringLoaded = fingering.data !== undefined;
+  const fileFingers = fingering.data?.files[music.file];
+  const userFingers = useMemo(() => new Map(Object.entries(fileFingers ?? {})), [fileFingers]);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
   const checkedScore = loaded.data?.score;
   const fileCheck = useMemo(() => (checkedScore ? checkFile(checkedScore) : null), [checkedScore]);
@@ -536,10 +540,17 @@ export function PlayAlong({
   const grandXml = useMemo(() => {
     const score = loaded.data?.score;
     if (!hands || !score?.notation || !prefs.notation) return null;
-    const grand = grandStaff(score, scoreHands(score.notes, hands, leftOut ?? undefined));
+    const fingered = withUserFingers(score, userFingers);
+    const grand = grandStaff(fingered, scoreHands(score.notes, hands, leftOut ?? undefined));
     return grand.notation ? toMusicXml(grand, grand.notation) : null;
-  }, [loaded.data, hands, leftOut, prefs.notation]);
-  const notationXml = prefs.notation ? (grandXml ?? sourceXml) : null;
+  }, [loaded.data, hands, leftOut, prefs.notation, userFingers]);
+  const fingeredSourceXml = useMemo(() => {
+    const data = loaded.data;
+    if (!data || userFingers.size === 0) return sourceXml;
+    return staveSourceXml(data.score, data.text, userFingers);
+  }, [loaded.data, sourceXml, userFingers]);
+  const notationXml = prefs.notation ? (grandXml ?? fingeredSourceXml) : null;
+  const notationXmlKey = `${music.file}:${grandXml ? 'hands' : 'file'}`;
   const hiddenLanes = byHand ? prefs.handHidden : prefs.hidden;
   const mutedLanes = byHand ? prefs.handMuted : prefs.muted;
   const hiddenKey = byHand ? 'handHidden' : 'hidden';
@@ -792,26 +803,26 @@ export function PlayAlong({
     [updatePrefs],
   );
 
-  const fingering = useAsync(() => api.getFingering(pieceId), `fingering:${pieceId}`);
-  const { setData: setFingeringData, reload: reloadFingering } = fingering;
-  const fingeringLoaded = fingering.data !== undefined;
-  const fileFingers = fingering.data?.files[music.file];
-  const userFingers = useMemo(() => new Map(Object.entries(fileFingers ?? {})), [fileFingers]);
   const [picked, setPicked] = useState<{ key: string; label: string } | null>(null);
-  const pickNote = useCallback(
-    (n: PerfNote | null) => {
-      if (!n?.source || !perf) {
+  const pickWritten = useCallback(
+    (source: ScoreNote | null) => {
+      if (!source || !perf) {
         setPicked(null);
         return;
       }
-      const flats = perf.keyFifths < 0;
       const label = units.noteInBar(
-        noteName(n.source.pitch, flats),
-        perf.bars[n.bar]?.number ?? n.source.measure + 1,
+        noteName(source.pitch, perf.keyFifths < 0),
+        perf.bars.find((b) => b.measure === source.measure)?.number ?? source.measure + 1,
       );
-      setPicked({ key: noteKey(n.source), label });
+      setPicked({ key: noteKey(source), label });
     },
     [perf],
+  );
+  const pickNote = useCallback(
+    (n: PerfNote | null) => {
+      pickWritten(n?.source ?? null);
+    },
+    [pickWritten],
   );
   const setFinger = useCallback(
     (finger: FingerText | null) => {
@@ -1669,9 +1680,13 @@ export function PlayAlong({
         <>
           <Notation
             xml={notationXml}
+            xmlKey={notationXmlKey}
             transpose={transpose}
             perf={perf}
             measures={loaded.data.score.measures}
+            notes={loaded.data.score.notes}
+            pickedKey={picked?.key ?? null}
+            onPickNote={pickWritten}
             playing={playing}
             position={notationPosition}
             onSeek={seekTo}
