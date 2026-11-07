@@ -410,3 +410,48 @@ describe('the bar edge of the falling notes', () => {
     for (let i = 1; i < ys.length; i++) expect(ys[i] ?? 0).toBeLessThan(ys[i - 1] ?? 0);
   });
 });
+
+describe('a dotted line joins notes that start together in different hands', () => {
+  const twoHands = (notes: PerfNote[], hidden: number[] = []) => ({
+    ...view(perfOf(notes), 4),
+    laneOf: (n: PerfNote) => (n.pitch < 60 ? 1 : 0),
+    hidden: new Set(hidden),
+    colours: [
+      { fill: '#6d3df2', edge: '#4b22c9', glow: '#ece5ff' },
+      { fill: '#15b8a6', edge: '#0f8a7c', glow: '#e0f7f4' },
+    ],
+  });
+
+  it('joins a left-hand and a right-hand note struck at the same moment, once per moment', () => {
+    const { ctx } = recordingContext();
+    const drawn = drawFalling(
+      ctx,
+      twoHands([
+        note(48, 1, 1.5),
+        note(52, 1, 1.5),
+        note(76, 1, 1.5),
+        note(72, 2, 2.5),
+        note(50, 2.005, 2.5),
+      ]),
+    );
+    expect(drawn.joins).toBe(2);
+  });
+
+  it('draws no line when one hand comes just after the other, for a chord in one hand, or with a hand hidden', () => {
+    const late = drawFalling(
+      recordingContext().ctx,
+      twoHands([note(48, 1, 1.5), note(76, 1.1, 1.5)]),
+    );
+    expect(late.joins).toBe(0);
+    const chord = drawFalling(
+      recordingContext().ctx,
+      twoHands([note(64, 1, 1.5), note(76, 1, 1.5)]),
+    );
+    expect(chord.joins).toBe(0);
+    const hidden = drawFalling(
+      recordingContext().ctx,
+      twoHands([note(48, 1, 1.5), note(76, 1, 1.5)], [1]),
+    );
+    expect(hidden.joins).toBe(0);
+  });
+});

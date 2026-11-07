@@ -14,6 +14,8 @@ import { drawHands } from './hand-draw.ts';
 import type { HandLayer } from './hand-pose.ts';
 
 export const BAR_EDGE = 26;
+export const TOGETHER = 0.02;
+export const JOIN_COLOUR = 'rgba(29, 21, 51, 0.75)';
 export const LABEL_PX = 12;
 export const FINGER_PX = 14;
 export const CHORD_PX = 16;
@@ -212,6 +214,7 @@ export interface FallingDrawn {
   hands: readonly HandLayer[];
   blocks: readonly { pitch: number; x: number; y: number }[];
   bars: readonly { index: number; y: number }[];
+  joins: number;
 }
 
 export function fingerOf(
@@ -226,6 +229,62 @@ export function fingerOf(
   if (given !== undefined) return { text: given, suggested: false };
   const guess = suggested?.get(n);
   return guess === undefined ? null : { text: String(guess), suggested: true };
+}
+
+interface Onset {
+  start: number;
+  lane: number;
+  left: number;
+  right: number;
+  y: number;
+}
+
+function joinsOf(group: readonly Onset[]): { from: number; to: number; y: number }[] {
+  const lanes = new Map<number, { left: number; right: number; y: number }>();
+  for (const o of group) {
+    const span = lanes.get(o.lane);
+    lanes.set(
+      o.lane,
+      span
+        ? { left: Math.min(span.left, o.left), right: Math.max(span.right, o.right), y: span.y }
+        : { left: o.left, right: o.right, y: o.y },
+    );
+  }
+  const spans = [...lanes.values()].sort((a, b) => a.left - b.left);
+  const out: { from: number; to: number; y: number }[] = [];
+  for (let i = 1; i < spans.length; i++) {
+    const a = spans[i - 1];
+    const b = spans[i];
+    if (a && b && b.left - a.right > 2)
+      out.push({ from: a.right, to: b.left, y: Math.min(a.y, b.y) });
+  }
+  return out;
+}
+
+function drawJoins(ctx: CanvasRenderingContext2D, onsets: readonly Onset[]): number {
+  const sorted = [...onsets].sort((a, b) => a.start - b.start);
+  let drawn = 0;
+  ctx.save();
+  ctx.strokeStyle = JOIN_COLOUR;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 4]);
+  for (let i = 0; i < sorted.length;) {
+    const first = sorted[i];
+    if (!first) break;
+    let j = i + 1;
+    while (j < sorted.length && (sorted[j]?.start ?? Infinity) - first.start <= TOGETHER) j++;
+    for (const join of joinsOf(sorted.slice(i, j))) {
+      const y = Math.round(join.y) - 0.5;
+      ctx.beginPath();
+      ctx.moveTo(join.from + 2, y);
+      ctx.lineTo(join.to - 2, y);
+      ctx.stroke();
+      drawn += 1;
+    }
+    i = j;
+  }
+  ctx.restore();
+  return drawn;
 }
 
 interface LabelJob {
@@ -371,6 +430,7 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
   let suggestedDrawn = 0;
   const blocks: { pitch: number; x: number; y: number }[] = [];
   const labels: LabelJob[] = [];
+  const onsets: Onset[] = [];
   for (const n of notes) {
     if (view.hidden.has(view.laneOf(n))) continue;
     const block = blockOf(view, g, n);
@@ -378,6 +438,7 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
     const colour = view.colours[view.laneOf(n)];
     if (!colour) continue;
     const { key, keyUp, yBottom, h, x, w } = block;
+    onsets.push({ start: n.start, lane: view.laneOf(n), left: x, right: x + w, y: yBottom });
     if (blocks.length < MAX_REPORTED_BLOCKS)
       blocks.push({
         pitch: n.pitch,
@@ -424,6 +485,8 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
       alpha,
     });
   }
+
+  const joins = drawJoins(ctx, onsets);
 
   const taken = new Map<number, [number, number][]>();
   const fits = (pitch: number, top: number, bottom: number) =>
@@ -549,6 +612,7 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
     hands,
     blocks,
     bars: barsShown,
+    joins,
   };
 }
 

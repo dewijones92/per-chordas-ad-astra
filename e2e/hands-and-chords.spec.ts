@@ -197,3 +197,17 @@ test('chord names read the split left hand of a guitar-style score', async ({ pa
   await page.getByTestId('playalong-chords').check();
   await expect(canvas).toHaveAttribute('data-chords', 'C');
 });
+
+test('a dotted line joins the hands where they start together, and goes when one hand is hidden', async ({
+  page,
+}) => {
+  await createPiece(page, 'Together Etude', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzXml());
+  const canvas = page.getByTestId('playalong-canvas');
+  await expect(canvas).toHaveAttribute('data-blocks', /71:/);
+  await expect(canvas).toHaveAttribute('data-joins', /^[1-9]/);
+  await page.getByRole('button', { name: tips.playAlong.hide('Piano LH') }).click();
+  await expect(canvas).toHaveAttribute('data-joins', '0');
+  await page.getByRole('button', { name: tips.playAlong.show('Piano LH') }).click();
+  await expect(canvas).toHaveAttribute('data-joins', /^[1-9]/);
+});

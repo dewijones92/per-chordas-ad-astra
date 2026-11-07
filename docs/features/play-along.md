@@ -82,6 +82,10 @@ keyboard from above, like the bird's-eye piano videos.
   bars, look ahead and speed. In the Both view at laptop size the settings rows can push the falling notes below the
   screen, so this is the switch to reach for there. Look ahead, the stave height and folded controls are remembered
   per file, per person.
+- **Together lines** (Dewi, 7 Nov 2026: "when the hands are far apart I can't see if they align in time"): where
+  notes in different hands (or parts) start at the same moment, a dark dotted line joins them across the gap, at the
+  moment they start. No line means one hand comes first. A hidden hand draws none, a chord in one hand needs none,
+  and hands already touching are left alone.
 - **Note names**: a toggle prints each note's letter on it, spelled for the key it now sounds in (flats in
   flat keys, sharps in sharp keys), following any transposition. Remembered per file.
 - **Parts**: each staff can be hidden (👁, still heard) or muted (🔊, still shown) on its own, to practise one
