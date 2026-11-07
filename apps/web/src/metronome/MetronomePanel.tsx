@@ -1,17 +1,11 @@
 import { GROOVES, METRONOME_SOUNDS, type Groove } from '@pcaa/shared';
-import { MAX_BPM, MIN_BPM, type Subdivision } from './scheduler.ts';
+import { MAX_BPM, MIN_BPM } from './scheduler.ts';
 import { useMetronome } from './MetronomeProvider.tsx';
 import './metronome.css';
 import { pickGroove } from '../drums/grooves.ts';
 import { strings, tips, units } from '../strings.ts';
 import { Choice } from '../ui/Choice.tsx';
-
-const SUBDIVISIONS: { value: Subdivision; label: string; title: string }[] = [
-  { value: 1, label: '♩', title: tips.metronome.quarter },
-  { value: 2, label: '♫', title: tips.metronome.eighth },
-  { value: 3, label: '3', title: tips.metronome.triplet },
-  { value: 4, label: '♬', title: tips.metronome.sixteenth },
-];
+import { NoteValues } from '../ui/NoteValues.tsx';
 
 export function MetronomePanel({ compact = false }: { compact?: boolean }) {
   const m = useMetronome();
@@ -142,23 +136,13 @@ export function MetronomePanel({ compact = false }: { compact?: boolean }) {
             ))}
           </select>
         </label>
-        <div className="row tight" role="group" aria-label={tips.metronome.subdivision}>
-          {SUBDIVISIONS.map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              className="btn small icon"
-              title={s.title}
-              aria-label={s.title}
-              aria-pressed={settings.subdivision === s.value}
-              onClick={() => {
-                m.update({ subdivision: s.value });
-              }}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+        <NoteValues
+          value={settings.subdivision}
+          label={tips.metronome.subdivision}
+          onChange={(subdivision) => {
+            if (subdivision !== 'auto') m.update({ subdivision });
+          }}
+        />
         <label className="row small-field">
           <input
             type="checkbox"

@@ -270,7 +270,7 @@ export const strings = {
     countIn: '🥁 Count-in',
     click: soundNames.click,
     drums: soundNames.drums,
-    halfBeats: '🎶 Half-beats',
+    perBeat: '🎶 Per beat',
     playOn: '🙋 I play on',
     hands: '🖐️ Hands',
     handModes: { auto: '✨ Auto', parts: '🎼 As written', hands: '🖐️ Split for piano' },
@@ -369,6 +369,9 @@ export const strings = {
     notCommitted: '⚠️ Not committed',
     githubUnreachable: '📡 GitHub unreachable',
     savedOnPi: '🥧 Saved on Pi',
+  },
+  noteValues: {
+    auto: '✨ Auto',
   },
   metronome: {
     start: '▶️ Start',
@@ -632,8 +635,10 @@ export const tips = {
       'Where the tune is written in octaves, leave out the lower copy (not drawn, not played), so one hand is not stretched over an octave and the other is free for the bass and chords',
     tails:
       'Draw each note as a short strike with a thin tail while it rings, so long notes do not look like keys to hold down; catch them with the pedal',
-    halfBeats:
-      'A softer click between the beats too, or a lighter hat with drums (three per beat in 6/8), at the same tempo',
+    perBeat:
+      'How many clicks or hi-hat hits in each beat. Auto adds more as you slow down so the gaps stay short; ♫ is eighths (three a beat in 6/8), ♬ sixteenths. The drums keep their own pattern at every setting',
+    groove:
+      "The drum pattern this piece's time signature calls for. The metronome's Groove menu is separate and only plays with the metronome",
     hardBits: 'Hard bits',
     hardBit: (from: number, to: number) => `Loop bars ${String(from)}–${String(to)}`,
     forget: (name: string) => `Forget ${name}`,
@@ -670,6 +675,9 @@ export const tips = {
     '𝄇': 'Repeat end',
     '✓': 'Got it',
     '!': 'Watch out',
+  },
+  noteValues: {
+    auto: 'More hits in each beat as you slow down, never more than about 0.6 s apart',
   },
   metronome: {
     panel: 'Metronome',

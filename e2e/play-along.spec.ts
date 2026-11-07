@@ -482,7 +482,7 @@ test('a count-in bar plays before the music starts, and the click is remembered'
   await expect(page.getByTestId('playalong-click')).toBeChecked();
 });
 
-test('half-beats adds a softer click between the beats at the same tempo, and is remembered', async ({
+test('per beat: Auto clicks on the beat at full speed and fills in at half speed; ♫ adds a softer click between the beats, and is remembered', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -499,9 +499,10 @@ test('half-beats adds a softer click between the beats at the same tempo, and is
   await createPiece(page, 'Half Beat Waltz', { pdf: false });
   await page.getByTestId('upload-music').setInputFiles(waltzMscz());
   await expect(page.getByTestId('playalong-canvas')).toBeVisible();
-  await expect(page.getByTestId('playalong-half-beats')).toHaveCount(0);
+  await expect(page.getByTestId('playalong-per-beat')).toHaveCount(0);
   await page.getByTestId('playalong-countin').uncheck();
   await page.getByTestId('playalong-click').check();
+  await expect(page.getByTestId('playalong-per-beat')).toHaveAttribute('data-value', 'auto');
 
   await page.getByTestId('playalong-play').click();
   await expect.poll(() => position(page), { timeout: 8000 }).toBeGreaterThan(1.2);
@@ -510,18 +511,41 @@ test('half-beats adds a softer click between the beats at the same tempo, and is
   expect(plain.filter((p) => p === 1175).length).toBeGreaterThan(0);
   expect(plain.filter((p) => p === 784)).toHaveLength(0);
 
-  await page.getByTestId('playalong-half-beats').check();
+  await page.getByTestId('playalong-speed').fill('50');
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: tips.playAlong.toStart }).click();
+  await expect(page.getByTestId('playalong-canvas')).toHaveAttribute('data-position', '0.000');
+  const before = (await pitches()).length;
   await page.getByTestId('playalong-play').click();
-  await expect.poll(() => position(page), { timeout: 8000 }).toBeGreaterThan(2.7);
+  await expect.poll(() => position(page), { timeout: 8000 }).toBeGreaterThan(1.2);
   await page.getByTestId('playalong-play').click();
-  const halves = (await pitches()).slice(plain.length);
+  const slow = (await pitches()).slice(before);
+  const slowBeats = slow.filter((p) => p === 1175 || p === 1760).length;
+  const slowSubs = slow.filter((p) => p === 784).length;
+  expect(slowSubs).toBeGreaterThan(0);
+  expect(Math.abs(slowSubs - slowBeats)).toBeLessThanOrEqual(2);
+  await page.getByTestId('playalong-speed').fill('100');
+  await page.keyboard.press('Enter');
+
+  await page
+    .getByTestId('playalong-per-beat')
+    .getByRole('button', { name: tips.metronome.eighth })
+    .click();
+  await expect(page.getByTestId('playalong-per-beat')).toHaveAttribute('data-value', '2');
+  await page.getByRole('button', { name: tips.playAlong.toStart }).click();
+  await expect(page.getByTestId('playalong-canvas')).toHaveAttribute('data-position', '0.000');
+  const fast = (await pitches()).length;
+  await page.getByTestId('playalong-play').click();
+  await expect.poll(() => position(page), { timeout: 8000 }).toBeGreaterThan(1.5);
+  await page.getByTestId('playalong-play').click();
+  const halves = (await pitches()).slice(fast);
   const beats = halves.filter((p) => p === 1175 || p === 1760).length;
   const subs = halves.filter((p) => p === 784).length;
   expect(subs).toBeGreaterThan(0);
   expect(Math.abs(subs - beats)).toBeLessThanOrEqual(2);
 
   await page.reload();
-  await expect(page.getByTestId('playalong-half-beats')).toBeChecked();
+  await expect(page.getByTestId('playalong-per-beat')).toHaveAttribute('data-value', '2');
 });
 
 test('drums play the beat instead of the click, count the bar in with side sticks, and are remembered', async ({
@@ -532,10 +556,12 @@ test('drums play the beat instead of the click, count the bar in with side stick
   await page.getByTestId('upload-music').setInputFiles(waltzMscz());
   await expect(page.getByTestId('playalong-canvas')).toBeVisible();
   await expect(page.getByTestId('playalong-drums')).not.toBeChecked();
-  await expect(page.getByTestId('playalong-half-beats')).toHaveCount(0);
+  await expect(page.getByTestId('playalong-per-beat')).toHaveCount(0);
+  await expect(page.getByTestId('playalong-groove')).toHaveCount(0);
   await page.getByTestId('playalong-drums').check();
   await expect(page.getByTestId('playalong-click')).not.toBeChecked();
-  await expect(page.getByTestId('playalong-half-beats')).toBeVisible();
+  await expect(page.getByTestId('playalong-per-beat')).toBeVisible();
+  await expect(page.getByTestId('playalong-groove')).toHaveText(strings.metronome.grooves.waltz);
 
   await expect(page.getByTestId('playalong-countin')).toBeChecked();
   await page.getByTestId('playalong-play').click();
@@ -562,7 +588,7 @@ test('drums play the beat instead of the click, count the bar in with side stick
   await expect(page.getByTestId('playalong-canvas')).toBeVisible();
   await expect(page.getByTestId('playalong-drums')).toBeChecked();
   await expect(page.getByTestId('playalong-click')).not.toBeChecked();
-  await expect(page.getByTestId('playalong-half-beats')).toBeVisible();
+  await expect(page.getByTestId('playalong-per-beat')).toBeVisible();
 });
 
 test('pausing while the piano is still loading stops it from starting', async ({ page }) => {

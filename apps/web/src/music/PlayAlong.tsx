@@ -8,6 +8,7 @@ import {
   RAMP_MAX_STEP,
   RAMP_MIN_STEP,
   newId,
+  perBeatOf,
   roundSpeed,
   speedPercent,
   stepLookAhead,
@@ -64,6 +65,7 @@ import {
 } from './falling.ts';
 import { capoFor, fitRange, keyName, noteName, signedSemitones, transposeFifths } from './keys.ts';
 import { BarStrip, rangeBetween, type BarRange } from './BarStrip.tsx';
+import { NoteValues } from '../ui/NoteValues.tsx';
 import { FallingMarks, type FallingMarksState } from './FallingMarks.tsx';
 import { suggestBySide } from './suggest-fingering.ts';
 import { chordLabels, type ChordLabel } from './chords.ts';
@@ -600,6 +602,12 @@ export function PlayAlong({
   const readout = useRef<HTMLSpanElement>(null);
   const transpose = music.transpose;
   const notatable = loaded.data?.score.format !== 'midi';
+  const perBeat = perBeatOf(prefs);
+  const groove = useMemo(() => {
+    const bar = perf?.bars[barIndex];
+    if (!perf || !bar) return null;
+    return perf.clicks.find((c) => c.start >= bar.start - 1e-6)?.groove ?? null;
+  }, [perf, barIndex]);
   const sourceXml = useMemo(() => {
     const data = loaded.data;
     return data ? staveSourceXml(data.score, data.text, NO_FINGERS) : null;
@@ -827,8 +835,8 @@ export function PlayAlong({
   }, [player, prefs.ramp, prefs.rampStep, prefs.rampTarget]);
 
   useEffect(() => {
-    player?.setClick(prefs.click || prefs.drums, prefs.halfBeats, prefs.drums);
-  }, [player, prefs.click, prefs.halfBeats, prefs.drums]);
+    player?.setClick(prefs.click || prefs.drums, perBeat, prefs.drums);
+  }, [player, prefs.click, perBeat, prefs.drums]);
 
   const [practice] = useState(() => new PlayAlongLog());
   const logTarget = useMemo(
@@ -1583,19 +1591,30 @@ export function PlayAlong({
           />
           {strings.playAlong.drums}
         </label>
+        {prefs.drums && groove && (
+          <span
+            className="muted playalong-field"
+            title={tips.playAlong.groove}
+            data-testid="playalong-groove"
+            data-groove={groove}
+          >
+            {strings.metronome.grooves[groove]}
+          </span>
+        )}
         {(prefs.click || prefs.drums) && (
-          <label className="playalong-field" title={tips.playAlong.halfBeats}>
-            <input
-              type="checkbox"
-              checked={prefs.halfBeats}
-              data-testid="playalong-half-beats"
-              onChange={(e) => {
-                const halfBeats = e.target.checked;
-                updatePrefs((p) => ({ ...p, halfBeats }));
+          <span className="playalong-field" title={tips.playAlong.perBeat}>
+            <span className="playalong-label">{strings.playAlong.perBeat}</span>
+            <NoteValues
+              value={perBeat}
+              auto
+              label={tips.playAlong.perBeat}
+              testId="playalong-per-beat"
+              onChange={(next) => {
+                console.info('dewidebug play-along per beat chosen', { from: perBeat, to: next });
+                updatePrefs((p) => ({ ...p, perBeat: next }));
               }}
             />
-            {strings.playAlong.halfBeats}
-          </label>
+          </span>
         )}
         {notatable && (
           <label className="playalong-field">

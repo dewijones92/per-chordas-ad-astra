@@ -2,7 +2,7 @@
 title: Drum beats instead of the click, in the metronome and the play-along
 status: accepted
 date: 2026-11-04
-updated: 2026-11-04
+updated: 2026-11-07
 ---
 
 # 0022 · Drum beats instead of the click, in the metronome and the play-along
@@ -65,3 +65,18 @@ subdivision setting (♩ ♫ 3 ♬) and the play-along has its own Click, Half-b
   in the grooves test.
 - Metronome nodes for a drum hit are tracked and cut at Stop, because a delayed hit can be seconds away at slow
   tempos.
+
+## Update, 7 Nov 2026: hits per beat, with Auto, replace Half-beats
+
+Dewi wanted "the drums to be able to play more per beat, so when I slow the piece down there is less silence between
+each hit", and chose both a choice of his own and an automatic one. 🎶 Half-beats is replaced by **🎶 Per beat**: the
+metronome's note buttons (♩ ♫ 3 ♬, now one shared component, `ui/NoteValues.tsx`) plus ✨ Auto, the default, which
+picks one, two or four hits a beat so the gap at the playing speed is at most 0.6 s. It drives the click and the
+drums alike. The performance now lays its clicks on a grid of twelfths of a beat (halves, thirds and quarters of a
+simple beat; sixths of a dotted beat), each carrying its beat, its place in the beat and the beat's length; the
+level, and so the drum slot, is worked out as each click is scheduled (`music/click-hits.ts`). Only the hats change
+with the level; the groove's own hits keep their place at every level. The player now places each hit at its own
+offset within the beat (at the playing speed), which lifts the earlier simplification: Rock in 9/8 and 12/8 plays its
+kick where it belongs. A stored `halfBeats: true` reads as ♫ and anything else as Auto (`perBeatOf`). Play-along also
+names the groove it plays (💃 Waltz) beside 🥁 Drums, because Dewi had the dock's Groove menu open and could not tell
+how it related to the piece: it does not; the play-along's groove comes from the piece.

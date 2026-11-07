@@ -1,8 +1,9 @@
+import type { PerBeat, Subdivision } from '@pcaa/shared';
 import { countInFor, type PerfClick, type PerfNote, type Performance } from './performance.ts';
 import { chooseSample, gainFor, SampleManifest, sampleFile } from './samples.ts';
 import { playClick } from '../metronome/click.ts';
-import { countInHits, type DrumHit } from '../drums/grooves.ts';
-import { clickIsHeard, hitsForClick } from './click-hits.ts';
+import { countInHits } from '../drums/grooves.ts';
+import { clickIsHeard, hitsForClick, levelAt, timeHits, type TimedHit } from './click-hits.ts';
 import { playDrum } from '../drums/voices.ts';
 import { START_LEAD_SECONDS, Transport, type Loop, type Ramp } from './transport.ts';
 
@@ -107,7 +108,8 @@ export class PianoPlayer {
   private readonly transport: Transport<PerfNote>;
   private readonly clicks: Transport<PerfClick>;
   private clickOn = false;
-  private halfBeats = false;
+  private perBeat: PerBeat = 'auto';
+  private lastLevel: Subdivision | null = null;
   private drums = false;
   private readonly perf: Performance;
   private timer: number | undefined;
@@ -262,7 +264,11 @@ export class PianoPlayer {
     if (count) {
       for (let k = 0; k < count.beats; k++) {
         const when = now + START_LEAD_SECONDS + k * count.seconds;
-        if (this.drums) this.playHits(this.countInClicks, when, countInHits(k === 0));
+        if (this.drums)
+          this.playHits(
+            this.countInClicks,
+            countInHits(k === 0).map((hit) => ({ hit, at: when })),
+          );
         else keep(this.countInClicks, playClick(ctx, master, when, k === 0 ? 'bar' : 'beat'));
       }
     }
@@ -278,7 +284,7 @@ export class PianoPlayer {
       transpose: this.transpose,
       countIn: count,
       click: this.clickOn,
-      halfBeats: this.halfBeats,
+      perBeat: this.perBeat,
       drums: this.drums,
     });
     this.onEvent({ kind: 'state', playing: true });
@@ -326,11 +332,11 @@ export class PianoPlayer {
     this.passListener = listener;
   }
 
-  setClick(on: boolean, halfBeats: boolean, drums: boolean): void {
-    if (on !== this.clickOn || halfBeats !== this.halfBeats || drums !== this.drums)
-      console.info('dewidebug play-along click', { on, halfBeats, drums });
+  setClick(on: boolean, perBeat: PerBeat, drums: boolean): void {
+    if (on !== this.clickOn || perBeat !== this.perBeat || drums !== this.drums)
+      console.info('dewidebug play-along click', { on, perBeat, drums });
     this.clickOn = on;
-    this.halfBeats = halfBeats;
+    this.perBeat = perBeat;
     this.drums = drums;
   }
 
@@ -390,14 +396,29 @@ export class PianoPlayer {
         this.passListener(speed);
       }
       if (this.clickOn) {
-        const halves = this.halfBeats;
         const drums = this.drums;
+        const speed = this.transport.speedAt(ctx.currentTime);
+        const level = (c: PerfClick) => levelAt(this.perBeat, c, speed);
         for (const c of this.clicks.pump(ctx.currentTime, HORIZON_SECONDS, (c) =>
-          clickIsHeard(c.kind, halves, drums),
+          clickIsHeard(c, level(c), drums),
         )) {
           if (!this.master) continue;
+          const now = level(c.note);
+          if (now !== this.lastLevel) {
+            console.info('dewidebug play-along hits per beat', {
+              perBeat: this.perBeat,
+              level: now,
+              from: this.lastLevel,
+              speed,
+              beatSeconds: c.note.beatSeconds.toFixed(3),
+            });
+            this.lastLevel = now;
+          }
           if (drums) {
-            this.playHits(this.trackClicks, c.when, hitsForClick(c.note, halves));
+            this.playHits(
+              this.trackClicks,
+              timeHits(hitsForClick(c.note, now), c.when, c.note, speed),
+            );
           } else {
             keep(this.trackClicks, playClick(ctx, this.master, c.when, c.note.kind, BEAT_VOLUME));
           }
@@ -450,12 +471,12 @@ export class PianoPlayer {
     this.gate?.held(at);
   }
 
-  private playHits(nodes: Set<AudioScheduledSourceNode>, when: number, hits: DrumHit[]): void {
+  private playHits(nodes: Set<AudioScheduledSourceNode>, hits: readonly TimedHit[]): void {
     const ctx = this.ctx;
     const master = this.master;
     if (!ctx || !master) return;
-    for (const hit of hits)
-      for (const node of playDrum(ctx, master, when, hit.voice, hit.level * BEAT_VOLUME))
+    for (const { hit, at } of hits)
+      for (const node of playDrum(ctx, master, at, hit.voice, hit.level * BEAT_VOLUME))
         keep(nodes, node);
   }
 

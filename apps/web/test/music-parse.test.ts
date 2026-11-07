@@ -1,8 +1,9 @@
 import { makeMscx, makeMusicXml, PIANO_WALTZ, zipScore, type FixtureScore } from '@pcaa/fixtures';
-import { NoteKey } from '@pcaa/shared';
+import { NoteKey, type Subdivision } from '@pcaa/shared';
 import { describe, expect, it } from 'vitest';
 import { loadScore, parseScoreText, unpackScore } from '../src/music/load.ts';
-import { buildPerformance, countInFor } from '../src/music/performance.ts';
+import { buildPerformance, countInFor, type PerfClick } from '../src/music/performance.ts';
+import { clickIsHeard } from '../src/music/click-hits.ts';
 import { instrumentFor, noteKey } from '../src/music/model.ts';
 import { spell, toMusicXml } from '../src/music/to-musicxml.ts';
 import { exportName, performanceToMidi, transposeMusicXml } from '../src/music/export.ts';
@@ -436,9 +437,15 @@ describe('clicks and count-in', () => {
     );
   });
 
-  it('adds half-beat clicks between the beats, and thirds of a dotted beat in compound time', () => {
+  it('lays clicks on a grid inside each beat: halves, thirds and quarters, and sixths of a dotted beat', () => {
+    const at = (level: Subdivision) => (c: PerfClick) => clickIsHeard(c, level, false);
     const waltz = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
-    expect(waltz.clicks.slice(0, 7).map((c) => [round(c.start), c.kind])).toEqual([
+    expect(
+      waltz.clicks
+        .filter(at(2))
+        .slice(0, 7)
+        .map((c) => [round(c.start), c.kind]),
+    ).toEqual([
       [0, 'bar'],
       [0.25, 'sub'],
       [0.5, 'beat'],
@@ -447,7 +454,10 @@ describe('clicks and count-in', () => {
       [1.25, 'sub'],
       [1.5, 'bar'],
     ]);
-    expect(waltz.clicks.filter((c) => c.kind === 'sub')).toHaveLength(12);
+    expect(waltz.clicks.filter(at(2)).filter((c) => c.kind === 'sub')).toHaveLength(12);
+    expect(waltz.clicks.filter(at(4)).filter((c) => c.kind === 'sub')).toHaveLength(36);
+    expect(waltz.clicks.filter(at(3)).filter((c) => c.kind === 'sub')).toHaveLength(24);
+    for (const c of waltz.clicks) expect(c.beatSeconds).toBeCloseTo(0.5);
     const jig = buildPerformance(
       parseScoreText(
         makeMscx(
@@ -460,7 +470,7 @@ describe('clicks and count-in', () => {
         ),
       ),
     );
-    expect(jig.clicks.map((c) => [round(c.start), c.kind])).toEqual([
+    expect(jig.clicks.filter(at(2)).map((c) => [round(c.start), c.kind])).toEqual([
       [0, 'bar'],
       [0.25, 'sub'],
       [0.5, 'sub'],
@@ -468,23 +478,19 @@ describe('clicks and count-in', () => {
       [1, 'sub'],
       [1.25, 'sub'],
     ]);
+    expect(jig.clicks.filter(at(4))).toHaveLength(12);
+    expect(jig.clicks.every((c) => c.compound)).toBe(true);
   });
 
-  it('gives every click the drum groove for its meter: waltz in three, rock in four, 6/8 counted in eighths', () => {
-    const level = (c: {
-      groove: string;
-      slot: { beat: number; sub: number; subdivision: number };
-    }) => `${c.groove} ${String(c.slot.beat)}.${String(c.slot.sub)}/${String(c.slot.subdivision)}`;
+  it('gives every click the drum groove for its meter: waltz in three, rock in four, 6/8 in two dotted beats', () => {
     const waltz = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
-    expect(waltz.clicks.slice(0, 7).map(level)).toEqual([
-      'waltz 0.0/2',
-      'waltz 0.1/2',
-      'waltz 1.0/2',
-      'waltz 1.1/2',
-      'waltz 2.0/2',
-      'waltz 2.1/2',
-      'waltz 0.0/2',
-    ]);
+    expect(new Set(waltz.clicks.map((c) => c.groove))).toEqual(new Set(['waltz']));
+    expect(
+      waltz.clicks
+        .filter((c) => c.kind !== 'sub')
+        .slice(0, 4)
+        .map((c) => c.beat),
+    ).toEqual([0, 1, 2, 0]);
     const four = buildPerformance(
       parseScoreText(
         makeMscx(
@@ -497,12 +503,9 @@ describe('clicks and count-in', () => {
         ),
       ),
     );
-    expect(four.clicks.filter((c) => c.kind !== 'sub').map(level)).toEqual([
-      'rock 0.0/2',
-      'rock 1.0/2',
-      'rock 2.0/2',
-      'rock 3.0/2',
-    ]);
+    expect(
+      four.clicks.filter((c) => c.kind !== 'sub').map((c) => `${c.groove} ${String(c.beat)}`),
+    ).toEqual(['rock 0', 'rock 1', 'rock 2', 'rock 3']);
     const jig = buildPerformance(
       parseScoreText(
         makeMscx(
@@ -515,14 +518,9 @@ describe('clicks and count-in', () => {
         ),
       ),
     );
-    expect(jig.clicks.map(level)).toEqual([
-      'sixeight 0.0/1',
-      'sixeight 1.0/1',
-      'sixeight 2.0/1',
-      'sixeight 3.0/1',
-      'sixeight 4.0/1',
-      'sixeight 5.0/1',
-    ]);
+    expect(
+      jig.clicks.filter((c) => c.kind !== 'sub').map((c) => `${c.groove} ${String(c.beat)}`),
+    ).toEqual(['sixeight 0', 'sixeight 1']);
   });
 
   it('counts in one bar at the playing speed, using the next full bar after a pickup', () => {

@@ -171,13 +171,18 @@ keyboard from above, like the bird's-eye piano videos.
   speed-up step and stop, the loop and the switch are remembered per file, on every device.
 - **Count-in and click**: 🥁 Count-in (on by default) plays one bar of clicks at the playing speed
   before the music starts (after a pickup, the next full bar's beats); Click puts a metronome click on
-  every beat while it plays, accented on the first. Compound time counts dotted beats (6/8 in two). With Click on,
-  **🎶 Half-beats** adds a softer, lower click between the beats at the same tempo (on the "and"; three per
-  dotted beat in compound time), handy when playing very slowly; it is remembered with the other settings. The
+  every beat while it plays, accented on the first. Compound time counts dotted beats (6/8 in two). With Click or
+  Drums on, **🎶 Per beat** sets how many clicks or hi-hat hits fall in each beat, with the metronome's own note
+  buttons (♩ one, ♫ eighths, 3 triplets, ♬ sixteenths; in 6/8 ♫ is three a dotted beat and ♬ six) plus **✨ Auto**
+  (the default), which adds hits as you slow down so they are never more than about 0.6 s apart: one a beat at full
+  speed, eighths around half speed, sixteenths slower still (Dewi, 7 Nov 2026: "so when I slow the piece down there
+  is less silence between each hit"). It is remembered per file; a ticked 🎶 Half-beats from before reads as ♫. The
   click is the metronome's own sound (`metronome/click.ts`). **🥁 Drums** (off by default, remembered per file)
-  plays the beat as drums instead of the click, on its own or with Click: the groove follows each bar's meter
-  (three beats waltz, 6/8 in eighths, otherwise rock/pop), Half-beats sets only the hat density (the off-beat kick and
-  6/8's last-eighth open hat play either way), and the count-in
+  plays the beat as drums instead of the click, on its own or with Click, and names the groove it plays beside the
+  tick box (💃 Waltz, with the same name as the metronome's Groove menu, which is separate): the groove follows each
+  bar's meter (three beats waltz, 6/8 in eighths, otherwise rock/pop), Per beat sets only the hat density (the
+  off-beat kick and 6/8's last-eighth open hat play at every setting, each at its own place in the beat), and the
+  count-in
   becomes side sticks and a hat, the first beat louder ([ADR 0022](../adr/0022-drum-beats.md); the sounds and
   patterns are the metronome's, `drums/`). Pausing during the count-in silences the clicks
   already scheduled, and a seek, speed or loop change during it keeps the music waiting for the count-in to

@@ -1,4 +1,4 @@
-import type { Groove, MetronomeSettings, Subdivision } from '@pcaa/shared';
+import type { Groove, MetronomeSettings } from '@pcaa/shared';
 
 export type DrumVoice = 'kick' | 'snare' | 'rim' | 'hat' | 'openHat' | 'ride';
 
@@ -14,7 +14,7 @@ export interface DrumHit {
 export interface DrumSlot {
   beat: number;
   sub: number;
-  subdivision: Subdivision;
+  subdivision: number;
 }
 
 interface GrooveHit {
@@ -144,11 +144,6 @@ export function grooveForMeter(beatsInBar: number, compound: boolean): Groove {
   if (compound && beatsInBar === 2) return 'sixeight';
   if (!compound && beatsInBar === 3) return 'waltz';
   return 'rock';
-}
-
-export function clickSlot(groove: Groove, beat: number, sub: number, parts: number): DrumSlot {
-  if (groove === 'sixeight') return { beat: beat * parts + sub, sub: 0, subdivision: 1 };
-  return { beat, sub, subdivision: parts as Subdivision };
 }
 
 export function countInHits(accent: boolean): DrumHit[] {

@@ -5,6 +5,8 @@ export const MAX_BPM = 400;
 
 export const Subdivision = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
 export type Subdivision = z.infer<typeof Subdivision>;
+export const PerBeat = z.union([z.literal('auto'), Subdivision]);
+export type PerBeat = z.infer<typeof PerBeat>;
 
 export const METRONOME_SOUNDS = ['click', 'drums'] as const;
 export const MetronomeSound = z.enum(METRONOME_SOUNDS);
@@ -103,6 +105,7 @@ export const PlayAlongPrefs = z.object({
   countIn: z.boolean().default(true),
   click: z.boolean().default(false),
   halfBeats: z.boolean().default(false),
+  perBeat: PerBeat.nullable().default(null),
   drums: z.boolean().default(false),
   playOn: Instrument.nullable().default(null),
   byHand: z.boolean().nullable().default(null),
@@ -135,6 +138,7 @@ export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
   countIn: true,
   click: false,
   halfBeats: false,
+  perBeat: null,
   drums: false,
   playOn: null,
   byHand: null,
@@ -172,3 +176,7 @@ export type LibrarySort = z.infer<typeof LibrarySort>;
 export const SortChoice = z.object({ sort: LibrarySort, reversed: z.boolean() });
 export type SortChoice = z.infer<typeof SortChoice>;
 export const DEFAULT_SORT: SortChoice = { sort: 'title', reversed: false };
+
+export function perBeatOf(prefs: Pick<PlayAlongPrefs, 'perBeat' | 'halfBeats'>): PerBeat {
+  return prefs.perBeat ?? (prefs.halfBeats ? 2 : 'auto');
+}

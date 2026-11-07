@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   GROOVES,
   MetronomeSettings as SettingsSchema,
+  perBeatOf,
   SettingsFile,
   type Groove,
 } from '@pcaa/shared';
 import {
   ACCENT_GAIN,
-  clickSlot,
   countInHits,
   drumHits,
   GROOVE_SPECS,
@@ -18,7 +18,15 @@ import {
   type DrumVoice,
 } from '../src/drums/grooves.ts';
 import { playDrum } from '../src/drums/voices.ts';
-import { clickIsHeard, hitsForClick } from '../src/music/click-hits.ts';
+import {
+  AUTO_GAP_SECONDS,
+  autoLevel,
+  clickIsHeard,
+  hitsForClick,
+  hitsPerBeat,
+  levelAt,
+  timeHits,
+} from '../src/music/click-hits.ts';
 import { parseScoreText } from '../src/music/load.ts';
 import { buildPerformance } from '../src/music/performance.ts';
 import {
@@ -307,12 +315,6 @@ describe('the play-along beat as drums', () => {
     expect(grooveForMeter(5, false)).toBe('rock');
   });
 
-  it('counts 6/8 in eighths, so a dotted beat carries three groove beats', () => {
-    expect(clickSlot('sixeight', 1, 2, 3)).toEqual({ beat: 5, sub: 0, subdivision: 1 });
-    expect(clickSlot('waltz', 2, 1, 2)).toEqual({ beat: 2, sub: 1, subdivision: 2 });
-    expect(clickSlot('rock', 1, 2, 3)).toEqual({ beat: 1, sub: 2, subdivision: 3 });
-  });
-
   it('counts the bar in with side sticks and a hat, the first beat louder', () => {
     const first = countInHits(true);
     const rest = countInHits(false);
@@ -325,38 +327,84 @@ describe('the play-along beat as drums', () => {
   });
 });
 
-describe('the play-along plays the same groove as the metronome, whatever Half-beats says', () => {
+describe('the play-along drums at every number of hits per beat', () => {
   const bar = (time: [number, number], dur: 'whole' | 'half', dots = 0): FixtureScore => ({
     ...PIANO_WALTZ,
     time,
     measures: [{ staves: [[{ pitches: [67], dur, dots }], []] }],
   });
-  const heard = (score: FixtureScore, halfBeats: boolean) =>
+  const heard = (score: FixtureScore, level: Subdivision, drums = true) =>
     buildPerformance(parseScoreText(makeMscx(score, '3.02')))
-      .clicks.filter((c) => clickIsHeard(c.kind, halfBeats, true))
+      .clicks.filter((c) => clickIsHeard(c, level, drums))
       .flatMap((c) =>
-        hitsForClick(c, halfBeats).map(
-          (h) => `${String(c.slot.beat)}.${String(c.slot.sub)} ${h.voice}`,
+        timeHits(hitsForClick(c, level), c.start, c, 1).map(
+          ({ hit, at }) => `${at.toFixed(3)} ${hit.voice}`,
         ),
       );
+  const rock = bar([4, 4], 'whole');
+  const jig = bar([6, 8], 'half', 1);
+  const LEVELS = [1, 2, 3, 4] as const;
 
-  it('plays the kick on the and of 3 in rock, with half-beats off', () => {
-    const off = heard(bar([4, 4], 'whole'), false);
-    expect(off).toContain('2.1 kick');
-    expect(off.filter((h) => h.endsWith(' hat'))).toHaveLength(4);
+  it('plays the kick on the and of 3 in rock and the open hat on the last eighth of 6/8, one hit a beat', () => {
+    const one = heard(rock, 1);
+    expect(one).toContain('1.250 kick');
+    expect(one.filter((h) => h.endsWith(' hat'))).toHaveLength(4);
+    expect(heard(jig, 1)).toContain('1.250 openHat');
   });
 
-  it('plays the open hat on the last eighth of 6/8, with half-beats off', () => {
-    const off = heard(bar([6, 8], 'half', 1), false);
-    expect(off).toContain('5.0 openHat');
-  });
-
-  it('adds only hats when half-beats are on: every hit that played without them still plays', () => {
-    for (const score of [bar([4, 4], 'whole'), bar([6, 8], 'half', 1)]) {
-      const off = heard(score, false).filter((h) => !h.endsWith(' hat'));
-      const on = heard(score, true).filter((h) => !h.endsWith(' hat'));
-      expect(on).toEqual(off);
+  it('adds only hi-hats as the hits per beat go up: every other hit stays where it was', () => {
+    for (const score of [rock, jig, bar([3, 4], 'half', 1), bar([12, 8], 'whole', 1)]) {
+      const base = heard(score, 1).filter((h) => !h.endsWith(' hat'));
+      for (const level of LEVELS)
+        expect(heard(score, level).filter((h) => !h.endsWith(' hat'))).toEqual(base);
     }
+  });
+
+  it('plays 1, 2, 3 or 4 hats a beat in four, and 1, 3 or 6 a dotted beat in 6/8 plus its open hat', () => {
+    const hats = (score: FixtureScore, level: Subdivision) =>
+      heard(score, level).filter((h) => / (hat|openHat)$/.test(h)).length;
+    expect(LEVELS.map((l) => hats(rock, l))).toEqual([4, 8, 12, 16]);
+    expect(LEVELS.map((l) => hats(jig, l))).toEqual([3, 6, 6, 12]);
+    expect(LEVELS.map((l) => hitsPerBeat(l, true))).toEqual([1, 3, 3, 6]);
+  });
+
+  it('clicks only on the beat at one a beat, and between them at more', () => {
+    const clicks = (level: Subdivision) =>
+      buildPerformance(parseScoreText(makeMscx(rock, '3.02'))).clicks.filter((c) =>
+        clickIsHeard(c, level, false),
+      ).length;
+    expect(LEVELS.map(clicks)).toEqual([4, 8, 12, 16]);
+  });
+
+  it('on Auto adds hits as you slow down, so the gap between them stays short', () => {
+    const quarter = { beatSeconds: 0.5, compound: false };
+    expect(autoLevel(quarter, 1)).toBe(1);
+    expect(autoLevel(quarter, 0.5)).toBe(2);
+    expect(autoLevel(quarter, 0.25)).toBe(4);
+    expect(autoLevel(quarter, 0.05)).toBe(4);
+    expect(autoLevel({ beatSeconds: 0.75, compound: true }, 1)).toBe(2);
+    for (const speed of [1, 0.8, 0.6, 0.4, 0.3]) {
+      const level = autoLevel(quarter, speed);
+      expect(0.5 / speed / hitsPerBeat(level, false)).toBeLessThanOrEqual(AUTO_GAP_SECONDS);
+    }
+    expect(levelAt('auto', quarter, 0.5)).toBe(2);
+    expect(levelAt(3, quarter, 0.5)).toBe(3);
+  });
+
+  it('plays a hit between the beats later at a slower speed, in step with the music', () => {
+    const [kick] = timeHits(
+      [{ voice: 'kick', level: 1, twelfths: 6 }],
+      10,
+      { beatSeconds: 0.5 },
+      0.5,
+    );
+    expect(kick?.at).toBeCloseTo(10.5);
+  });
+
+  it('turns a ticked Half-beats from before into eighths, and anything else into Auto', () => {
+    expect(perBeatOf({ perBeat: null, halfBeats: true })).toBe(2);
+    expect(perBeatOf({ perBeat: null, halfBeats: false })).toBe('auto');
+    expect(perBeatOf({ perBeat: 4, halfBeats: true })).toBe(4);
   });
 });
 

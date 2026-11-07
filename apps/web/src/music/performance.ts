@@ -7,7 +7,7 @@ import {
   type ScoreStaff,
 } from './model.ts';
 import { unroll } from './unroll.ts';
-import { clickSlot, grooveForMeter, type DrumSlot } from '../drums/grooves.ts';
+import { grooveForMeter, TWELFTHS_PER_BEAT } from '../drums/grooves.ts';
 import type { Groove } from '@pcaa/shared';
 
 export interface PerfNote {
@@ -34,8 +34,14 @@ export interface PerfClick {
   end: number;
   kind: 'bar' | 'beat' | 'sub';
   groove: Groove;
-  slot: DrumSlot;
+  beat: number;
+  at: number;
+  compound: boolean;
+  beatSeconds: number;
 }
+
+const SIMPLE_GRID = [0, 3, 4, 6, 8, 9] as const;
+const COMPOUND_GRID = [0, 2, 4, 6, 8, 10] as const;
 
 export interface Performance {
   title: string;
@@ -194,27 +200,23 @@ export function buildPerformance(score: ScoreModel): Performance {
   const clicks: PerfClick[] = [];
   for (const b of barTicks) {
     const beat = Math.max(1, b.beat);
-    const parts = beat === TPQ * 1.5 ? 3 : 2;
-    const groove = grooveForMeter(Math.round((b.end - b.start) / beat), parts === 3);
+    const compound = beat === TPQ * 1.5;
+    const groove = grooveForMeter(Math.round((b.end - b.start) / beat), compound);
     for (let t = b.start, k = 0; t < b.end - 1; t += beat, k++) {
-      const start = toSeconds(t);
-      clicks.push({
-        start,
-        end: start + 0.05,
-        kind: k === 0 ? 'bar' : 'beat',
-        groove,
-        slot: clickSlot(groove, k, 0, parts),
-      });
-      for (let p = 1; p < parts; p++) {
-        const at = t + (beat * p) / parts;
-        if (at >= b.end - 1) break;
-        const sub = toSeconds(at);
+      const beatSeconds = toSeconds(t + beat) - toSeconds(t);
+      for (const at of compound ? COMPOUND_GRID : SIMPLE_GRID) {
+        const tick = t + (beat * at) / TWELFTHS_PER_BEAT;
+        if (at > 0 && tick >= b.end - 1) break;
+        const start = toSeconds(tick);
         clicks.push({
-          start: sub,
-          end: sub + 0.05,
-          kind: 'sub',
+          start,
+          end: start + 0.05,
+          kind: at > 0 ? 'sub' : k === 0 ? 'bar' : 'beat',
           groove,
-          slot: clickSlot(groove, k, p, parts),
+          beat: k,
+          at,
+          compound,
+          beatSeconds,
         });
       }
     }
