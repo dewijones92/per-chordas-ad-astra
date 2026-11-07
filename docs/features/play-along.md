@@ -153,8 +153,12 @@ keyboard from above, like the bird's-eye piano videos.
   timings from the performance (so a tempo change later on is kept in the timing but not as a tempo event),
   and with the key (transposed) and a time signature for every bar length, so the app's own reader gets the
   same notes, bars, tempo and key back. Nothing is uploaded; it is built in the browser.
-- **Loop**: drag across bars on the **bar strip** above the notes, or use From here / To here. Click a bar
-  to jump to it, Shift+click to stretch the loop. **Speed up each loop** adds a chosen step every time
+- **Loop**: drag across bars on the **bar strip** above the notes, drag up or down the **bar edge** (the narrow
+  column of bar numbers down the left of the falling notes, Dewi 7 Nov 2026: "select to loop any range I select"),
+  or use From here / To here. Both snap to whole bars, the yellow band follows the drag, and letting go turns the
+  loop on. Click a bar on either to jump to it, Shift+click on the strip to stretch the loop. The keyboard starts to
+  the right of the bar edge, so the lowest notes can still be clicked for fingering; dragging the notes themselves
+  still scrolls. **Speed up each loop** adds a chosen step every time
   round (0.5–20%, 5% to start with) until a chosen speed (100% to start with), both typed in beside the switch; the change happens exactly at the loop point, so no note is cut. **🔁 Loop** switches the loop off
   and on without losing it: off, the music plays straight through and the bars stay marked (paler) on the strip;
   setting a loop (From/To here, a drag, a hard bit) switches it back on. Speed runs from 5% to 200% in half-percent

@@ -594,6 +594,8 @@ export const tips = {
       `On guitar: capo on fret ${String(fret)} and play the written shapes to sound ${key}`,
     exportXml: (key: string) => `MusicXML in ${key}, for MuseScore or any notation program`,
     exportMidi: (key: string) => `MIDI in ${key}, repeats played out`,
+    barEdge:
+      'Drag up or down along the bar numbers to loop those bars; click a bar number to go to that bar',
     fromHere: 'Start the loop at the current bar',
     toHere: 'End the loop at the current bar',
     clearLoop: 'Clear the loop',

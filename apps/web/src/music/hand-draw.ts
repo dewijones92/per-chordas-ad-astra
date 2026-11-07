@@ -4,6 +4,7 @@ export interface HandArea {
   keyTop: number;
   keyHeight: number;
   whiteWidth: number;
+  left: number;
 }
 
 export const HAND_FILL_ALPHA = 0.26;
@@ -56,7 +57,7 @@ export function drawHands(
     const dir = layer.side === 'right' ? 1 : -1;
     let sum = 0;
     for (let f = 0; f < FINGERS; f++) {
-      const x = (pose.u[f] ?? 0) * ww;
+      const x = area.left + (pose.u[f] ?? 0) * ww;
       layer.x[f] = x;
       sum += x;
       tipY[f] = rest + (pose.dip[f] ?? 0) * r * DIP_SHARE;

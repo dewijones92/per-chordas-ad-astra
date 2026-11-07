@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_LOOK_AHEAD, MAX_LOOK_AHEAD, MIN_LOOK_AHEAD, stepLookAhead } from '@pcaa/shared';
 import { wheelLookAhead } from '../src/score/zoom.ts';
 import {
+  BAR_EDGE,
+  barEdgeAt,
   drawFalling,
   CHORD_PX,
   FINGER_COLOUR,
@@ -370,5 +372,41 @@ describe('chord names on the falling notes', () => {
     expect(drawn.chords).toEqual(['C']);
     const none = recordingContext();
     expect(drawFalling(none.ctx, view(perfOf([]), DEFAULT_LOOK_AHEAD)).chords).toEqual([]);
+  });
+});
+
+describe('the bar edge of the falling notes', () => {
+  const bars = [0, 1, 2, 3].map((i) => ({
+    measure: i,
+    number: i + 1,
+    start: i * 2,
+    end: i * 2 + 2,
+    beats: 3,
+  }));
+  const withBars = { ...perfOf([note(60, 0, 1)]), bars };
+
+  it('keeps a strip on the left for the bar numbers, the keys starting after it', () => {
+    const g = geometry(view(withBars, 8));
+    expect(Math.min(...g.layout.keys.map((k) => k.x + (k.black ? k.width / 2 : 0)))).toBe(BAR_EDGE);
+    const last = g.layout.keys.at(-1);
+    expect((last?.x ?? 0) + (last?.width ?? 0)).toBeCloseTo(1000);
+  });
+
+  it('finds the bar at a height on the edge, and nothing on the notes or the keyboard', () => {
+    const v = view(withBars, 8);
+    const g = geometry(v);
+    const yOf = (t: number) => g.notesHeight - t * g.pxPerSecond;
+    expect(barEdgeAt(v, 5, yOf(0.5))).toBe(0);
+    expect(barEdgeAt(v, 5, yOf(4.5))).toBe(2);
+    expect(barEdgeAt(v, BAR_EDGE + 1, yOf(4.5))).toBeNull();
+    expect(barEdgeAt(v, 5, g.notesHeight + 5)).toBeNull();
+  });
+
+  it('reports where each bar on screen sits, for the drag to aim at', () => {
+    const { ctx } = recordingContext();
+    const drawn = drawFalling(ctx, view(withBars, 8));
+    expect(drawn.bars.map((b) => b.index)).toEqual([0, 1, 2, 3]);
+    const ys = drawn.bars.map((b) => b.y);
+    for (let i = 1; i < ys.length; i++) expect(ys[i] ?? 0).toBeLessThan(ys[i - 1] ?? 0);
   });
 });

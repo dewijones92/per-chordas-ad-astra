@@ -53,6 +53,7 @@ import { rememberBitTried, rememberPlayAlong, savedPlayAlong, scoreKey } from '.
 import { useAsync } from '../ui/use-async.ts';
 import { staffColours } from './colours.ts';
 import {
+  barEdgeAt,
   drawFalling,
   geometry,
   keyAt,
@@ -62,7 +63,7 @@ import {
   type FallingView,
 } from './falling.ts';
 import { capoFor, fitRange, keyName, noteName, signedSemitones, transposeFifths } from './keys.ts';
-import { BarStrip } from './BarStrip.tsx';
+import { BarStrip, rangeBetween, type BarRange } from './BarStrip.tsx';
 import { FallingMarks, type FallingMarksState } from './FallingMarks.tsx';
 import { suggestBySide } from './suggest-fingering.ts';
 import { chordLabels, type ChordLabel } from './chords.ts';
@@ -166,6 +167,8 @@ function FallingCanvas({
   onKeyUp,
   overlay,
   marks,
+  onLoop,
+  onSeekBar,
 }: {
   perf: Performance;
   player: PianoPlayer | null;
@@ -192,6 +195,8 @@ function FallingCanvas({
   onKeyUp: (pitch: number) => void;
   overlay: ReactNode;
   marks: FallingMarksState;
+  onLoop: (range: BarRange) => void;
+  onSeekBar: (index: number) => void;
 }) {
   const lastView = useRef<FallingView | null>(null);
   const canvas = useRef<HTMLCanvasElement | null>(null);
@@ -206,7 +211,8 @@ function FallingCanvas({
     () => fitRange(perf.lowest + transpose, perf.highest + transpose, prefs.full),
     [perf, transpose, prefs.full],
   );
-  const shownLoop = activeLoop(prefs);
+  const [edgeDraft, setEdgeDraft] = useState<BarRange | null>(null);
+  const shownLoop = edgeDraft ?? activeLoop(prefs);
   const loop = useMemo(() => {
     if (!shownLoop) return null;
     const from = perf.bars[shownLoop.from];
@@ -326,6 +332,7 @@ function FallingCanvas({
               })),
             })),
           );
+      el.dataset['bars'] = drawn.bars.map((b) => `${String(b.index)}:${String(b.y)}`).join(' ');
       el.dataset['position'] = position.toFixed(3);
       el.dataset['fingers'] = String(drawn.fingers);
       el.dataset['expected'] = [...expected].join(' ');
@@ -365,6 +372,21 @@ function FallingCanvas({
   ]);
 
   const drag = useRef<{ x: number; y: number; position: number; moved: boolean } | null>(null);
+  const edgeDrag = useRef<{ anchor: number; to: number; y: number; moved: boolean } | null>(null);
+  const edgeBar = (e: { clientX: number; clientY: number; currentTarget: HTMLElement }) => {
+    const view = lastView.current;
+    if (!view) return null;
+    const box = e.currentTarget.getBoundingClientRect();
+    return barEdgeAt(view, e.clientX - box.left, e.clientY - box.top);
+  };
+  const edgeBarAtHeight = (e: { clientY: number; currentTarget: HTMLElement }) => {
+    const view = lastView.current;
+    if (!view) return null;
+    const box = e.currentTarget.getBoundingClientRect();
+    const g = geometry(view);
+    const y = Math.min(g.notesHeight - 1, Math.max(0, e.clientY - box.top));
+    return barEdgeAt(view, 0, y);
+  };
   const keyHeld = useRef<number | null>(null);
   const keyUnder = (e: { clientX: number; clientY: number; currentTarget: HTMLElement }) => {
     const view = lastView.current;
@@ -408,6 +430,12 @@ function FallingCanvas({
         }}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
+          const bar = edgeBar(e);
+          if (bar !== null) {
+            console.info('dewidebug bar edge pressed', { bar });
+            edgeDrag.current = { anchor: bar, to: bar, y: e.clientY, moved: false };
+            return;
+          }
           const key = onKeyDown ? keyUnder(e) : null;
           if (key !== null && onKeyDown) {
             console.info('dewidebug on-screen key down', { pitch: key });
@@ -423,6 +451,21 @@ function FallingCanvas({
           };
         }}
         onPointerMove={(e) => {
+          const edge = edgeDrag.current;
+          if (edge) {
+            if (!edge.moved && Math.abs(e.clientY - edge.y) < CLICK_SLOP) return;
+            const to = edgeBarAtHeight(e) ?? edge.to;
+            if (edge.moved && to === edge.to) return;
+            edge.moved = true;
+            edge.to = to;
+            setEdgeDraft(rangeBetween(edge.anchor, to));
+            return;
+          }
+          if (e.buttons === 0) {
+            const over = edgeBar(e) !== null;
+            e.currentTarget.style.cursor = over ? 'ns-resize' : '';
+            e.currentTarget.title = over ? tips.playAlong.barEdge : '';
+          }
           if (keyHeld.current !== null && onKeyDown) {
             const key = keyUnder(e);
             if (key !== null && key !== keyHeld.current) {
@@ -438,8 +481,20 @@ function FallingCanvas({
           d.moved = true;
           onScrub(d.position + (e.clientY - d.y) / Math.max(1, pxPerSecond));
         }}
-        onPointerCancel={releaseKey}
+        onPointerCancel={() => {
+          edgeDrag.current = null;
+          setEdgeDraft(null);
+          releaseKey();
+        }}
         onPointerUp={(e) => {
+          const edge = edgeDrag.current;
+          if (edge) {
+            edgeDrag.current = null;
+            setEdgeDraft(null);
+            if (edge.moved) onLoop(rangeBetween(edge.anchor, edge.to));
+            else onSeekBar(edge.anchor);
+            return;
+          }
           if (keyHeld.current !== null) {
             releaseKey();
             return;
@@ -947,6 +1002,25 @@ export function PlayAlong({
       if (bar) seekTo(bar.start);
     },
     [player, perf, seekTo],
+  );
+
+  const seekBar = useCallback(
+    (index: number) => {
+      const bar = perf?.bars[index];
+      console.info('dewidebug play-along seek to bar', { index, found: bar !== undefined });
+      if (bar) seekTo(bar.start);
+    },
+    [perf, seekTo],
+  );
+
+  const chooseLoop = useCallback(
+    (range: BarRange, from: string) => {
+      console.info('dewidebug play-along loop chosen', { ...range, from });
+      updatePrefs((p) => ({ ...p, loop: range, loopOn: true }));
+      const bar = perf?.bars[range.from];
+      if (bar && player && !player.playing) seekTo(bar.start);
+    },
+    [perf, player, seekTo, updatePrefs],
   );
 
   const setSpeed = useCallback(
@@ -1913,18 +1987,16 @@ export function PlayAlong({
         current={barIndex}
         loop={prefs.loop}
         loopOff={!prefs.loopOn}
-        onSeek={(index) => {
-          const bar = perf.bars[index];
-          if (bar) seekTo(bar.start);
-        }}
+        onSeek={seekBar}
         onLoop={(range) => {
-          console.info('dewidebug play-along loop chosen on the bar strip', range);
-          updatePrefs((p) => ({ ...p, loop: range, loopOn: true }));
-          const bar = perf.bars[range.from];
-          if (bar && player && !player.playing) seekTo(bar.start);
+          chooseLoop(range, 'bar strip');
         }}
       />
       <FallingCanvas
+        onSeekBar={seekBar}
+        onLoop={(range) => {
+          chooseLoop(range, 'falling notes bar edge');
+        }}
         perf={perf}
         player={player}
         playing={playing}

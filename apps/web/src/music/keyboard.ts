@@ -16,7 +16,7 @@ export interface KeyboardLayout {
 export const BLACK_KEY_RATIO = 0.62;
 export const BLACK_KEY_HEIGHT_RATIO = 0.62;
 
-export function keyboardLayout(range: KeyRange, width: number): KeyboardLayout {
+export function keyboardLayout(range: KeyRange, width: number, left = 0): KeyboardLayout {
   const whites: number[] = [];
   for (let p = range.low; p <= range.high; p++) if (!isBlackKey(p)) whites.push(p);
   const whiteWidth = width / Math.max(1, whites.length);
@@ -27,12 +27,12 @@ export function keyboardLayout(range: KeyRange, width: number): KeyboardLayout {
     if (isBlackKey(p)) {
       keys.push({
         pitch: p,
-        x: whiteIndex * whiteWidth - blackWidth / 2,
+        x: left + whiteIndex * whiteWidth - blackWidth / 2,
         width: blackWidth,
         black: true,
       });
     } else {
-      keys.push({ pitch: p, x: whiteIndex * whiteWidth, width: whiteWidth, black: false });
+      keys.push({ pitch: p, x: left + whiteIndex * whiteWidth, width: whiteWidth, black: false });
       whiteIndex += 1;
     }
   }

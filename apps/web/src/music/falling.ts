@@ -7,12 +7,13 @@ import {
   type KeyboardLayout,
 } from './keyboard.ts';
 import { noteName, pitchName, type KeyRange } from './keys.ts';
-import type { PerfNote, Performance } from './performance.ts';
+import { barAt, type PerfNote, type Performance } from './performance.ts';
 import { noteKey } from './model.ts';
 import type { ChordLabel } from './chords.ts';
 import { drawHands } from './hand-draw.ts';
 import type { HandLayer } from './hand-pose.ts';
 
+export const BAR_EDGE = 26;
 export const LABEL_PX = 12;
 export const FINGER_PX = 14;
 export const CHORD_PX = 16;
@@ -111,7 +112,7 @@ export function geometry(view: GeometryView): Geometry {
     notesHeight,
     keyboardHeight,
     pxPerSecond: notesHeight / view.lookAhead,
-    layout: keyboardLayout(view.range, view.width),
+    layout: keyboardLayout(view.range, Math.max(1, view.width - BAR_EDGE), BAR_EDGE),
   };
 }
 
@@ -210,6 +211,7 @@ export interface FallingDrawn {
   chords: readonly string[];
   hands: readonly HandLayer[];
   blocks: readonly { pitch: number; x: number; y: number }[];
+  bars: readonly { index: number; y: number }[];
 }
 
 export function fingerOf(
@@ -323,19 +325,35 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
 
   const yOf = (t: number) => notesHeight - (t - position) * pxPerSecond;
 
+  ctx.fillStyle = '#f6f3ff';
+  ctx.fillRect(0, 0, BAR_EDGE, height);
   if (view.loop) {
     const y1 = Math.max(0, yOf(view.loop.end));
     const y2 = Math.min(notesHeight, yOf(view.loop.start));
     if (y2 > 0 && y1 < notesHeight) {
       ctx.fillStyle = 'rgba(255, 197, 61, 0.14)';
-      ctx.fillRect(0, y1, width, y2 - y1);
+      ctx.fillRect(BAR_EDGE, y1, width - BAR_EDGE, y2 - y1);
+      ctx.fillStyle = '#ffc53d';
+      ctx.fillRect(0, y1, BAR_EDGE, y2 - y1);
     }
   }
+  ctx.strokeStyle = '#d6cdf5';
+  ctx.beginPath();
+  ctx.moveTo(BAR_EDGE - 0.5, 0);
+  ctx.lineTo(BAR_EDGE - 0.5, notesHeight);
+  ctx.stroke();
 
   ctx.font = '700 11px Nunito Variable, system-ui, sans-serif';
   ctx.textBaseline = 'bottom';
-  for (const bar of perf.bars) {
-    if (bar.start < position - 0.001 || bar.start > top) continue;
+  ctx.textAlign = 'center';
+  const barsShown: { index: number; y: number }[] = [];
+  perf.bars.forEach((bar, index) => {
+    if (bar.end < position || bar.start > top) return;
+    barsShown.push({
+      index,
+      y: Math.round((Math.min(notesHeight, yOf(bar.start)) + Math.max(0, yOf(bar.end))) / 2),
+    });
+    if (bar.start < position - 0.001) return;
     const y = Math.round(yOf(bar.start)) + 0.5;
     ctx.strokeStyle = '#d6cdf5';
     ctx.beginPath();
@@ -343,8 +361,9 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
     ctx.lineTo(width, y);
     ctx.stroke();
     ctx.fillStyle = '#5c5470';
-    ctx.fillText(String(bar.number), 4, y - 2);
-  }
+    ctx.fillText(String(bar.number), BAR_EDGE / 2, y - 2);
+  });
+  ctx.textAlign = 'start';
 
   const notes = visibleNotes(perf.notes, position, top, longest);
   let fingers = 0;
@@ -515,7 +534,12 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
   }
   const hands = view.hands ?? [];
   if (hands.length > 0)
-    drawHands(ctx, hands, position, { keyTop, keyHeight, whiteWidth: layout.whiteWidth });
+    drawHands(ctx, hands, position, {
+      keyTop,
+      keyHeight,
+      whiteWidth: layout.whiteWidth,
+      left: BAR_EDGE,
+    });
   return {
     pressed,
     fingers,
@@ -524,5 +548,16 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
     chords: chordsDrawn,
     hands,
     blocks,
+    bars: barsShown,
   };
+}
+
+export function barEdgeAt(
+  view: GeometryView & Pick<FallingView, 'perf' | 'position'>,
+  px: number,
+  py: number,
+): number | null {
+  const g = geometry(view);
+  if (px < 0 || px >= BAR_EDGE || py < 0 || py >= g.notesHeight) return null;
+  return barAt(view.perf, view.position + (g.notesHeight - py) / Math.max(1, g.pxPerSecond));
 }

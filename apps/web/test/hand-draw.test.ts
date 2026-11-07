@@ -207,8 +207,8 @@ describe('drawing the hands', () => {
     const drawn = drawFalling(ctx, view);
     const right = drawn.hands[0];
     expect(right?.pose.dip[2]).toBe(1);
-    const unit = whiteUnits(RANGE)(64);
-    expect(right?.x[2]).toBeCloseTo(unit * geometry(view).layout.whiteWidth, 5);
+    const key = geometry(view).layout.byPitch.get(64);
+    expect(right?.x[2]).toBeCloseTo((key?.x ?? 0) + (key?.width ?? 0) / 2, 5);
     expect(seen.arcs.length).toBe(5);
     const ys = seen.arcs.map((a) => a.y);
     expect(ys[2]).toBeGreaterThan(ys[1] ?? 0);
