@@ -80,3 +80,7 @@ offset within the beat (at the playing speed), which lifts the earlier simplific
 kick where it belongs. A stored `halfBeats: true` reads as ♫ and anything else as Auto (`perBeatOf`). Play-along also
 names the groove it plays (💃 Waltz) beside 🥁 Drums, because Dewi had the dock's Groove menu open and could not tell
 how it related to the piece: it does not; the play-along's groove comes from the piece.
+
+A pickup bar used to take its groove from its own length, so Gran Vals's one-beat pickup played a Rock/pop downbeat
+and the new groove name said 🎸 Rock/pop until bar 2 (seen on the Pi, 7 Nov 2026). A first bar shorter than the
+next is now counted as that bar's last beats: the pickup is beat 3 of the waltz, unaccented (red first).

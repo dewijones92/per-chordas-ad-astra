@@ -180,7 +180,7 @@ keyboard from above, like the bird's-eye piano videos.
   click is the metronome's own sound (`metronome/click.ts`). **🥁 Drums** (off by default, remembered per file)
   plays the beat as drums instead of the click, on its own or with Click, and names the groove it plays beside the
   tick box (💃 Waltz, with the same name as the metronome's Groove menu, which is separate): the groove follows each
-  bar's meter (three beats waltz, 6/8 in eighths, otherwise rock/pop), Per beat sets only the hat density (the
+  bar's meter (three beats waltz, 6/8 in eighths, otherwise rock/pop; a pickup takes the next bar's, as its last beats), Per beat sets only the hat density (the
   off-beat kick and 6/8's last-eighth open hat play at every setting, each at its own place in the beat), and the
   count-in
   becomes side sticks and a hat, the first beat louder ([ADR 0022](../adr/0022-drum-beats.md); the sounds and

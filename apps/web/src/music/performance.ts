@@ -198,11 +198,19 @@ export function buildPerformance(score: ScoreModel): Performance {
     beats: (b.end - b.start) / Math.max(1, b.beat),
   }));
   const clicks: PerfClick[] = [];
-  for (const b of barTicks) {
+  const beatsIn = (b: { start: number; end: number; beat: number } | undefined) =>
+    b ? Math.round((b.end - b.start) / Math.max(1, b.beat)) : 0;
+  barTicks.forEach((b, i) => {
     const beat = Math.max(1, b.beat);
     const compound = beat === TPQ * 1.5;
-    const groove = grooveForMeter(Math.round((b.end - b.start) / beat), compound);
-    for (let t = b.start, k = 0; t < b.end - 1; t += beat, k++) {
+    const next = barTicks[i + 1];
+    const pickup = i === 0 && next?.beat === b.beat && beatsIn(next) > beatsIn(b);
+    const fullBeats = pickup ? beatsIn(next) : beatsIn(b);
+    const offset = pickup ? fullBeats - beatsIn(b) : 0;
+    const groove = grooveForMeter(fullBeats, compound);
+    if (pickup)
+      console.info('dewidebug pickup bar counted as the end of the next', { fullBeats, offset });
+    for (let t = b.start, k = offset; t < b.end - 1; t += beat, k++) {
       const beatSeconds = toSeconds(t + beat) - toSeconds(t);
       for (const at of compound ? COMPOUND_GRID : SIMPLE_GRID) {
         const tick = t + (beat * at) / TWELFTHS_PER_BEAT;
@@ -220,7 +228,7 @@ export function buildPerformance(score: ScoreModel): Performance {
         });
       }
     }
-  }
+  });
   let lowest = Infinity;
   let highest = -Infinity;
   let lastEnd = bars.at(-1)?.end ?? 0;

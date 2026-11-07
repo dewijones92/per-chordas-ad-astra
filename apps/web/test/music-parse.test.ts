@@ -523,6 +523,22 @@ describe('clicks and count-in', () => {
     ).toEqual(['sixeight 0', 'sixeight 1']);
   });
 
+  it('plays a pickup bar as the last beats of the bar after it: a waltz pickup is beat 3 of the waltz, not a rock downbeat', () => {
+    const pickup = buildPerformance(
+      parseScoreText(
+        makeMscx(PIANO_WALTZ, '3.02').replace(
+          '<Measure>',
+          '<Measure len="1/4"><irregular>1</irregular>',
+        ),
+      ),
+    );
+    const first = pickup.clicks.filter((c) => c.kind !== 'sub').slice(0, 2);
+    expect(first.map((c) => [c.groove, c.beat, c.kind])).toEqual([
+      ['waltz', 2, 'beat'],
+      ['waltz', 0, 'bar'],
+    ]);
+  });
+
   it('counts in one bar at the playing speed, using the next full bar after a pickup', () => {
     const waltz = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
     expect(countInFor(waltz, 0, 1)).toEqual({ beats: 3, seconds: 0.5 });
