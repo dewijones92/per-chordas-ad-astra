@@ -184,7 +184,7 @@ keyboard from above, like the bird's-eye piano videos.
   "Hard bit 'The run' up to 75%".
 - **Practice log**: play-along time logs itself (see the practice log feature).
 - **Keys**: Space or K play/pause, in the Notes and Both views, even after clicking a tick box, the slider or a
-  button; `[` `]` slower/faster, `,` `.` previous/next bar. Every shortcut is listed under ⌨️ Keys in the top bar
+  button, or typing a speed in the % box (which takes the typed speed); holding Space plays once; `[` `]` slower/faster, `,` `.` previous/next bar. Every shortcut is listed under ⌨️ Keys in the top bar
   ([ADR 0020](../adr/0020-one-shortcut-table.md)).
 
 Files: `apps/web/src/music/*` (`mscx.ts`, `musicxml.ts` and `load.ts` read files into one model;

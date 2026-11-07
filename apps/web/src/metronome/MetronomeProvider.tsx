@@ -185,6 +185,7 @@ export function MetronomeProvider({ children }: { children: ReactNode }) {
     const onKey = (e: KeyboardEvent) => {
       if (shortcutOf(e) !== 'metronome') return;
       e.preventDefault();
+      if (e.repeat) return;
       console.info('dewidebug metronome key', { key: e.key, wasRunning: running });
       toggle();
     };
@@ -211,6 +212,7 @@ export function useSpaceForMetronome(): void {
         return;
       }
       e.preventDefault();
+      if (e.repeat) return;
       console.info('dewidebug metronome by space', { key: e.key, wasRunning: running });
       toggle();
     };

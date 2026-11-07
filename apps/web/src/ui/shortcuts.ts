@@ -49,6 +49,7 @@ export function ownsKey(target: EventTarget | null, key: string): boolean {
   if (target instanceof HTMLInputElement) {
     if (target.type === 'range') return SLIDER_KEYS.has(key);
     if (target.type === 'radio') return ARROWS.has(key);
+    if (target.type === 'number') return key !== ' ';
     return !PRESS_ONLY_INPUTS.has(target.type);
   }
   return false;

@@ -1037,6 +1037,7 @@ export function PlayAlong({
       const shortcut = shortcutOf(e);
       if (shortcut === 'playPause') {
         e.preventDefault();
+        if (e.repeat) return;
         console.info('dewidebug play-along key', {
           key: e.key,
           target: (e.target as HTMLElement | null)?.tagName,

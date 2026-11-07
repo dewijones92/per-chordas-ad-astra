@@ -92,9 +92,36 @@ test('Space and M run the metronome on the metronome page, and a text box still 
   await createPiece(page, 'Typing Etude');
   await page.getByTestId('upload-music').setInputFiles(waltzXml());
   await expect(page.getByTestId('playalong-canvas')).toBeVisible();
-  const percent = page.getByTestId('playalong-speed');
-  await percent.focus();
+  await page.getByTestId('piece-source-add').click();
+  const link = page.getByTestId('source-url');
+  await link.fill('https://example.com/a');
   await page.keyboard.press('Space');
+  await expect(link).toHaveValue('https://example.com/a ');
   await expect(playAlong(page)).toHaveAttribute('aria-pressed', 'false');
   await expect(metronome(page)).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('Space plays after typing a speed, taking the typed speed, and holding it down toggles once', async ({
+  page,
+}) => {
+  await createPiece(page, 'Speed Box Etude');
+  await page.getByTestId('upload-music').setInputFiles(waltzXml());
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  const percent = page.getByTestId('playalong-speed');
+  await percent.fill('80');
+  await page.keyboard.press('Space');
+  await expect(playAlong(page)).toHaveAttribute('aria-pressed', 'true');
+  await expect(percent).toHaveValue('80');
+  await page.keyboard.press('Space');
+  await expect(playAlong(page)).toHaveAttribute('aria-pressed', 'false');
+
+  await page.getByTestId('playalong-canvas').click();
+  await page.keyboard.down('Space');
+  await page.keyboard.down('Space');
+  await page.keyboard.up('Space');
+  await expect(playAlong(page)).toHaveAttribute('aria-pressed', 'true');
+  await page.waitForTimeout(300);
+  await expect(playAlong(page)).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Space');
+  await expect(playAlong(page)).toHaveAttribute('aria-pressed', 'false');
 });

@@ -27,16 +27,18 @@ describe('which keys a focused control keeps', () => {
     }
   });
 
-  it('keeps every key in a text box, a number box and a text area', () => {
-    for (const el of [
-      input('text'),
-      input('number'),
-      input('search'),
-      document.createElement('textarea'),
-    ]) {
+  it('keeps every key in a text box and a text area', () => {
+    for (const el of [input('text'), input('search'), document.createElement('textarea')]) {
       for (const key of [' ', 'k', 'm', 'ArrowLeft', '['])
         expect(shortcutOf(press(key, el))).toBeNull();
     }
+  });
+
+  it('keeps every key but Space in a number box, where a space cannot be typed', () => {
+    const box = input('number');
+    expect(shortcutOf(press(' ', box))).toBe('playPause');
+    for (const key of ['k', 'm', 'ArrowLeft', '[', '-', '.'])
+      expect(shortcutOf(press(key, box))).toBeNull();
   });
 
   it('keeps the arrows on a slider and the letters on a select, where they already do something', () => {

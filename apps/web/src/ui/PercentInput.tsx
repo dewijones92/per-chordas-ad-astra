@@ -51,6 +51,11 @@ export function PercentInput({
         }}
         onBlur={commit}
         onKeyDown={(e) => {
+          if (e.key === ' ') {
+            console.info('dewidebug percent input gives Space to play', { testId, text });
+            commit();
+            return;
+          }
           e.stopPropagation();
           if (e.key === 'Enter') commit();
           else if (e.key === 'Escape') setText(null);
