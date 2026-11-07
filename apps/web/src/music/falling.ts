@@ -226,6 +226,17 @@ export function fingerOf(
   return guess === undefined ? null : { text: String(guess), suggested: true };
 }
 
+interface LabelJob {
+  pitch: number;
+  centre: number;
+  baseline: number;
+  onBlock: boolean;
+  finger: { text: string; suggested: boolean } | null;
+  chosen: boolean;
+  name: string | null;
+  alpha: number;
+}
+
 interface Block {
   key: NonNullable<ReturnType<typeof keyForPitch>>;
   keyUp: number;
@@ -336,11 +347,11 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
   }
 
   const notes = visibleNotes(perf.notes, position, top, longest);
-  const labelTops = new Map<number, number>();
   let fingers = 0;
   let selectedDrawn = 0;
   let suggestedDrawn = 0;
   const blocks: { pitch: number; x: number; y: number }[] = [];
+  const labels: LabelJob[] = [];
   for (const n of notes) {
     if (view.hidden.has(view.laneOf(n))) continue;
     const block = blockOf(view, g, n);
@@ -378,36 +389,58 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
     ctx.lineWidth = chosen ? 4 : 1.5;
     ctx.stroke();
     if (chosen) selectedDrawn += 1;
+    ctx.globalAlpha = 1;
     const finger = fingerOf(n, view.userFingers, view.suggested);
     const stack = (finger ? FINGER_PX + 2 : 0) + (view.names ? LABEL_PX : 0);
+    if (stack === 0) continue;
     const onBlock = h >= stack + 4 && w >= LABEL_PX;
-    let baseline = onBlock ? yBottom - 2 : yBottom - h - 1;
-    if (stack > 0 && baseline <= (labelTops.get(key.pitch) ?? Infinity) - 1) {
-      if (finger) {
-        drawFinger(
-          ctx,
-          finger.text,
-          x + w / 2,
-          baseline,
-          finger.suggested ? SUGGESTED_COLOUR : FINGER_COLOUR,
-        );
-        if (finger.suggested) suggestedDrawn += 1;
-        else fingers += 1;
-        baseline -= FINGER_PX + 2;
-      }
-      if (view.names) {
-        drawLabel(
-          ctx,
-          pitchName(n.pitch + transpose, view.names.flats),
-          x + w / 2,
-          baseline,
-          onBlock,
-        );
-        baseline -= LABEL_PX;
-      }
-      labelTops.set(key.pitch, baseline);
-    }
+    labels.push({
+      pitch: key.pitch,
+      centre: x + w / 2,
+      baseline: onBlock ? yBottom - 2 : yBottom - h - 1,
+      onBlock,
+      finger,
+      chosen,
+      name: view.names ? pitchName(n.pitch + transpose, view.names.flats) : null,
+      alpha,
+    });
+  }
+
+  const taken = new Map<number, [number, number][]>();
+  const fits = (pitch: number, top: number, bottom: number) =>
+    !(taken.get(pitch) ?? []).some(([t, b]) => top < b && bottom > t);
+  const take = (pitch: number, top: number, bottom: number) => {
+    taken.set(pitch, [...(taken.get(pitch) ?? []), [top, bottom]]);
+  };
+  const fingerTop = new Map<LabelJob, number>();
+  const byPriority = [...labels.filter((l) => l.chosen), ...labels.filter((l) => !l.chosen)];
+  for (const l of byPriority) {
+    if (!l.finger) continue;
+    const topY = l.baseline - FINGER_PX - 2;
+    if (!l.chosen && !fits(l.pitch, topY, l.baseline)) continue;
+    ctx.globalAlpha = l.alpha;
+    drawFinger(
+      ctx,
+      l.finger.text,
+      l.centre,
+      l.baseline,
+      l.finger.suggested ? SUGGESTED_COLOUR : FINGER_COLOUR,
+    );
     ctx.globalAlpha = 1;
+    take(l.pitch, topY, l.baseline);
+    fingerTop.set(l, topY);
+    if (l.finger.suggested) suggestedDrawn += 1;
+    else fingers += 1;
+  }
+  for (const l of labels) {
+    if (l.name === null) continue;
+    if (l.finger && !fingerTop.has(l)) continue;
+    const baseline = fingerTop.get(l) ?? l.baseline;
+    if (!fits(l.pitch, baseline - LABEL_PX, baseline)) continue;
+    ctx.globalAlpha = l.alpha;
+    drawLabel(ctx, l.name, l.centre, baseline, l.onBlock);
+    ctx.globalAlpha = 1;
+    take(l.pitch, baseline - LABEL_PX, baseline);
   }
 
   const chordsDrawn: string[] = [];

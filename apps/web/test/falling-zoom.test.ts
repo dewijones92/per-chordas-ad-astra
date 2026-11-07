@@ -246,6 +246,51 @@ describe('picking a falling note and fingering it', () => {
   });
 });
 
+describe('fingers when note names are on', () => {
+  const repeated = Array.from({ length: 8 }, (_, i) => ({
+    ...note(64, i * 0.17, i * 0.17 + 0.15),
+    source: {
+      staff: 0,
+      measure: 0,
+      pitch: 64,
+      tick: i * 480,
+      ticks: 480,
+      tieForward: false,
+      grace: false,
+    },
+  }));
+  const userFingers = new Map(
+    repeated.map((_, i) => [`s0m0t${String(i * 480)}p64`, String(1 + (i % 5))]),
+  );
+
+  it('shows every finger it showed with names off, names giving way first', () => {
+    const shown = (names: FallingView['names']) => {
+      const { ctx } = recordingContext();
+      return drawFalling(ctx, {
+        ...view(perfOf(repeated), DEFAULT_LOOK_AHEAD),
+        names,
+        userFingers,
+      }).fingers;
+    };
+    const without = shown(null);
+    expect(without).toBeGreaterThan(0);
+    expect(shown({ flats: false })).toBe(without);
+  });
+
+  it('always shows the finger of the note you picked, however crowded', () => {
+    for (let i = 0; i < repeated.length; i++) {
+      const { ctx, texts } = recordingContext();
+      const key = `s0m0t${String(i * 480)}p64`;
+      drawFalling(ctx, {
+        ...view(perfOf(repeated), MAX_LOOK_AHEAD),
+        userFingers: new Map([[key, '4']]),
+        selected: key,
+      });
+      expect(texts.filter((t) => t.text === '4')).toHaveLength(1);
+    }
+  });
+});
+
 describe('suggested fingering on the falling notes', () => {
   it('draws a suggestion in grey, and a red finger wins on the same note', () => {
     const a = {

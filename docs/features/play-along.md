@@ -1,7 +1,7 @@
 ---
 title: Play-along (MuseScore, MusicXML and MIDI, falling notes, transpose, loop)
 status: shipped
-updated: 2026-11-04
+updated: 2026-11-07
 ---
 
 # Play-along
@@ -74,7 +74,9 @@ keyboard from above, like the bird's-eye piano videos.
 - **🔭 Look ahead** (Dewi, 4 Nov 2026: "zoom out and see quite a lot"): how many seconds the falling notes show, from
   1 to 20 (3 to start), by − / + on the play bar or Ctrl + scroll over the falling notes, which leaves the PDF's zoom
   alone. Note names stay 12 px however far you zoom out: on a note too thin to hold one, the name sits just above it,
-  and where two would overlap in one key the later one is left out rather than drawn on top.
+  and where two would overlap in one key the later one is left out rather than drawn on top. Finger numbers are
+  placed before names, so a name gives way to a finger and turning names on never hides one; the finger of the
+  picked note is always shown (Dewi, 7 Nov 2026: "I can't change finger numbers when the note names are on").
 - **More room**: drag the bar under the stave (or focus it and use ↑ ↓) to give the stave or the falling notes more
   height; double-click it to go back to automatic. **🔼 Fewer controls** folds away the settings rows, keeping play,
   bars, look ahead and speed. In the Both view at laptop size the settings rows can push the falling notes below the
