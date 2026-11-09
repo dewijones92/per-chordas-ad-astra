@@ -144,11 +144,60 @@ export async function watchVoices(page: Page): Promise<() => Promise<Voice[]>> {
 
 export async function clickBar(page: Page, index: number): Promise<void> {
   const strip = page.getByTestId('playalong-bars');
-  const box = await strip.boundingBox();
-  if (!box) throw new Error('no bar strip');
   const cell = Number(await strip.getAttribute('data-cell-width'));
-  await page.mouse.click(box.x + cell * (index + 0.5), box.y + 10);
+  await strip.click({ position: { x: cell * (index + 0.5), y: 10 } });
   await expect(page.getByTestId('playalong-position')).toContainText(
     `📍 Bar ${String(index + 1)} ·`,
   );
+}
+
+export interface CountInLog {
+  at: number;
+  beats: number;
+  seconds: number;
+}
+
+export function watchCountIns(page: Page): CountInLog[] {
+  const seen: CountInLog[] = [];
+  page.on('console', (msg) => {
+    if (!msg.text().startsWith('dewidebug play-along count-in clicks')) return;
+    void msg
+      .args()[1]
+      ?.jsonValue()
+      .then((v: { at: string; beats: number; seconds: string }) => {
+        seen.push({ at: Number(v.at), beats: v.beats, seconds: Number(v.seconds) });
+      });
+  });
+  return seen;
+}
+
+export interface ClockSample {
+  clock: number;
+  position: number;
+}
+
+export async function sampleClock(
+  page: Page,
+  until: (samples: ClockSample[]) => boolean,
+  limitMs = 15_000,
+): Promise<ClockSample[]> {
+  const samples: ClockSample[] = [];
+  const started = Date.now();
+  while (!until(samples) && Date.now() - started < limitMs) {
+    samples.push(
+      ...(await page.evaluate(async () => {
+        const canvas = document.querySelector<HTMLElement>('[data-testid="playalong-canvas"]');
+        const out: { clock: number; position: number }[] = [];
+        for (let i = 0; i < 10; i++) {
+          out.push({
+            clock: Number(canvas?.dataset['clock'] ?? 'NaN'),
+            position: Number(canvas?.dataset['position'] ?? 'NaN'),
+          });
+          await new Promise((r) => setTimeout(r, 30));
+        }
+        return out;
+      })),
+    );
+  }
+  return samples;
 }

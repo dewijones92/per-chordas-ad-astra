@@ -10,6 +10,8 @@ import { expect, test, type Page } from '@playwright/test';
 import {
   CLICK_PITCHES,
   clickBar,
+  sampleClock,
+  watchCountIns,
   createPiece,
   eventuallyInRemote,
   openLibrary,
@@ -473,12 +475,19 @@ test('a count-in bar plays before the music starts, and the click is remembered'
   await page.getByTestId('upload-music').setInputFiles(waltzMscz());
   await expect(page.getByTestId('playalong-countin')).toBeChecked();
   await page.getByTestId('playalong-click').check();
+  const countIns = watchCountIns(page);
   await page.getByTestId('playalong-play').click();
   await expect(page.getByTestId('playalong-play')).toHaveAttribute('aria-pressed', 'true');
-  await page.waitForTimeout(900);
-  expect(await position(page)).toBeLessThan(0.05);
-  await expect.poll(() => position(page), { timeout: 8000 }).toBeGreaterThan(0.3);
+  const samples = await sampleClock(page, (s) => (s.at(-1)?.position ?? 0) > 0.3);
   await page.getByTestId('playalong-play').click();
+  const count = countIns[0];
+  if (!count) throw new Error('no count-in logged');
+  expect(count.beats).toBe(3);
+  const end = count.at + count.beats * count.seconds;
+  const during = samples.filter((x) => x.clock > count.at && x.clock < end - 0.05);
+  expect(during.length).toBeGreaterThan(3);
+  expect(Math.max(...during.map((x) => x.position))).toBeLessThan(0.05);
+  expect(samples.at(-1)?.position).toBeGreaterThan(0.3);
 
   await page.getByTestId('playalong-countin').uncheck();
   await page.reload();
@@ -499,24 +508,20 @@ test('the count-in can be a number of beats, plays again each time a loop goes r
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
   await expect(page.getByTestId('playalong-countin')).toBeChecked();
   await page.getByTestId('playalong-countin-length').selectOption('2');
+  const countIns = watchCountIns(page);
   await page.getByTestId('playalong-play').click();
-  const samples = await page.evaluate(async () => {
-    const canvas = document.querySelector<HTMLElement>('[data-testid="playalong-canvas"]');
-    const out: number[] = [];
-    for (let i = 0; i < 100; i++) {
-      out.push(Number(canvas?.dataset['position'] ?? 'NaN'));
-      await new Promise((r) => setTimeout(r, 50));
-    }
-    return out;
-  });
+  const samples = await sampleClock(page, () => countIns.length >= 3);
   await page.getByTestId('playalong-play').click();
-  const peak = samples.findIndex((p) => p > 1.2);
-  expect(peak).toBeGreaterThan(0);
-  const after = samples.slice(peak);
-  const back = after.findIndex((p) => p < 0.05);
-  expect(back).toBeGreaterThan(0);
-  const held = after.slice(back).findIndex((p) => p > 0.05);
-  expect(held * 50).toBeGreaterThanOrEqual(600);
+  expect(countIns.length).toBeGreaterThanOrEqual(2);
+  for (const count of countIns.slice(0, 2)) expect(count.beats).toBe(2);
+  const wrap = countIns[1];
+  if (!wrap) throw new Error('no count-in at the wrap');
+  const held = samples.filter(
+    (x) => x.clock > wrap.at + 0.05 && x.clock < wrap.at + wrap.beats * wrap.seconds - 0.05,
+  );
+  expect(held.length).toBeGreaterThan(3);
+  expect(Math.max(...held.map((x) => x.position))).toBeLessThan(0.05);
+  expect(samples.some((x) => x.position > 1.2)).toBe(true);
 
   await page.getByTestId('playalong-countin').uncheck();
   await expect(page.getByTestId('playalong-countin-length')).toBeDisabled();

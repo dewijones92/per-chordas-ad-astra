@@ -211,6 +211,10 @@ export class PianoPlayer {
     return this.transport.songAt(this.ctx?.currentTime ?? 0);
   }
 
+  audioTime(): number {
+    return this.ctx?.currentTime ?? 0;
+  }
+
   async prepare(): Promise<void> {
     if (!this.ctx) {
       this.ctx = new AudioContext({ latencyHint: 'interactive' });

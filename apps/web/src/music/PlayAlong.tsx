@@ -354,6 +354,7 @@ function FallingCanvas({
           );
       el.dataset['bars'] = drawn.bars.map((b) => `${String(b.index)}:${String(b.y)}`).join(' ');
       el.dataset['position'] = position.toFixed(3);
+      el.dataset['clock'] = (player?.audioTime() ?? 0).toFixed(3);
       el.dataset['fingers'] = String(drawn.fingers);
       el.dataset['joins'] = String(drawn.joins);
       el.dataset['expected'] = [...expected].join(' ');
