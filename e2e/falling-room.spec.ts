@@ -39,6 +39,14 @@ test('the falling notes zoom out to show more, the stave resizes, the settings f
   await expect(page.getByTestId('playalong-compact')).toHaveText(strings.playAlong.moreControls);
   await expect(page.getByTestId('playalong-look-ahead')).toBeVisible();
   await expect(canvas).toBeInViewport({ ratio: 0.5 });
+  const docked = page.getByTestId('dock-playbar');
+  for (const id of ['playalong-play', 'playalong-position', 'playalong-compact', 'playalong-speed'])
+    await expect(docked.getByTestId(id)).toBeVisible();
+  await expect(docked.getByTestId('playalong-position')).toContainText('📍 Bar 1 ·');
+  const bar = await docked.boundingBox();
+  const notes = await canvas.boundingBox();
+  if (!bar || !notes) throw new Error('no boxes');
+  expect(bar.x).toBeGreaterThanOrEqual(notes.x + notes.width - 1);
 
   const box = await canvas.boundingBox();
   if (!box) throw new Error('no canvas');
@@ -74,6 +82,10 @@ test('the falling notes zoom out to show more, the stave resizes, the settings f
 
   await page.getByTestId('playalong-compact').click();
   await expect(page.getByTestId('playalong-transpose')).toBeVisible();
+  await expect(page.getByTestId('dock-playbar').getByTestId('playalong-play')).toHaveCount(0);
+  await expect(page.getByTestId('playalong').getByTestId('playalong-position')).toContainText(
+    '📍 Bar 1 ·',
+  );
   await page.getByTestId('playalong-resize').dblclick();
   await expect(page.getByTestId('notation-frame')).not.toHaveAttribute('style', /height/);
 });

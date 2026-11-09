@@ -20,6 +20,7 @@ import {
   type MusicRef,
   type PlayAlongPrefs,
 } from '@pcaa/shared';
+import { createPortal } from 'react-dom';
 import {
   useCallback,
   useEffect,
@@ -561,12 +562,14 @@ export function PlayAlong({
   onTranspose,
   openBit = null,
   onBitOpened,
+  controlsSlot = null,
 }: {
   pieceId: string;
   music: MusicRef;
   onTranspose: (semitones: number) => void;
   openBit?: string | null;
   onBitOpened?: () => void;
+  controlsSlot?: HTMLElement | null;
 }) {
   const loaded = usePerformance(pieceId, music.file);
   const perf = loaded.data?.perf;
@@ -622,6 +625,7 @@ export function PlayAlong({
     [bitsLoaded, pieceId, music.file, setHardBitsData, reloadHardBits],
   );
   const readout = useRef<HTMLSpanElement>(null);
+  const barDocked = prefs.compact && controlsSlot !== null;
   const transpose = music.transpose;
   const notatable = loaded.data?.score.format !== 'midi';
   const perBeat = perBeatOf(prefs);
@@ -960,7 +964,7 @@ export function PlayAlong({
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [player, perf, playing, prefs.position]);
+  }, [player, perf, playing, prefs.position, barDocked]);
 
   const toggle = useCallback(() => {
     if (!player) return;
@@ -1193,17 +1197,8 @@ export function PlayAlong({
   const playOn = prefs.playOn ?? instrumentFor(perf.staves);
   const capo = playOn === 'guitar' ? capoFor(transpose) : null;
   const loopLabel = loopLabelText(perf, prefs.loop);
-
-  return (
-    <section
-      className={`playalong${drawMode ? ' is-drawing' : ''}${prefs.compact ? ' is-compact' : ''}`}
-      aria-label={tips.playAlong.panel}
-      data-testid="playalong"
-      onPointerDownCapture={() => {
-        if (drawMode) claimDrawing(activeSurface);
-        else releaseScore('click on the play-along');
-      }}
-    >
+  const playBar = (
+    <>
       <div className="playalong-bar">
         <button
           type="button"
@@ -1352,6 +1347,20 @@ export function PlayAlong({
           flats={transposeFifths(perf.keyFifths, transpose) < 0}
         />
       )}
+    </>
+  );
+
+  return (
+    <section
+      className={`playalong${drawMode ? ' is-drawing' : ''}${prefs.compact ? ' is-compact' : ''}`}
+      aria-label={tips.playAlong.panel}
+      data-testid="playalong"
+      onPointerDownCapture={() => {
+        if (drawMode) claimDrawing(activeSurface);
+        else releaseScore('click on the play-along');
+      }}
+    >
+      {barDocked ? createPortal(playBar, controlsSlot) : playBar}
       <div className="playalong-bar playalong-settings">
         <span className="playalong-field" data-testid="playalong-transpose">
           <span>{strings.playAlong.key}</span>

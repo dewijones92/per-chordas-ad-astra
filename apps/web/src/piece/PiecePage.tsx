@@ -424,6 +424,7 @@ export function PiecePage({ id }: { id: string }) {
   );
   const [, navigate] = useLocation();
   const search = useSearch();
+  const [playBarSlot, setPlayBarSlot] = useState<HTMLDivElement | null>(null);
   const [linkedBit, setLinkedBit] = useState(() => {
     const params = new URLSearchParams(search);
     const bit = params.get('bit');
@@ -624,6 +625,7 @@ export function PiecePage({ id }: { id: string }) {
                 transposeMusic(musicRef.file, semitones);
               }}
               openBit={linkedBit?.bit ?? null}
+              controlsSlot={playBarSlot}
               onBitOpened={() => {
                 console.info('dewidebug piece opened on a hard bit; keeping the view', {
                   id,
@@ -639,6 +641,7 @@ export function PiecePage({ id }: { id: string }) {
         </div>
 
         <aside className="dock" aria-label={tips.piece.dock}>
+          <div ref={setPlayBarSlot} className="dock-playbar" data-testid="dock-playbar" />
           <Section title={strings.common.metronome} testId="dock-metronome">
             <MetronomePanel compact />
             {current.targetBpm !== null && (

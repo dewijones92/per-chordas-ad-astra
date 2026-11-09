@@ -224,3 +224,33 @@
 .piece-main.view-split .tool-group {
   flex-wrap: wrap;
 }
+
+.dock-playbar:empty {
+  display: none;
+}
+
+.dock-playbar {
+  border-bottom: 2px solid var(--ink);
+  background: var(--bg);
+}
+
+.dock-playbar .playalong-bar {
+  border-bottom: 0;
+  padding: 10px 12px;
+}
+
+.dock-playbar .playalong-speed {
+  flex: 1 1 100%;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.dock-playbar .playalong-speed input[type='range'] {
+  flex: 1 1 40px;
+  width: 40px;
+  min-width: 40px;
+}
+
+.dock-playbar .spacer {
+  display: none;
+}

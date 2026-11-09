@@ -89,9 +89,12 @@ keyboard from above, like the bird's-eye piano videos.
   placed before names, so a name gives way to a finger and turning names on never hides one; the finger of the
   picked note is always shown (Dewi, 7 Nov 2026: "I can't change finger numbers when the note names are on").
 - **More room**: drag the bar under the stave (or focus it and use ↑ ↓) to give the stave or the falling notes more
-  height; double-click it to go back to automatic. **🔼 Fewer controls** folds away the settings rows, keeping play,
-  bars, look ahead and speed. In the Both view at laptop size the settings rows can push the falling notes below the
-  screen, so this is the switch to reach for there. Look ahead, the stave height and folded controls are remembered
+  height; double-click it to go back to automatic. **🔼 Fewer controls** folds away the settings rows and (9 Nov 2026,
+  Dewi: "the vertical space on the left should just be taken up by the bird's eye view") moves the play bar (play,
+  rewind, bar and time, Wait for me, look ahead, speed, 🔽 More controls) and the Wait for me strip to the top of the
+  right-hand column, above the metronome, in the Notes and Both views alike. The left keeps only the stave (if
+  ticked), the bar strip and the falling notes. It is the same bar, drawn into a slot in the column through a React
+  portal, so its buttons, shortcuts and readout are unchanged; 🔽 More controls brings it back above the notes. Look ahead, the stave height and folded controls are remembered
   per file, per person.
 - **Together lines** (Dewi, 7 Nov 2026: "when the hands are far apart I can't see if they align in time"): where
   notes in different hands (or parts) start at the same moment, a dark dotted line joins them across the gap, at the
