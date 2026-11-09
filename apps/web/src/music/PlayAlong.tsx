@@ -564,6 +564,7 @@ export function PlayAlong({
   openBit = null,
   onBitOpened,
   controlsSlot = null,
+  onCompactChange,
 }: {
   pieceId: string;
   music: MusicRef;
@@ -571,6 +572,7 @@ export function PlayAlong({
   openBit?: string | null;
   onBitOpened?: () => void;
   controlsSlot?: HTMLElement | null;
+  onCompactChange?: (compact: boolean) => void;
 }) {
   const loaded = usePerformance(pieceId, music.file);
   const perf = loaded.data?.perf;
@@ -627,6 +629,10 @@ export function PlayAlong({
   );
   const readout = useRef<HTMLSpanElement>(null);
   const barDocked = prefs.compact && controlsSlot !== null;
+  useEffect(() => {
+    onCompactChange?.(barDocked);
+    return () => onCompactChange?.(false);
+  }, [barDocked, onCompactChange]);
   const transpose = music.transpose;
   const notatable = loaded.data?.score.format !== 'midi';
   const perBeat = perBeatOf(prefs);

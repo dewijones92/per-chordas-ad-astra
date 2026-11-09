@@ -3,7 +3,7 @@ import { describeSync } from './describe.ts';
 import { useSaves, useServerSync } from './use-sync.ts';
 import './sync.css';
 
-export function SyncPill() {
+export function SyncPill({ testId = 'sync-pill' }: { testId?: string } = {}) {
   const local = useSaves();
   const { status, reachable } = useServerSync();
   const label = describeSync(local, status, reachable);
@@ -13,7 +13,7 @@ export function SyncPill() {
       type="button"
       className={`sync-pill tone-${label.tone}`}
       title={label.detail}
-      data-testid="sync-pill"
+      data-testid={testId}
       data-tone={label.tone}
       disabled={!canFlush}
       onClick={() => void api.flush('button')}

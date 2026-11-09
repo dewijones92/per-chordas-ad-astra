@@ -94,7 +94,13 @@ keyboard from above, like the bird's-eye piano videos.
   rewind, bar and time, Wait for me, look ahead, speed, 🔽 More controls) and the Wait for me strip to the top of the
   right-hand column, above the metronome, in the Notes and Both views alike. The left keeps only the stave (if
   ticked), the bar strip and the falling notes. It is the same bar, drawn into a slot in the column through a React
-  portal, so its buttons, shortcuts and readout are unchanged; 🔽 More controls brings it back above the notes. Look ahead, the stave height and folded controls are remembered
+  portal, so its buttons, shortcuts and readout are unchanged; 🔽 More controls brings it back above the notes.
+  Fewer controls also hides the app's top menu and the piece's title bar (9 Nov 2026, Dewi: "can we also hide this
+  bit"), so the falling notes start at the top of the window; the right-hand column then starts with ⬅️ Library, the
+  Score / Both / Notes switch and the save status, so nothing is more than one click away. The piece page sets
+  `notes-focus` on the page body while Play-along reports its bar is docked (`onCompactChange`), and the stylesheet
+  hides `.topbar` and `.piece-head`; the Score view has no Play-along, so the bars come back there. The app reopens
+  where you left off, so a piece left in Fewer controls reopens that way. Look ahead, the stave height and folded controls are remembered
   per file, per person.
 - **Together lines** (Dewi, 7 Nov 2026: "when the hands are far apart I can't see if they align in time"): where
   notes in different hands (or parts) start at the same moment, a dark dotted line joins them across the gap, at the

@@ -254,3 +254,14 @@
 .dock-playbar .spacer {
   display: none;
 }
+
+body.notes-focus .piece-head {
+  display: none;
+}
+
+.dock-head {
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--line);
+}

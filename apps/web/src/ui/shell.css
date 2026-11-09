@@ -126,3 +126,7 @@
 .keys-help p {
   margin: 3px 0;
 }
+
+body.notes-focus .topbar {
+  display: none;
+}

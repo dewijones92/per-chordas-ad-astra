@@ -14,6 +14,7 @@ import {
 } from '@pcaa/shared';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
+import { SyncPill } from '../sync/SyncPill.tsx';
 import { api } from '../api/client.ts';
 import { Toolbar } from '../annotate/Toolbar.tsx';
 import { DrawingStatus } from '../annotate/DrawingStatus.tsx';
@@ -425,6 +426,14 @@ export function PiecePage({ id }: { id: string }) {
   const [, navigate] = useLocation();
   const search = useSearch();
   const [playBarSlot, setPlayBarSlot] = useState<HTMLDivElement | null>(null);
+  const [notesFocus, setNotesFocus] = useState(false);
+  useEffect(() => {
+    document.body.classList.toggle('notes-focus', notesFocus);
+    console.info('dewidebug piece notes focus', { on: notesFocus });
+    return () => {
+      document.body.classList.remove('notes-focus');
+    };
+  }, [notesFocus]);
   const [linkedBit, setLinkedBit] = useState(() => {
     const params = new URLSearchParams(search);
     const bit = params.get('bit');
@@ -501,6 +510,42 @@ export function PiecePage({ id }: { id: string }) {
     stablePatch({ transposeFile: { file, transpose: semitones } });
   };
 
+  const viewSwitch = musicRef && (
+    <div className="row piece-views" role="group" aria-label={tips.piece.viewGroup}>
+      {VIEW_CHOICES.filter((v) => scoreFile !== null || v.mode === 'notes').map((v) => (
+        <button
+          key={v.mode}
+          type="button"
+          className="btn small"
+          aria-pressed={viewMode === v.mode}
+          data-piece-view={v.mode}
+          title={v.title}
+          onClick={() => {
+            chooseView(v.mode, musicRef.file);
+          }}
+        >
+          {v.label}
+        </button>
+      ))}
+      {current.music.length > 1 && (
+        <select
+          className="input mini"
+          aria-label={tips.piece.musicFile}
+          value={musicRef.file}
+          onChange={(e) => {
+            chooseView(viewMode === 'score' ? 'split' : viewMode, e.target.value);
+          }}
+        >
+          {current.music.map((m) => (
+            <option key={m.file} value={m.file}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+
   return (
     <div className="piece-page">
       <header className="piece-head">
@@ -557,41 +602,7 @@ export function PiecePage({ id }: { id: string }) {
             ))}
           </div>
         )}
-        {musicRef && (
-          <div className="row piece-views" role="group" aria-label={tips.piece.viewGroup}>
-            {VIEW_CHOICES.filter((v) => scoreFile !== null || v.mode === 'notes').map((v) => (
-              <button
-                key={v.mode}
-                type="button"
-                className="btn small"
-                aria-pressed={viewMode === v.mode}
-                data-piece-view={v.mode}
-                title={v.title}
-                onClick={() => {
-                  chooseView(v.mode, musicRef.file);
-                }}
-              >
-                {v.label}
-              </button>
-            ))}
-            {current.music.length > 1 && (
-              <select
-                className="input mini"
-                aria-label={tips.piece.musicFile}
-                value={musicRef.file}
-                onChange={(e) => {
-                  chooseView(viewMode === 'score' ? 'split' : viewMode, e.target.value);
-                }}
-              >
-                {current.music.map((m) => (
-                  <option key={m.file} value={m.file}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        )}
+        {!notesFocus && viewSwitch}
       </header>
 
       <div className="piece-body">
@@ -626,6 +637,7 @@ export function PiecePage({ id }: { id: string }) {
               }}
               openBit={linkedBit?.bit ?? null}
               controlsSlot={playBarSlot}
+              onCompactChange={setNotesFocus}
               onBitOpened={() => {
                 console.info('dewidebug piece opened on a hard bit; keeping the view', {
                   id,
@@ -641,6 +653,15 @@ export function PiecePage({ id }: { id: string }) {
         </div>
 
         <aside className="dock" aria-label={tips.piece.dock}>
+          {notesFocus && (
+            <div className="dock-head row" data-testid="dock-head">
+              <Link href="/" className="btn small ghost">
+                {strings.piece.library}
+              </Link>
+              {viewSwitch}
+              <SyncPill testId="sync-pill-docked" />
+            </div>
+          )}
           <div ref={setPlayBarSlot} className="dock-playbar" data-testid="dock-playbar" />
           <Section title={strings.common.metronome} testId="dock-metronome">
             <MetronomePanel compact />

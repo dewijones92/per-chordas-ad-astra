@@ -47,6 +47,15 @@ test('the falling notes zoom out to show more, the stave resizes, the settings f
   const notes = await canvas.boundingBox();
   if (!bar || !notes) throw new Error('no boxes');
   expect(bar.x).toBeGreaterThanOrEqual(notes.x + notes.width - 1);
+  await expect(page.locator('.topbar')).toBeHidden();
+  await expect(page.getByTestId('piece-title')).toBeHidden();
+  const head = page.getByTestId('dock-head');
+  await expect(head.locator('[data-piece-view="notes"]')).toBeVisible();
+  await expect(head.getByRole('link', { name: strings.piece.library })).toBeVisible();
+  await expect(head.getByTestId('sync-pill-docked')).toBeVisible();
+  await expect
+    .poll(async () => (await page.getByTestId('playalong').boundingBox())?.y)
+    .toBeLessThan(10);
 
   const box = await canvas.boundingBox();
   if (!box) throw new Error('no canvas');
@@ -83,6 +92,9 @@ test('the falling notes zoom out to show more, the stave resizes, the settings f
   await page.getByTestId('playalong-compact').click();
   await expect(page.getByTestId('playalong-transpose')).toBeVisible();
   await expect(page.getByTestId('dock-playbar').getByTestId('playalong-play')).toHaveCount(0);
+  await expect(page.locator('.topbar')).toBeVisible();
+  await expect(page.getByTestId('piece-title')).toBeVisible();
+  await expect(page.getByTestId('dock-head')).toHaveCount(0);
   await expect(page.getByTestId('playalong').getByTestId('playalong-position')).toContainText(
     '📍 Bar 1 ·',
   );

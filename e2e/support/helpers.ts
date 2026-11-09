@@ -82,7 +82,11 @@ export async function learnKeySaved(page: Page, on: boolean): Promise<void> {
 export async function openLibrary(page: Page): Promise<void> {
   await page.goto('/');
   await expect(page.locator('.boot')).toHaveCount(0);
-  await page.locator('.nav').getByRole('link', { name: strings.nav.library, exact: true }).click();
+  const nav = page.locator('.nav').getByRole('link', { name: strings.nav.library, exact: true });
+  const docked = page.getByTestId('dock-head').getByRole('link', { name: strings.piece.library });
+  await expect(nav.or(docked).first()).toBeVisible();
+  if (await docked.isVisible()) await docked.click();
+  else await nav.click();
   await expect(page.getByRole('heading', { name: 'Your library' })).toBeVisible();
 }
 
