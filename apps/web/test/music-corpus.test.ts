@@ -13,6 +13,12 @@ import { grandStaff, scoreHands } from '../src/music/grand-staff.ts';
 
 const corpus = process.env['MUSIC_CORPUS'];
 const KNOWN_DIFFERENCES = new Set(['repeat52.mscx', 'repeat53.mscx']);
+const MUSESCORE1_DIFFERENCES = new Set([
+  'tuplets_1.mscx',
+  'tuplets_2.mscx',
+  'hor_frame_and_mmrest.mscx',
+  'style.mscx',
+]);
 const CROSS_STAFF_TIES: Readonly<Record<string, number>> = { 'goldberg.mscz': 3 };
 const HANDS_AGREE: Readonly<Record<string, number>> = {
   'Reunion.mscz': 0.86,
@@ -28,6 +34,17 @@ const HANDS_WIDE: Readonly<Record<string, number>> = {
   'goldberg.mscz': 30,
   'chopin-nocturne-op9-1.mid': 12,
 };
+
+function museScoreNotes(text: string): number {
+  const main = text.includes('<Score>')
+    ? text
+        .slice(text.indexOf('<Score>') + '<Score>'.length)
+        .replace(/<Score>[\s\S]*?<\/Score>/g, '')
+    : text;
+  return [...main.matchAll(/<Note(?:\s[^>]*?)?(?:\/>|>([\s\S]*?)<\/Note>)/g)].filter(
+    (m) => !(m[1] ?? '').includes('<play>0</play>'),
+  ).length;
+}
 
 function noteOnCount(bytes: Uint8Array): number {
   let pos = 14;
@@ -102,6 +119,59 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
     '%s (jump into an ending with repeats) still differs from MuseScore',
     (name) => {
       expect(playedBars(name)).toBe(oracle.get(name));
+    },
+  );
+
+  const listed = (sub: string, pattern: RegExp) => {
+    try {
+      return readdirSync(join(dir, sub)).filter((f) => pattern.test(f));
+    } catch {
+      return [];
+    }
+  };
+  const playShape = (path: string) => {
+    const p = buildPerformance(loadScore(readFileSync(path)));
+    return {
+      bars: p.bars.map((b) => b.number).join(','),
+      key: p.keyFifths,
+      notes: p.notes
+        .map(
+          (n) => `${String(n.staff)}:${String(n.pitch)}@${n.start.toFixed(3)}-${n.end.toFixed(3)}`,
+        )
+        .sort(),
+    };
+  };
+  const pairs = listed('compat114', /^(?!.*-ref\.mscx$).*\.mscx$/);
+  it.each(pairs.filter((n) => !MUSESCORE1_DIFFERENCES.has(n)))(
+    "%s (MuseScore 1) plays the same as MuseScore's own conversion of it",
+    (name) => {
+      const ref = name.replace(/\.mscx$/, '-ref.mscx');
+      expect(playShape(join(dir, 'compat114', name))).toEqual(
+        playShape(join(dir, 'compat114', ref)),
+      );
+    },
+  );
+  it.fails.each(pairs.filter((n) => MUSESCORE1_DIFFERENCES.has(n)))(
+    "%s (MuseScore 1) still differs from MuseScore's own conversion",
+    (name) => {
+      const ref = name.replace(/\.mscx$/, '-ref.mscx');
+      expect(playShape(join(dir, 'compat114', name))).toEqual(
+        playShape(join(dir, 'compat114', ref)),
+      );
+    },
+  );
+  it.each(listed('ms1', /\.msc[zx]$/))(
+    '%s (an old MuseScore demo) reads every written note',
+    (name) => {
+      const bytes = readFileSync(join(dir, 'ms1', name));
+      const text = unpackScore(bytes);
+      const score = parseScoreText(text);
+      expect(score.version.startsWith('1.')).toBe(true);
+      expect(score.notes.length).toBe(museScoreNotes(text));
+      expect(score.measures.length).toBeGreaterThan(0);
+      console.info(
+        `dewidebug corpus ms1 ${name}: v${score.version} "${score.title}" notes=${String(score.notes.length)} bars=${String(score.measures.length)}`,
+      );
     },
   );
 
@@ -233,12 +303,7 @@ describe.skipIf(!corpus)('real-world corpus (MUSIC_CORPUS)', () => {
       const score = parseScoreText(text);
       const written =
         score.format === 'musescore'
-          ? [
-              ...text
-                .slice(text.indexOf('<Score>') + '<Score>'.length)
-                .replace(/<Score>[\s\S]*?<\/Score>/g, '')
-                .matchAll(/<Note>([\s\S]*?)<\/Note>/g),
-            ].filter((m) => !(m[1] ?? '').includes('<play>0</play>')).length
+          ? museScoreNotes(text)
           : [...text.matchAll(/<note\b[^>]*>([\s\S]*?)<\/note>/g)].filter(
               (m) => (m[1] ?? '').includes('<pitch>') && !(m[1] ?? '').includes('<cue/>'),
             ).length;

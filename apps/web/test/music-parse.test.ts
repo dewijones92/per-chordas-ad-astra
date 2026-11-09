@@ -11,6 +11,8 @@ import { exportName, performanceToMidi, transposeMusicXml } from '../src/music/e
 const enc = (s: string) => new TextEncoder().encode(s);
 
 const FORMATS: [string, () => Uint8Array][] = [
+  ['MuseScore 1.14 .mscx', () => enc(makeMscx(PIANO_WALTZ, '1.14'))],
+  ['MuseScore 1.14 .mscz', () => zipScore('waltz.mscx', makeMscx(PIANO_WALTZ, '1.14'))],
   ['MuseScore 2.06 .mscx', () => enc(makeMscx(PIANO_WALTZ, '2.06'))],
   ['MuseScore 3.02 .mscx', () => enc(makeMscx(PIANO_WALTZ, '3.02'))],
   ['MuseScore 4.50 .mscx', () => enc(makeMscx(PIANO_WALTZ, '4.50'))],
@@ -79,6 +81,131 @@ describe('every supported format reads the same music', () => {
           (a[2] ?? 0) - (b[2] ?? 0) || (a[0] ?? 0) - (b[0] ?? 0) || (a[1] ?? 0) - (b[1] ?? 0),
       );
     expect(sort(got.notes)).toEqual(sort(EXPECTED_NOTES));
+  });
+});
+
+describe('MuseScore oddities', () => {
+  const chord = (pitch: number, extra = '') =>
+    `<Chord><durationType>whole</durationType>${extra}<Note><pitch>${String(pitch)}</pitch><tpc>14</tpc></Note></Chord>`;
+  const bar = (body: string) =>
+    `<Measure><voice><TimeSig><sigN>4</sigN><sigD>4</sigD></TimeSig>${body}</voice></Measure>`;
+  const file = (version: string, bars: string) =>
+    `<?xml version="1.0"?><museScore version="${version}"><Score><Division>480</Division><Part><Staff id="1"/><trackName>Flute</trackName></Part><Staff id="1">${bars}</Staff></Score></museScore>`;
+
+  it('matches staves to their parts when the staves are not numbered (MuseScore 5)', () => {
+    const score = parseScoreText(
+      `<?xml version="1.0"?><museScore version="5.00"><Score><Division>480</Division><Part><Staff/><trackName>Flute</trackName></Part><Part><Staff><StaffType group="percussion"/></Staff><trackName>Drums</trackName></Part><Staff id="1">${bar(chord(72))}</Staff><Staff id="2">${bar(chord(36))}</Staff></Score></museScore>`,
+    );
+    expect(score.staves.map((s) => s.name)).toEqual(['Flute']);
+    expect(score.notes.map((n) => n.pitch)).toEqual([72]);
+  });
+
+  it('plays a two-note tremolo as two halves of the bar, not two whole notes (MuseScore 3-5)', () => {
+    const score = parseScoreText(
+      file(
+        '4.50',
+        bar(
+          chord(
+            72,
+            '<duration>1/2</duration><TremoloTwoChord><subtype>c8</subtype></TremoloTwoChord>',
+          ) + chord(76, '<duration>1/2</duration>'),
+        ) + bar(chord(79)),
+      ),
+    );
+    expect(score.notes.map((n) => [n.pitch, n.tick, n.ticks])).toEqual([
+      [72, 0, 960],
+      [76, 960, 960],
+      [79, 1920, 1920],
+    ]);
+  });
+});
+
+describe('MuseScore 1 files', () => {
+  const html = (line: string) =>
+    `<html-data><html><head><style type="text/css">p, li { white-space: pre-wrap; }</style></head><body><p>${line}</p></body></html></html-data>`;
+  const legacy = (parts: string, staves: string, extra = '') =>
+    `<?xml version="1.0"?><museScore version="1.14"><Division>480</Division><siglist><sig tick="0"><nom>3</nom><denom>16</denom><nom2>3</nom2><denom2>8</denom2></sig><sig tick="360"><nom>3</nom><denom>8</denom></sig></siglist>${extra}${parts}${staves}</museScore>`;
+  const piano = `<Part><Staff><cleflist><clef tick="0" idx="0"/></cleflist><keylist><key tick="0" idx="-1"/></keylist></Staff><Staff><cleflist><clef tick="0" idx="4"/><clef tick="1080" idx="0"/></cleflist></Staff><trackName>Piano</trackName><Instrument><trackName>Piano</trackName></Instrument></Part>`;
+  const note = (pitch: number, inner = '') =>
+    `<Note><pitch>${String(pitch)}</pitch><tpc>${String([14, 21, 16, 23, 18, 13, 20, 15, 22, 17, 24, 19][pitch % 12] ?? 14)}</tpc>${inner}</Note>`;
+
+  it('reads a pickup bar from the time signature list, the clefs, the opening key and the credits', () => {
+    const score = parseScoreText(
+      legacy(
+        piano,
+        `<Staff id="1"><VBox><Text><style>2</style><subtype>Title</subtype>${html('Sonate, “Tempest”')}</Text><Text><style>4</style><subtype>Composer</subtype><html-data><html><body><p>Ludwig van Beethoven</p><p>(1770 - 1827)</p></body></html></html-data></Text></VBox>` +
+          `<Measure number="1"><irregular/><TimeSig><subtype>200</subtype><den>8</den><nom1>3</nom1></TimeSig><Chord><durationType>16th</durationType>${note(69)}</Chord><Chord><durationType>eighth</durationType>${note(77, `<Text><style>8</style><subtype>Fingering</subtype>${html('4')}</Text>`)}</Chord></Measure>` +
+          `<Measure number="1"><Chord><durationType>quarter</durationType><dots>1</dots>${note(74)}</Chord></Measure>` +
+          `<Measure number="2"><Chord><durationType>quarter</durationType><dots>1</dots>${note(72)}</Chord></Measure></Staff>` +
+          `<Staff id="2"><Measure number="1"><irregular/><Rest><durationType>measure</durationType></Rest></Measure>` +
+          `<Measure number="1"><Chord><durationType>eighth</durationType>${note(50)}</Chord><Chord><track>5</track><tick>360</tick><durationType>quarter</durationType>${note(45)}</Chord><Chord><tick>480</tick><durationType>quarter</durationType>${note(53)}</Chord></Measure>` +
+          `<Measure number="2"><Chord><durationType>quarter</durationType><dots>1</dots>${note(60)}</Chord></Measure></Staff>`,
+      ),
+    );
+    expect(score.version).toBe('1.14');
+    expect(score.title).toBe('Sonate, “Tempest”');
+    expect(score.composer).toBe('Ludwig van Beethoven');
+    expect(score.measures.map((m) => [m.number, m.tick, m.ticks])).toEqual([
+      [1, 0, 360],
+      [1, 360, 720],
+      [2, 1080, 720],
+    ]);
+    expect(score.keys).toEqual([{ tick: 0, fifths: -1, minor: false }]);
+    expect(score.notation?.times).toEqual([{ tick: 0, n: 3, d: 8 }]);
+    expect(score.notation?.clefs.map((c) => [c.staff, c.tick, c.clef])).toEqual([
+      [0, 0, 'G'],
+      [1, 0, 'F'],
+      [1, 1080, 'G'],
+    ]);
+    expect(score.notes.find((n) => n.pitch === 77)?.finger).toEqual({ text: '4', kind: 'piano' });
+    expect(score.notes.filter((n) => n.staff === 1).map((n) => [n.pitch, n.tick, n.ticks])).toEqual(
+      [
+        [45, 360, 480],
+        [50, 360, 240],
+        [53, 480, 480],
+        [60, 1080, 720],
+      ],
+    );
+  });
+
+  it('reads the oldest files, with pitches as attributes and lengths in ticks, and leaves drums out', () => {
+    const score = parseScoreText(
+      `<?xml version="1.0"?><museScore version="1.10"><Division>480</Division><Part><Staff/><trackName>Guitar</trackName></Part><Part><Staff/><trackName>Drums</trackName><Instrument><useDrumset>1</useDrumset></Instrument></Part>` +
+        `<Staff id="1"><Measure number="1"><Chord><ticklen>960</ticklen><Note pitch="64" tpc="18"/></Chord><Rest><ticklen>960</ticklen></Rest></Measure></Staff>` +
+        `<Staff id="2"><Measure number="1"><Chord><ticklen>1920</ticklen><Note pitch="36" tpc="14"/></Chord></Measure></Staff></museScore>`,
+    );
+    expect(score.staves.map((s) => s.name)).toEqual(['Guitar']);
+    expect(score.measures.map((m) => m.ticks)).toEqual([1920]);
+    expect(score.notes.map((n) => [n.pitch, n.tick, n.ticks])).toEqual([[64, 0, 960]]);
+  });
+
+  it('keeps a note that starts while the same voice still holds a longer one when drawn as notation', () => {
+    const score = parseScoreText(
+      `<?xml version="1.0"?><museScore version="1.14"><Division>480</Division><siglist><sig tick="0"><nom>3</nom><denom>8</denom></sig></siglist><Part><Staff/><trackName>Piano</trackName></Part>` +
+        `<Staff id="1"><Measure number="1"><Chord><durationType>quarter</durationType><dots>1</dots>${note(45)}</Chord><Chord><tick>120</tick><dots>1</dots><durationType>eighth</durationType>${note(52)}</Chord><Chord><durationType>eighth</durationType>${note(52)}</Chord></Measure>` +
+        `<Measure number="2"><Chord><durationType>quarter</durationType><dots>1</dots>${note(50)}</Chord></Measure></Staff></museScore>`,
+    );
+    if (!score.notation) throw new Error('no notation');
+    const back = parseScoreText(toMusicXml(score, score.notation));
+    const shape = (s: typeof score) => s.notes.map((n) => [n.pitch, n.tick, n.ticks]);
+    expect(shape(score)).toEqual([
+      [45, 0, 720],
+      [52, 120, 360],
+      [52, 480, 240],
+      [50, 720, 720],
+    ]);
+    expect(shape(back)).toEqual(shape(score));
+  });
+
+  it('plays an old two-note tremolo as two halves of the bar', () => {
+    const score = parseScoreText(
+      `<?xml version="1.0"?><museScore version="1.14"><Division>480</Division><siglist><sig tick="0"><nom>4</nom><denom>4</denom></sig></siglist><Part><Staff/><trackName>Flute</trackName></Part>` +
+        `<Staff id="1"><Measure number="1"><Chord><durationType>whole</durationType>${note(72)}</Chord><Chord><tick>960</tick><durationType>whole</durationType>${note(76)}<Tremolo><subtype>3</subtype></Tremolo></Chord></Measure></Staff></museScore>`,
+    );
+    expect(score.notes.map((n) => [n.pitch, n.tick, n.ticks])).toEqual([
+      [72, 0, 960],
+      [76, 960, 960],
+    ]);
   });
 });
 

@@ -1,5 +1,21 @@
 import type { Instrument } from '@pcaa/shared';
 export const TPQ = 480;
+
+export const QUARTERS: Readonly<Record<string, number>> = {
+  longa: 16,
+  breve: 8,
+  whole: 4,
+  half: 2,
+  quarter: 1,
+  eighth: 0.5,
+  '16th': 0.25,
+  '32nd': 0.125,
+  '64th': 1 / 16,
+  '128th': 1 / 32,
+  '256th': 1 / 64,
+  '512th': 1 / 128,
+  '1024th': 1 / 256,
+};
 export const GRACE_TICKS = TPQ / 8;
 
 export type StaffRole = 'right' | 'left' | 'single';

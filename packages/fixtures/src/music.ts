@@ -34,7 +34,7 @@ export interface FixtureScore {
   measures: FixtureMeasure[];
 }
 
-export type MuseScoreVersion = '2.06' | '3.02' | '4.50';
+export type MuseScoreVersion = '1.14' | '2.06' | '3.02' | '4.50';
 
 const QUARTERS: Record<FixtureDuration, number> = {
   whole: 4,
@@ -67,6 +67,7 @@ function staffCount(score: FixtureScore): number {
 }
 
 export function makeMscx(score: FixtureScore, version: MuseScoreVersion): string {
+  if (version === '1.14') return makeMscx114(score);
   const v2 = version.startsWith('2');
   const v4 = version.startsWith('4');
   let staffId = 0;
@@ -183,6 +184,122 @@ export function makeMscx(score: FixtureScore, version: MuseScoreVersion): string
   }
   return `<?xml version="1.0" encoding="UTF-8"?>
 <museScore version="${version}"><Score><Division>480</Division><metaTag name="workTitle">${esc(score.title)}</metaTag>${score.composer ? `<metaTag name="composer">${esc(score.composer)}</metaTag>` : ''}${parts}${staves.join('')}</Score></museScore>`;
+}
+
+const DIVISION_114 = 480;
+const FINGER_114: Record<NonNullable<FixtureChord['fingerStyle']>, string> = {
+  fingering: 'Fingering',
+  lhGuitarFingering: 'LH Guitar Fingering',
+  rhGuitarFingering: 'RH Guitar Fingering',
+  stringNumber: 'StringNumber',
+};
+
+function html114(lines: readonly string[]): string {
+  const paragraphs = lines.map((line) => `<p style=" margin-top:0px;">${esc(line)}</p>`).join('\n');
+  return `<html-data>\n<html><head><meta name="qrichtext" content="1" /><style type="text/css">\np, li { white-space: pre-wrap; }\n</style></head><body style=" font-family:'Times New Roman';">\n${paragraphs}</body></html>\n</html-data>`;
+}
+
+function makeMscx114(score: FixtureScore): string {
+  const [n, d] = score.time;
+  const barTicks = (n * 4 * DIVISION_114) / d;
+  const key = score.fifths < 0 ? score.fifths + 16 : score.fifths;
+  const parts = score.parts
+    .map((p) => {
+      const defs = Array.from({ length: p.staves }, (_, i) => {
+        const clef = p.staves === 2 && i === 1 ? 4 : 0;
+        return `<Staff><cleflist><clef tick="0" idx="${String(clef)}"/></cleflist><keylist><key tick="0" idx="${String(score.fifths)}"/></keylist></Staff>`;
+      }).join('');
+      return `<Part>${defs}<name><style>9</style><subtype>InstrumentLong</subtype>${html114([p.name])}</name><Instrument><trackName>${esc(p.name)}</trackName>${p.instrument ? `<instrumentId>${p.instrument}</instrumentId>` : ''}</Instrument></Part>`;
+    })
+    .join('');
+  const voltas = score.measures
+    .flatMap((m, mi) =>
+      m.volta
+        ? [
+            `<Volta><subtype>1</subtype><tick>${String(mi * barTicks)}</tick><tick2>${String((mi + m.volta.length) * barTicks)}</tick2><endings>${m.volta.endings.join(',')}</endings></Volta>`,
+          ]
+        : [],
+    )
+    .join('');
+  const tempos = [
+    `<tempo tick="0">${String(score.tempo / 60)}</tempo>`,
+    ...score.measures.flatMap((m, mi) =>
+      m.tempo ? [`<tempo tick="${String(mi * barTicks)}">${String(m.tempo / 60)}</tempo>`] : [],
+    ),
+  ].join('');
+  let tupletId = 0;
+  let slurId = 0;
+  const staves: string[] = [];
+  for (let s = 0; s < staffCount(score); s++) {
+    const credits =
+      s === 0
+        ? `<VBox><Text><style>2</style><subtype>Title</subtype>${html114([score.title])}</Text>${score.composer ? `<Text><style>4</style><subtype>Composer</subtype>${html114([score.composer, '(1900 - 2000)'])}</Text>` : ''}</VBox>`
+        : '';
+    const measures = score.measures.map((m, mi) => {
+      const body: string[] = [];
+      if (m.startRepeat) body.push('<startRepeat/>');
+      if (m.endRepeat) body.push(`<endRepeat>${String(m.endRepeat)}</endRepeat>`);
+      if (m.marker)
+        body.push(`<Marker><subtype>Repeat</subtype><label>${m.marker}</label></Marker>`);
+      if (m.jump) {
+        body.push(
+          `<Jump><subtype>Repeat</subtype><jumpTo>${m.jump.to}</jumpTo><playUntil>${m.jump.until}</playUntil><continueAt>${m.jump.continueAt ?? ''}</continueAt></Jump>`,
+        );
+      }
+      if (mi === 0) {
+        body.push(`<KeySig><subtype>${String(key)}</subtype></KeySig>`);
+        body.push(
+          `<TimeSig><subtype>${String(n * 64 + d)}</subtype><den>${String(d)}</den><nom1>${String(n)}</nom1></TimeSig>`,
+        );
+      }
+      const bpm = mi === 0 ? score.tempo : m.tempo;
+      if (bpm && s === 0)
+        body.push(`<Tempo><tempo>${String(bpm / 60)}</tempo><subtype>Tempo</subtype></Tempo>`);
+      let inTuplet = false;
+      let first = true;
+      for (const c of m.staves[s] ?? []) {
+        if (c.triplet && !inTuplet) {
+          tupletId += 1;
+          body.push(
+            `<Tuplet id="${String(tupletId)}"><normalNotes>2</normalNotes><actualNotes>3</actualNotes><baseNote>${c.dur}</baseNote></Tuplet>`,
+          );
+          inTuplet = true;
+        } else if (!c.triplet) {
+          inTuplet = false;
+        }
+        const tick = first && !c.grace ? `<tick>${String(mi * barTicks)}</tick>` : '';
+        if (!c.grace) first = false;
+        const track = `<track>${String(s * 4)}</track>`;
+        const dots = c.dots ? `<dots>${String(c.dots)}</dots>` : '';
+        const tuplet = c.triplet ? `<Tuplet>${String(tupletId)}</Tuplet>` : '';
+        if (!c.pitches || c.pitches.length === 0) {
+          body.push(
+            `<Rest>${tick}${track}${tuplet}${dots}<durationType>${c.dur}</durationType></Rest>`,
+          );
+          continue;
+        }
+        if (c.slur === 'start') slurId += 1;
+        const slur = c.slur ? `<Slur type="${c.slur}" number="${String(slurId)}"/>` : '';
+        const notes = c.pitches
+          .map((p, pi) => {
+            const finger = c.fingers?.[pi];
+            const fingering = finger
+              ? `<Text><style>8</style><subtype>${FINGER_114[c.fingerStyle ?? 'fingering']}</subtype>${html114([finger])}</Text>`
+              : '';
+            const tie = c.tie ? '<Tie><up>2</up></Tie>' : '';
+            return `<Note><pitch>${String(p)}</pitch><tpc>${String(SHARP_TPC[((p % 12) + 12) % 12] ?? 14)}</tpc>${tie}${fingering}</Note>`;
+          })
+          .join('');
+        body.push(
+          `<Chord>${tick}${track}${tuplet}${dots}<durationType>${c.dur}</durationType>${c.grace ? '<acciaccatura/>' : ''}${slur}${notes}</Chord>`,
+        );
+      }
+      return `<Measure number="${String(mi + 1)}">${body.join('')}</Measure>`;
+    });
+    staves.push(`<Staff id="${String(s + 1)}">${credits}${measures.join('')}</Staff>`);
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<museScore version="1.14"><programVersion>1.3</programVersion><programRevision>5702</programRevision><Division>${String(DIVISION_114)}</Division><siglist><sig tick="0"><nom>${String(n)}</nom><denom>${String(d)}</denom></sig></siglist><tempolist fix="2">${tempos}</tempolist>${parts}${voltas}${staves.join('')}</museScore>`;
 }
 
 const DIVISIONS = 24;

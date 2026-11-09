@@ -3,6 +3,7 @@ import { fingerKind, isGuitarName } from './file-check.ts';
 import {
   firstPerTick,
   GRACE_TICKS,
+  QUARTERS,
   roleFor,
   staffName,
   TPQ,
@@ -25,6 +26,7 @@ import {
   type Volta,
   type Finger,
 } from './model.ts';
+import { isMuseScore1, upgradeMuseScore1, type Legacy114 } from './mscx-114.ts';
 import {
   child,
   childElements,
@@ -34,22 +36,6 @@ import {
   parseFraction,
   text,
 } from './xml.ts';
-
-const QUARTERS: Readonly<Record<string, number>> = {
-  longa: 16,
-  breve: 8,
-  whole: 4,
-  half: 2,
-  quarter: 1,
-  eighth: 0.5,
-  '16th': 0.25,
-  '32nd': 0.125,
-  '64th': 1 / 16,
-  '128th': 1 / 32,
-  '256th': 1 / 64,
-  '512th': 1 / 128,
-  '1024th': 1 / 256,
-};
 
 const GRACE_BEFORE = new Set(['acciaccatura', 'appoggiatura', 'grace4', 'grace16', 'grace32']);
 const GRACE_AFTER = new Set(['grace8after', 'grace16after', 'grace32after']);
@@ -86,9 +72,9 @@ function chordTicks(el: Element, measureTicks: number, scale: number): number {
     return given === null ? measureTicks : wholeToTicks(given) * scale;
   }
   const quarters = QUARTERS[type];
-  if (quarters === undefined) {
-    const given = parseFraction(childText(el, 'duration'));
-    return given === null ? 0 : wholeToTicks(given) * scale;
+  const actual = parseFraction(childText(el, 'duration'));
+  if (quarters === undefined || actual !== null) {
+    return actual === null ? 0 : wholeToTicks(actual) * scale;
   }
   let ticks = quarters * TPQ;
   let add = ticks;
@@ -243,7 +229,7 @@ function readStaffDefs(score: Element): { parts: ScorePart[]; defs: StaffDef[]; 
     parts.push({ name, staves: [], instrument: instrumentId, tab });
     const instrumentClefs = instrument ? childrenNamed(instrument, 'clef') : [];
     childrenNamed(part, 'Staff').forEach((staff, position) => {
-      const id = Number(staff.getAttribute('id'));
+      const id = staff.hasAttribute('id') ? Number(staff.getAttribute('id')) : defs.length + 1;
       const group = child(staff, 'StaffType')?.getAttribute('group') ?? 'pitched';
       const linked = child(staff, 'linkedTo') !== null;
       const fromInstrument = instrumentClefs.find(
@@ -256,10 +242,42 @@ function readStaffDefs(score: Element): { parts: ScorePart[]; defs: StaffDef[]; 
   return { parts, defs, names };
 }
 
+function addLegacy(
+  legacy: Legacy114,
+  into: {
+    measures: readonly ScoreMeasure[];
+    tickScale: number;
+    tempos: TempoMark[];
+    voltas: Volta[];
+    clefs: ClefMark[];
+    staffOf: (id: number) => number | undefined;
+  },
+): void {
+  const { measures, tickScale } = into;
+  for (const t of legacy.tempos) into.tempos.push({ tick: t.tick * tickScale, bpm: t.bpm });
+  for (const c of legacy.clefs) {
+    const staff = into.staffOf(c.staffId);
+    if (staff !== undefined) into.clefs.push({ staff, tick: c.tick * tickScale, clef: c.clef });
+  }
+  for (const v of legacy.voltas) {
+    const startTick = v.tick * tickScale;
+    const endTick = v.tick2 * tickScale;
+    const start = measures.findLastIndex((m) => m.tick <= startTick);
+    if (start < 0) continue;
+    const after = measures.findIndex((m) => m.tick >= endTick);
+    into.voltas.push({
+      start,
+      end: Math.max(start + 1, after < 0 ? measures.length : after),
+      endings: parseEndings(v.endings),
+    });
+  }
+}
+
 export function parseMscx(doc: Document): ScoreModel {
   const root = doc.documentElement;
   if (root.tagName !== 'museScore') throw new Error('Not a MuseScore file');
   const version = root.getAttribute('version') ?? '';
+  const legacy = isMuseScore1(doc) ? upgradeMuseScore1(doc) : null;
   const score = child(root, 'Score');
   if (!score) throw new Error('This MuseScore file has no score in it');
   const division = childNumber(score, 'Division') ?? TPQ;
@@ -691,6 +709,17 @@ export function parseMscx(doc: Document): ScoreModel {
       for (const [i, v] of voices.entries()) walk(v, i);
     });
   });
+
+  if (legacy) {
+    addLegacy(legacy, {
+      measures,
+      tickScale,
+      tempos,
+      voltas,
+      clefs,
+      staffOf: (id) => staffIndexById.get(id),
+    });
+  }
 
   for (const [, open] of openVoltas) {
     voltas.push({ start: open.start, end: measures.length, endings: open.endings });

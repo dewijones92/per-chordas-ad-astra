@@ -1,7 +1,7 @@
 ---
 title: Play-along (MuseScore, MusicXML and MIDI, falling notes, transpose, loop)
 status: shipped
-updated: 2026-11-07
+updated: 2026-11-09
 ---
 
 # Play-along
@@ -9,12 +9,21 @@ updated: 2026-11-07
 Dewi, 24 Oct 2026: open MuseScore files in the app, transpose them, and watch the notes fall onto a
 keyboard from above, like the bird's-eye piano videos.
 
-- **Files**: `.mscz`/`.mscx` from MuseScore 2, 3 and 4, MusicXML `.mxl`/`.musicxml`, and Standard MIDI files
+- **Files**: `.mscz`/`.mscx` from MuseScore 1 (and the 0.9 versions before it), 2, 3, 4 and 5, MusicXML `.mxl`/`.musicxml`, and Standard MIDI files
   `.mid`/`.midi` (see **MIDI files** below). Start a new piece
   straight from one (**+ New piece**, then the MuseScore / MusicXML / MIDI field: the title and composer fill in
   from the file if still empty, and the piece opens in Play-along), or add one to an existing piece from its
   **🎹 Play-along** section. Stored untouched under `pieces/<slug>/music/`. The title and composer come from
   the file's metadata, or from MuseScore's title frame (first line only, so "Arranged by…" is left out).
+- **MuseScore 1 files** (9 Nov 2026, after a popular musescore.com download of Beethoven's "Tempest" sonata, saved
+  by MuseScore 1.3 in 2013, failed with "This MuseScore file has no score in it"): `music/mscx-114.ts` rewrites an
+  old file into the layout the MuseScore reader already reads, so there is still one reader. Bar lengths come from
+  the file's time signature list (so a pickup bar is as short as written), key signatures from their old number
+  code (and C major when the first bar has none), clefs from each staff's clef list, the tempo from the tempo list,
+  first and second endings from the score-wide list, title and composer from the title frame's HTML, fingering
+  from the note's text, and two-note tremolos play as two halves. A note's own `<tick>` places it, so a second
+  voice that starts partway through a bar lands where written. The oldest files (MuseScore 0.9) write pitches as
+  attributes and lengths in ticks; those are read too. Drums are left out, as everywhere.
 - **MIDI files** (4 Nov 2026, so Chopin's Nocturne Op. 9 No. 1 can be learned from the free Mutopia
   edition, which exists only as LilyPond, MIDI and PDF): our own small Standard MIDI File reader
   (`music/midi.ts`, ADR 0014), format 0 and 1; SMPTE timing and format 2 are refused with a message saying so.

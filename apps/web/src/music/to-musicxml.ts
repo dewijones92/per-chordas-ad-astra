@@ -311,6 +311,10 @@ export function toMusicXml(score: ScoreModel, notation: Notation): string {
               );
               cursor = rel;
             }
+            if (!e.grace && rel < cursor - 0.5) {
+              out.push(`<backup><duration>${String(divisions(cursor - rel))}</duration></backup>`);
+              cursor = rel;
+            }
             const type = e.measureRest
               ? ''
               : `<type>${TYPE_NAMES[e.type] ?? e.type}</type>${'<dot/>'.repeat(e.dots)}`;
