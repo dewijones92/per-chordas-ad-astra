@@ -691,6 +691,10 @@ describe('clicks and count-in', () => {
     const waltz = buildPerformance(parseScoreText(makeMscx(PIANO_WALTZ, '3.02')));
     expect(countInFor(waltz, 0, 1)).toEqual({ beats: 3, seconds: 0.5 });
     expect(countInFor(waltz, 0, 0.5)).toEqual({ beats: 3, seconds: 1 });
+    expect(countInFor(waltz, 0, 1, 'bar')).toEqual({ beats: 3, seconds: 0.5 });
+    expect(countInFor(waltz, 0, 1, 1)).toEqual({ beats: 1, seconds: 0.5 });
+    expect(countInFor(waltz, 0, 0.5, 5)).toEqual({ beats: 5, seconds: 1 });
+    expect(countInFor(waltz, 0, 1, 0)).toBeNull();
     const pickup = buildPerformance(
       parseScoreText(
         makeMscx(PIANO_WALTZ, '3.02').replace(

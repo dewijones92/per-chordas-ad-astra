@@ -55,7 +55,8 @@ export class Transport<T extends Timed = Timed> {
   loop: Loop | null = null;
   ramp: Ramp | null = null;
   limit: (() => number | null) | null = null;
-  onWrap: (() => void) | null = null;
+  onWrap: ((at: number, lead: number) => void) | null = null;
+  loopLead: ((song: number, speed: number) => number) | null = null;
 
   constructor(
     private readonly notes: readonly T[],
@@ -108,8 +109,8 @@ export class Transport<T extends Timed = Timed> {
   }
 
   speedAt(ctx: number): number {
-    let anchor = this.anchors[0];
-    for (const a of this.anchors) if (a.ctx <= ctx) anchor = a;
+    let anchor = this.anchors.find((a) => a.speed > 0);
+    for (const a of this.anchors) if (a.ctx <= ctx && a.speed > 0) anchor = a;
     return anchor?.speed ?? this.speed;
   }
 
@@ -146,7 +147,7 @@ export class Transport<T extends Timed = Timed> {
     let guard = 0;
     while (this.scheduledUntil < until && guard++ < 64) {
       const anchor = this.anchors.at(-1);
-      if (!anchor) break;
+      if (!anchor || anchor.speed <= 0) break;
       const songFrom = anchor.song + (this.scheduledUntil - anchor.ctx) * anchor.speed;
       let songTo = anchor.song + (until - anchor.ctx) * anchor.speed;
       const cap = this.limit?.() ?? null;
@@ -178,11 +179,13 @@ export class Transport<T extends Timed = Timed> {
         this.speed = speed;
         if (this.wholePass !== null) this.passes.push({ ctx: wrapCtx, speed: this.wholePass });
         this.wholePass = speed;
-        this.anchors.push({ ctx: wrapCtx, song: loop.start, speed });
-        this.anchors = this.anchors.filter((a, i, all) => i >= all.length - 3 || a.ctx > ctx - 1);
+        const lead = Math.max(0, this.loopLead?.(loop.start, speed) ?? 0);
+        if (lead > 0) this.anchors.push({ ctx: wrapCtx, song: loop.start, speed: 0 });
+        this.anchors.push({ ctx: wrapCtx + lead, song: loop.start, speed });
+        this.anchors = this.anchors.filter((a, i, all) => i >= all.length - 4 || a.ctx > ctx - 1);
         this.cursor = firstAtOrAfter(this.notes, loop.start);
-        this.scheduledUntil = wrapCtx;
-        this.onWrap?.();
+        this.scheduledUntil = wrapCtx + lead;
+        this.onWrap?.(wrapCtx, lead);
       } else if (capped) {
         this.scheduledUntil = anchor.ctx + (songTo - anchor.song) / anchor.speed;
         break;

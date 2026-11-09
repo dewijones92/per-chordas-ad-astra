@@ -268,6 +268,8 @@ export const strings = {
     ramp: '📈 Speed up each loop',
     fullKeyboard: '🎹 All 88 keys',
     countIn: '🥁 Count-in',
+    countInBar: '📏 A bar',
+    countInBeats: (n: number) => `🥢 ${String(n)} ${n === 1 ? 'beat' : 'beats'}`,
     click: soundNames.click,
     drums: soundNames.drums,
     perBeat: '🎶 Per beat',
@@ -604,7 +606,8 @@ export const tips = {
     clearLoop: 'Clear the loop',
     ramp: (step: number, target: number) =>
       `Each time the loop comes round, play it ${String(step)}% faster until ${String(target)}%`,
-    countIn: 'One bar of clicks before the music starts',
+    countIn: 'Clicks before the music starts, and again each time a loop goes back round',
+    countInLength: 'How long the count-in is: a bar, or a number of beats',
     click: 'A metronome click on every beat while it plays',
     drums:
       'A drum beat on every beat while it plays, instead of the click: waltz for three beats, 6/8 for compound time, rock/pop otherwise; the count-in becomes side sticks and a hat',

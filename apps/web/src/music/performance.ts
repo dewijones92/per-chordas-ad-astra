@@ -8,7 +8,7 @@ import {
 } from './model.ts';
 import { unroll } from './unroll.ts';
 import { grooveForMeter, TWELFTHS_PER_BEAT } from '../drums/grooves.ts';
-import type { Groove } from '@pcaa/shared';
+import type { CountIn, Groove } from '@pcaa/shared';
 
 export interface PerfNote {
   pitch: number;
@@ -268,11 +268,13 @@ export function countInFor(
   perf: Performance,
   from: number,
   speed: number,
+  count: CountIn = 'bar',
 ): { beats: number; seconds: number } | null {
+  if (count === 0) return null;
   const index = barAt(perf, from + 1e-6);
   const here = perf.bars[index];
   const bar = here && here.beats >= 2 - 1e-6 ? here : (perf.bars[index + 1] ?? here);
   if (!bar || bar.beats <= 0) return null;
-  const beats = Math.max(2, Math.round(bar.beats));
+  const beats = count === 'bar' ? Math.max(2, Math.round(bar.beats)) : count;
   return { beats, seconds: (bar.end - bar.start) / bar.beats / Math.max(0.01, speed) };
 }

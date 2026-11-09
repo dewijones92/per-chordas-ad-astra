@@ -1,4 +1,4 @@
-import type { PerBeat, Subdivision } from '@pcaa/shared';
+import type { CountIn, PerBeat, Subdivision } from '@pcaa/shared';
 import { countInFor, type PerfClick, type PerfNote, type Performance } from './performance.ts';
 import { chooseSample, gainFor, SampleManifest, sampleFile } from './samples.ts';
 import { playClick } from '../metronome/click.ts';
@@ -108,6 +108,7 @@ export class PianoPlayer {
   private readonly transport: Transport<PerfNote>;
   private readonly clicks: Transport<PerfClick>;
   private clickOn = false;
+  private countIn: CountIn = 0;
   private perBeat: PerBeat = 'auto';
   private lastLevel: Subdivision | null = null;
   private drums = false;
@@ -137,9 +138,16 @@ export class PianoPlayer {
     this.perf = perf;
     this.transport = new Transport(perf.notes, perf.duration);
     this.clicks = new Transport(perf.clicks, perf.duration);
-    this.transport.onWrap = () => {
+    const lead = (song: number, speed: number) => {
+      const count = countInFor(this.perf, song, speed, this.countIn);
+      return count ? count.beats * count.seconds : 0;
+    };
+    this.transport.loopLead = lead;
+    this.clicks.loopLead = lead;
+    this.transport.onWrap = (at, seconds) => {
       this.wrapPending = true;
       this.gate?.wrapped();
+      if (seconds > 0) this.countInAt(at, this.transport.loop?.start ?? 0, this.transport.speed);
     };
   }
 
@@ -242,7 +250,39 @@ export class PianoPlayer {
     }
   }
 
-  async play(countIn = false): Promise<void> {
+  setCountIn(count: CountIn): void {
+    this.countIn = count;
+    console.info('dewidebug play-along count-in', { count });
+  }
+
+  private countInAt(
+    start: number,
+    from: number,
+    speed: number,
+  ): { beats: number; seconds: number } | null {
+    const ctx = this.ctx;
+    const master = this.master;
+    const count = countInFor(this.perf, from, speed, this.countIn);
+    if (!ctx || !master || !count) return null;
+    for (let k = 0; k < count.beats; k++) {
+      const when = start + k * count.seconds;
+      if (this.drums)
+        this.playHits(
+          this.countInClicks,
+          countInHits(k === 0).map((hit) => ({ hit, at: when })),
+        );
+      else keep(this.countInClicks, playClick(ctx, master, when, k === 0 ? 'bar' : 'beat'));
+    }
+    console.info('dewidebug play-along count-in clicks', {
+      at: start.toFixed(3),
+      from: from.toFixed(2),
+      beats: count.beats,
+      seconds: count.seconds.toFixed(3),
+    });
+    return count;
+  }
+
+  async play(): Promise<void> {
     const request = ++this.startRequest;
     this.startingNow = true;
     try {
@@ -258,20 +298,11 @@ export class PianoPlayer {
     const master = this.master;
     if (!ctx || !master) return;
     const now = ctx.currentTime;
-    const count = countIn
-      ? countInFor(this.perf, this.transport.startPoint(), this.transport.speed)
-      : null;
-    if (count) {
-      for (let k = 0; k < count.beats; k++) {
-        const when = now + START_LEAD_SECONDS + k * count.seconds;
-        if (this.drums)
-          this.playHits(
-            this.countInClicks,
-            countInHits(k === 0).map((hit) => ({ hit, at: when })),
-          );
-        else keep(this.countInClicks, playClick(ctx, master, when, k === 0 ? 'bar' : 'beat'));
-      }
-    }
+    const count = this.countInAt(
+      now + START_LEAD_SECONDS,
+      this.transport.startPoint(),
+      this.transport.speed,
+    );
     const delay = count ? count.beats * count.seconds : 0;
     this.both((t) => {
       t.play(now + delay);

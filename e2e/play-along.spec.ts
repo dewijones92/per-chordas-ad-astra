@@ -482,6 +482,44 @@ test('a count-in bar plays before the music starts, and the click is remembered'
   await expect(page.getByTestId('playalong-click')).toBeChecked();
 });
 
+test('the count-in can be a number of beats, plays again each time a loop goes round, and is remembered', async ({
+  page,
+}) => {
+  await createPiece(page, 'Loop Count In', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await page.getByRole('button', { name: 'From here' }).click();
+  await page.getByRole('button', { name: 'To here' }).click();
+  await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
+  await expect(page.getByTestId('playalong-countin')).toBeChecked();
+  await page.getByTestId('playalong-countin-length').selectOption('2');
+  await page.getByTestId('playalong-play').click();
+  const samples = await page.evaluate(async () => {
+    const canvas = document.querySelector<HTMLElement>('[data-testid="playalong-canvas"]');
+    const out: number[] = [];
+    for (let i = 0; i < 100; i++) {
+      out.push(Number(canvas?.dataset['position'] ?? 'NaN'));
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    return out;
+  });
+  await page.getByTestId('playalong-play').click();
+  const peak = samples.findIndex((p) => p > 1.2);
+  expect(peak).toBeGreaterThan(0);
+  const after = samples.slice(peak);
+  const back = after.findIndex((p) => p < 0.05);
+  expect(back).toBeGreaterThan(0);
+  const held = after.slice(back).findIndex((p) => p > 0.05);
+  expect(held * 50).toBeGreaterThanOrEqual(600);
+
+  await page.getByTestId('playalong-countin').uncheck();
+  await expect(page.getByTestId('playalong-countin-length')).toBeDisabled();
+  await page.reload();
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await expect(page.getByTestId('playalong-countin-length')).toHaveValue('2');
+  await expect(page.getByTestId('playalong-countin-length')).toBeDisabled();
+});
+
 test('per beat: Auto clicks on the beat at full speed and fills in at half speed; ♫ adds a softer click between the beats, and is remembered', async ({
   page,
 }) => {

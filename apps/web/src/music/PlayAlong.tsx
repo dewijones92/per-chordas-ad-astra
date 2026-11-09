@@ -9,6 +9,8 @@ import {
   RAMP_MIN_STEP,
   newId,
   perBeatOf,
+  countInOf,
+  COUNT_IN_MAX_BEATS,
   roundSpeed,
   speedPercent,
   stepLookAhead,
@@ -603,6 +605,7 @@ export function PlayAlong({
   const transpose = music.transpose;
   const notatable = loaded.data?.score.format !== 'midi';
   const perBeat = perBeatOf(prefs);
+  const countIn = countInOf(prefs);
   const groove = useMemo(() => {
     const bar = perf?.bars[barIndex];
     if (!perf || !bar) return null;
@@ -835,6 +838,10 @@ export function PlayAlong({
   }, [player, prefs.ramp, prefs.rampStep, prefs.rampTarget]);
 
   useEffect(() => {
+    player?.setCountIn(countIn);
+  }, [player, countIn]);
+
+  useEffect(() => {
     player?.setClick(prefs.click || prefs.drums, perBeat, prefs.drums);
   }, [player, prefs.click, perBeat, prefs.drums]);
 
@@ -942,11 +949,11 @@ export function PlayAlong({
     } else {
       setDrawMode(false);
       waitBeforePlay();
-      player.play(prefs.countIn).catch((error: unknown) => {
+      player.play().catch((error: unknown) => {
         console.warn('dewidebug play-along could not start audio', { error: String(error) });
       });
     }
-  }, [player, updatePrefs, prefs.countIn, waitBeforePlay]);
+  }, [player, updatePrefs, waitBeforePlay]);
 
   const seekTo = useCallback(
     (seconds: number) => {
@@ -1567,6 +1574,27 @@ export function PlayAlong({
           />
           {strings.playAlong.countIn}
         </label>
+        <select
+          className="playalong-countin-length"
+          value={String(prefs.countInBeats ?? 'bar')}
+          disabled={!prefs.countIn}
+          title={tips.playAlong.countInLength}
+          aria-label={tips.playAlong.countInLength}
+          data-testid="playalong-countin-length"
+          onChange={(e) => {
+            const value = e.target.value;
+            const countInBeats = value === 'bar' ? 'bar' : Number(value);
+            console.info('dewidebug play-along count-in length', { countInBeats });
+            updatePrefs((p) => ({ ...p, countInBeats }));
+          }}
+        >
+          <option value="bar">{strings.playAlong.countInBar}</option>
+          {Array.from({ length: COUNT_IN_MAX_BEATS }, (_, i) => i + 1).map((n) => (
+            <option key={n} value={String(n)}>
+              {strings.playAlong.countInBeats(n)}
+            </option>
+          ))}
+        </select>
         <label className="playalong-field" title={tips.playAlong.click}>
           <input
             type="checkbox"

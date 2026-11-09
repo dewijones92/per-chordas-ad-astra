@@ -180,8 +180,12 @@ keyboard from above, like the bird's-eye piano videos.
   steps: drag the wide slider, use − / + or `[` / `]` (half a percent each), or type an exact number and press
   Enter (the box applies on Enter or when you leave it, so typing 50 never plays at 5% on the way). Speed, the
   speed-up step and stop, the loop and the switch are remembered per file, on every device.
-- **Count-in and click**: 🥁 Count-in (on by default) plays one bar of clicks at the playing speed
-  before the music starts (after a pickup, the next full bar's beats); Click puts a metronome click on
+- **Count-in and click**: 🥁 Count-in (on by default) plays clicks at the playing speed before the music starts:
+  📏 A bar (after a pickup, the next full bar's beats) or, from the picker beside it, 1 to 16 beats (9 Nov 2026,
+  Dewi: "one beat, one click intro"). With a 🔁 loop on, it plays again every time the loop goes back round: the
+  falling notes hold at the loop's start while the clicks count you in, then the pass begins (the transport's
+  `loopLead`, a held anchor at the wrap). The length is remembered per piece; unticked, the picker is greyed out.
+  Click puts a metronome click on
   every beat while it plays, accented on the first. Compound time counts dotted beats (6/8 in two). With Click or
   Drums on, **🎶 Per beat** sets how many clicks or hi-hat hits fall in each beat, with the metronome's own note
   buttons (♩ one, ♫ eighths, 3 triplets, ♬ sixteenths; in 6/8 ♫ is three a dotted beat and ♬ six) plus **✨ Auto**

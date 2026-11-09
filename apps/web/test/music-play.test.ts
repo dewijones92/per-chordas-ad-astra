@@ -171,6 +171,31 @@ describe('Transport', () => {
     expect(t.finished(lead + 100)).toBe(false);
   });
 
+  it('waits for a count-in each time the loop goes round, holding at the loop start meanwhile', () => {
+    const t = new Transport(notes, 4);
+    const wraps: [number, number][] = [];
+    t.loopLead = (song, speed) => (song === 1 ? 0.5 / speed : 0);
+    t.onWrap = (at, lead) => wraps.push([Number(at.toFixed(3)), lead]);
+    t.setLoop({ start: 1, end: 3 }, 0);
+    t.play(0);
+    const lead = START_LEAD_SECONDS;
+    const s = t.pump(0, 5.6, () => true);
+    expect(s.map((x) => [x.note.pitch, Number((x.when - lead).toFixed(3))])).toEqual([
+      [62, 0],
+      [64, 1],
+      [62, 2.5],
+      [64, 3.5],
+      [62, 5],
+    ]);
+    expect(wraps).toEqual([
+      [Number((2 + lead).toFixed(3)), 0.5],
+      [Number((4.5 + lead).toFixed(3)), 0.5],
+    ]);
+    expect(t.songAt(lead + 2.25)).toBeCloseTo(1);
+    expect(t.speedAt(lead + 2.25)).toBe(1);
+    expect(t.songAt(lead + 3)).toBeCloseTo(1.5);
+  });
+
   it('starts at the loop when playing from outside it, and seeks while paused', () => {
     const t = new Transport(notes, 4);
     t.seek(3.5, 0);
