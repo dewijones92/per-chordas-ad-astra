@@ -30,14 +30,18 @@ MuseScore writes today.
   tempo list, mid-piece clef changes and the score-wide endings (`<Volta>` with `tick`/`tick2`) are positioned
   after the bars are known. The rules were read from MuseScore 3's `read114.cpp`, not copied. The oracle is
   MuseScore's own compatibility tests (`src/engraving/tests/compat114_data`, 26 old files each beside MuseScore's
-  conversion of it): 22 play the same; `tuplets_1` and `tuplets_2` differ because MuseScore's own conversion nests
-  the triplets inside a 9:8 tuplet and leaves gaps, and two differ only through MuseScore's multi-measure rests.
+  conversion of it): 24 play the same; `tuplets_1` and `tuplets_2` differ because MuseScore's own conversion nests
+  the triplets inside a 9:8 tuplet and leaves gaps.
   The 27 demo scores from MuseScore's old repository (formats 1.9 to 1.24) must each read every written note.
   Both are GPL, downloaded under `MUSIC_CORPUS`, not committed. Two fixes in the shared reader came with it: a
   chord's real length (`<duration>`) wins over its written one, which MuseScore 3–5 write for both chords of a
   two-note tremolo; and a part's staves with no `id` (MuseScore 5) are numbered in order, so a drum part is
   matched and left out. The MusicXML writer now steps back when a note starts before the previous note of its
   voice has finished, which MuseScore 1 allowed; it used to push the rest of the piece late.
+- **Multi-measure rests** (9 Nov 2026, found through the same oracle): when a score shows multi-measure rests,
+  MuseScore 3, 4 and 5 also save the combined bar (`<Measure len="12/4"><multiMeasureRest>3</multiMeasureRest>`)
+  after the first bar it stands for. The reader counted it as a real bar, so everything after it played that many
+  bars late. Bars holding `<multiMeasureRest>` are skipped on every staff.
 - **Our own MIDI reader** (4 Nov 2026, `music/midi.ts`), no MIDI library. Dewi wanted Chopin's Nocturne Op. 9
   No. 1 from the Mutopia Project, which publishes it only as LilyPond, MIDI and PDF, and asked for no
   third-party library (no music21, no `midi` package) to read it. Standard MIDI Files, format 0 and 1, into the

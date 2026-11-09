@@ -328,7 +328,12 @@ export function parseMscx(doc: Document): ScoreModel {
   let number = 0;
   let restartNumbers = false;
   const times: TimeMark[] = [];
+  const realBar = (el: Element) => child(el, 'multiMeasureRest') === null;
+  const skipped = childrenNamed(first, 'Measure').filter((el) => !realBar(el)).length;
+  if (skipped > 0)
+    console.info(`dewidebug mscx skipped ${String(skipped)} multi-measure rest bars`);
   for (const el of childElements(first)) {
+    if (el.tagName === 'Measure' && !realBar(el)) continue;
     if (el.tagName !== 'Measure') {
       if (sectionBreakIn(el)) {
         const previous = measures.at(-1);
@@ -388,7 +393,7 @@ export function parseMscx(doc: Document): ScoreModel {
     const staff = staffIndexById.get(id);
     const def = defById.get(id);
     const part = def?.part ?? 0;
-    const staffMeasures = childrenNamed(staffEl, 'Measure');
+    const staffMeasures = childrenNamed(staffEl, 'Measure').filter(realBar);
     let staffStretch = 1;
     if (staffMeasures.length !== measures.length) {
       warnings.push(

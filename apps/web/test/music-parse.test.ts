@@ -92,6 +92,27 @@ describe('MuseScore oddities', () => {
   const file = (version: string, bars: string) =>
     `<?xml version="1.0"?><museScore version="${version}"><Score><Division>480</Division><Part><Staff id="1"/><trackName>Flute</trackName></Part><Staff id="1">${bars}</Staff></Score></museScore>`;
 
+  it('skips the combined bar MuseScore saves for a multi-measure rest (MuseScore 3-5)', () => {
+    const rest = (len: string) =>
+      `<voice><Rest><durationType>measure</durationType><duration>${len}</duration></Rest></voice>`;
+    const score = parseScoreText(
+      file(
+        '4.50',
+        `<Measure><voice><TimeSig><sigN>4</sigN><sigD>4</sigD></TimeSig><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure>` +
+          `<Measure len="12/4"><multiMeasureRest>3</multiMeasureRest>${rest('12/4')}</Measure>` +
+          `<Measure>${rest('4/4')}</Measure><Measure>${rest('4/4')}</Measure>` +
+          `<Measure><voice>${chord(72)}</voice></Measure>`,
+      ),
+    );
+    expect(score.measures.map((m) => [m.number, m.tick])).toEqual([
+      [1, 0],
+      [2, 1920],
+      [3, 3840],
+      [4, 5760],
+    ]);
+    expect(score.notes.map((n) => [n.pitch, n.tick])).toEqual([[72, 5760]]);
+  });
+
   it('matches staves to their parts when the staves are not numbered (MuseScore 5)', () => {
     const score = parseScoreText(
       `<?xml version="1.0"?><museScore version="5.00"><Score><Division>480</Division><Part><Staff/><trackName>Flute</trackName></Part><Part><Staff><StaffType group="percussion"/></Staff><trackName>Drums</trackName></Part><Staff id="1">${bar(chord(72))}</Staff><Staff id="2">${bar(chord(36))}</Staff></Score></museScore>`,

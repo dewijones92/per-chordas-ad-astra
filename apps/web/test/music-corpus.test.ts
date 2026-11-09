@@ -13,12 +13,7 @@ import { grandStaff, scoreHands } from '../src/music/grand-staff.ts';
 
 const corpus = process.env['MUSIC_CORPUS'];
 const KNOWN_DIFFERENCES = new Set(['repeat52.mscx', 'repeat53.mscx']);
-const MUSESCORE1_DIFFERENCES = new Set([
-  'tuplets_1.mscx',
-  'tuplets_2.mscx',
-  'hor_frame_and_mmrest.mscx',
-  'style.mscx',
-]);
+const MUSESCORE1_DIFFERENCES = new Set(['tuplets_1.mscx', 'tuplets_2.mscx']);
 const CROSS_STAFF_TIES: Readonly<Record<string, number>> = { 'goldberg.mscz': 3 };
 const HANDS_AGREE: Readonly<Record<string, number>> = {
   'Reunion.mscz': 0.86,

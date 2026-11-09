@@ -24,6 +24,8 @@ keyboard from above, like the bird's-eye piano videos.
   from the note's text, and two-note tremolos play as two halves. A note's own `<tick>` places it, so a second
   voice that starts partway through a bar lands where written. The oldest files (MuseScore 0.9) write pitches as
   attributes and lengths in ticks; those are read too. Drums are left out, as everywhere.
+- **Multi-measure rests** (9 Nov 2026): a score saved with multi-measure rests showing (MuseScore 3–5) also holds a
+  combined "rest for N bars" bar; it is skipped, so the bars after it play on time.
 - **MIDI files** (4 Nov 2026, so Chopin's Nocturne Op. 9 No. 1 can be learned from the free Mutopia
   edition, which exists only as LilyPond, MIDI and PDF): our own small Standard MIDI File reader
   (`music/midi.ts`, ADR 0014), format 0 and 1; SMPTE timing and format 2 are refused with a message saying so.
