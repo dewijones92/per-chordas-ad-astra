@@ -75,7 +75,18 @@ reversal).
 - CI must stay green. Commit at each green state.
 - **Iterate quickly and shift left** (Totum's rule, adopted 4 Nov 2026). Treat a slow loop as a defect: measure
   where the minutes go, then move the check earlier and cheaper (a unit test instead of an e2e, one spec file
-  instead of the suite, the full gate only before a push). When a cycle is slow, fix the tooling in that session.
+  instead of the suite, the e2e suite left to CI). When a cycle is slow, fix the tooling in that session.
+- **Quick checks locally, the rest in CI** (Totum's rule, adopted 9 Nov 2026). Before a push run `pnpm quick`
+  (preflight, format, lint, types, every unit test with coverage, build: about 50 s) and, when a flow changed, its own
+  e2e spec file (`pnpm build && pnpm e2e e2e/<spec>.ts`); then push **only when its exit code is 0** and watch CI on
+  that commit to its end, fixing a red run with the very next push. CI runs the full gate, e2e included (about 5½ of
+  its 10 minutes), before it builds the image, so a red push never reaches the Pi. The full `pnpm gate` locally
+  repeated all of that before every push. Kept local because CI cannot do them: looking at the changed screen, the
+  real-file corpus (`MUSIC_CORPUS`) and the batch-end soak.
+- **Suppressing a warning is Claude's call, case by case** (Totum's rule, adopted 9 Nov 2026), for eslint,
+  TypeScript or any other check: when a rule fights the code's shape (a binary-format parser full of offsets, a
+  table of constants), suppress it on that line and say why in the commit message; when it points at a real smell
+  (dead code, a long function doing several things, a tangled condition), fix the code.
 - **A doc's `status` is a claim, and a stale claim is worse than none.** When you touch an area, re-read its doc
   against the code and correct it; when a doc was wrong, say so in it rather than quietly fixing it.
 - **Own the repo.** Take the structurally right option over the timid one (collapse duplicate types, rename for
@@ -87,9 +98,9 @@ reversal).
      answer (scope, defaults, trade-offs) with `AskUserQuestion`; write each decision into the ADRs or
      `docs/todos/_index.md` and the session's task file so it survives a context reset. Never ask what the code can answer.
   2. **Each feature ships on its own**, so Dewi can try it on the Pi straight away: tests (a bug fix's test seen red
-     first), docs and ADRs in the same commit, the full `pnpm gate`, a look at the changed screen, then push **only
-     when the gate's exit code is 0** (`e=$?; [ $e -eq 0 ] && git push`). The push deploys; watch CI until the Pi
-     reports the new sha healthy. No review or soak per feature; do not hold features back waiting for one.
+     first), docs and ADRs in the same commit, `pnpm quick` (plus the changed flow's e2e spec), a look at the changed
+     screen, then push **only when its exit code is 0** (`e=$?; [ $e -eq 0 ] && git push`). The push deploys once CI's
+     full gate passes; watch CI until the Pi reports the new sha healthy. No review or soak per feature; do not hold features back waiting for one.
   3. **The batch ends with a soak, an Opus review and Haiku sweeps, in parallel.** The sweeps: one checks each
      change for consistency across every view and way in (Score, Both, Notes; library and piece page; both people),
      one looks for use cases the batch missed; a sweep's finding is a hypothesis to check against the code. The soak: three separate `pnpm e2e` runs
@@ -124,7 +135,8 @@ reversal).
 ```bash
 pnpm install                 # pnpm 11; esbuild is the only package allowed to run install scripts
 sh tools/install-hooks.sh    # once per clone: preflight on every push
-pnpm gate                    # everything CI runs: preflight, format, lint, types, unit+coverage, build, e2e
+pnpm quick                   # before a push (~50 s): preflight, format, lint, types, unit+coverage, build
+pnpm gate                    # everything CI runs: quick + e2e (~6 min more); CI's job, run locally only when needed
 pnpm test                    # vitest: shared, server (real git), web (jsdom)
 pnpm build && pnpm e2e       # Playwright against the built server, bare repo standing in for GitHub
 pnpm dev                     # vite on :5173 proxying /api to the server on :8787 (start the server yourself)

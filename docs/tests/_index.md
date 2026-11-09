@@ -8,7 +8,7 @@ updated: 2026-11-09
 **Pyramid.** Vitest unit tests on pure modules and the server (with real git against a bare repo);
 Playwright e2e for every flow, against the built server, with a bare repo standing in for GitHub and a
 generated 110 Hz tone as a fake microphone. CI runs all of it on every push and pull request
-(`pnpm gate` runs the same locally). The coverage gate is 75% lines, functions and statements, and 70%
+(`pnpm gate` runs the same locally; before a push only `pnpm quick`, everything but e2e, plus a changed flow's own spec). The coverage gate is 75% lines, functions and statements, and 70%
 branches (currently about 93% of lines).
 
 **Exempt from the unit coverage gate, covered by e2e instead** (listed in `vitest.config.ts`): React
