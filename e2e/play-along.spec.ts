@@ -9,6 +9,7 @@ import {
 import { expect, test, type Page } from '@playwright/test';
 import {
   CLICK_PITCHES,
+  clickBar,
   createPiece,
   eventuallyInRemote,
   openLibrary,
@@ -112,6 +113,7 @@ test('a loop switched off plays straight through, keeps its bars, and comes back
   await expect(loopOn).toBeDisabled();
   await expect(loopOn).not.toBeChecked();
   await page.getByRole('button', { name: 'From here' }).click();
+  await clickBar(page, 1);
   await page.getByRole('button', { name: 'To here' }).click();
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
   await expect(loopOn).toBeChecked();
@@ -155,6 +157,7 @@ test('speed goes down to 5% in half-percent steps, takes a typed speed, and spee
   await expect(speed).toHaveValue('50');
 
   await page.getByRole('button', { name: 'From here' }).click();
+  await clickBar(page, 1);
   await page.getByRole('button', { name: 'To here' }).click();
   await page.getByTestId('playalong-ramp').check();
   await page.getByTestId('playalong-ramp-step').fill('2.5');
@@ -182,6 +185,7 @@ test('speed up each loop plays the looped bar faster every time round, and a har
   await expect(page.getByTestId('playalong-canvas')).toBeVisible();
   await page.getByLabel('Play-along speed').fill('50');
   await page.getByRole('button', { name: 'From here' }).click();
+  await clickBar(page, 1);
   await page.getByRole('button', { name: 'To here' }).click();
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
   page.once('dialog', (d) => void d.accept('Opening'));
@@ -242,6 +246,7 @@ test('hard bits that failed to load cannot be overwritten by saving a new one', 
   await page.getByTestId('upload-music').setInputFiles(waltzMscz());
   await expect(page.getByTestId('playalong-canvas')).toBeVisible();
   await page.getByRole('button', { name: 'From here' }).click();
+  await clickBar(page, 1);
   await page.getByRole('button', { name: 'To here' }).click();
   page.once('dialog', (d) => void d.accept('Opening'));
   await page.getByTestId('save-hard-bit').click();
@@ -489,6 +494,7 @@ test('the count-in can be a number of beats, plays again each time a loop goes r
   await page.getByTestId('upload-music').setInputFiles(waltzMscz());
   await expect(page.getByTestId('playalong-canvas')).toBeVisible();
   await page.getByRole('button', { name: 'From here' }).click();
+  await clickBar(page, 1);
   await page.getByRole('button', { name: 'To here' }).click();
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
   await expect(page.getByTestId('playalong-countin')).toBeChecked();

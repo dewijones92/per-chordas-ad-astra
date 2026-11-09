@@ -16,6 +16,7 @@ import {
   stepLookAhead,
   type FingerText,
   type HardBit,
+  type LoopRange,
   type MusicRef,
   type PlayAlongPrefs,
 } from '@pcaa/shared';
@@ -58,6 +59,7 @@ import { staffColours } from './colours.ts';
 import {
   barEdgeAt,
   drawFalling,
+  edgeTimeAt,
   geometry,
   keyAt,
   keyTargets,
@@ -66,7 +68,19 @@ import {
   type FallingView,
 } from './falling.ts';
 import { capoFor, fitRange, keyName, noteName, signedSemitones, transposeFifths } from './keys.ts';
-import { BarStrip, rangeBetween, type BarRange } from './BarStrip.tsx';
+import { BarStrip } from './BarStrip.tsx';
+import {
+  beatPoint,
+  loopBetween,
+  loopEndPoint,
+  loopEnds,
+  loopOf,
+  loopSpan,
+  loopStartPoint,
+  lastBeatBefore,
+  sameLoop,
+  type BeatPoint,
+} from './loop-range.ts';
 import { NoteValues } from '../ui/NoteValues.tsx';
 import { FallingMarks, type FallingMarksState } from './FallingMarks.tsx';
 import { suggestBySide } from './suggest-fingering.ts';
@@ -111,14 +125,20 @@ function activeLoop(prefs: PlayAlongPrefs): PlayAlongPrefs['loop'] {
   return prefs.loopOn ? prefs.loop : null;
 }
 
-function loopRangeText(
-  perf: Performance | undefined,
-  loop: { from: number; to: number } | null,
-): string | null {
-  if (!perf || !loop) return null;
-  const from = perf.bars[loop.from]?.number;
-  const to = perf.bars[loop.to]?.number;
-  return from === undefined || to === undefined ? null : units.loopBars(from, to);
+function loopRangeText(perf: Performance | undefined, loop: LoopRange | null): string | null {
+  const ends = perf && loop ? loopEnds(perf, loop) : null;
+  if (!ends) return null;
+  return ends.whole
+    ? units.loopBars(ends.fromBar, ends.toBar)
+    : units.loopBeats(ends.fromBar, ends.fromBeat, ends.toBar, ends.toBeat);
+}
+
+function loopLabelText(perf: Performance, loop: LoopRange | null): string {
+  const ends = loop ? loopEnds(perf, loop) : null;
+  if (!ends) return strings.playAlong.loopOff;
+  return ends.whole
+    ? strings.playAlong.loopBars(String(ends.fromBar), String(ends.toBar))
+    : strings.playAlong.loopBeats(ends.fromBar, ends.fromBeat, ends.toBar, ends.toBeat);
 }
 
 function usePerformance(pieceId: string, file: string) {
@@ -199,7 +219,7 @@ function FallingCanvas({
   onKeyUp: (pitch: number) => void;
   overlay: ReactNode;
   marks: FallingMarksState;
-  onLoop: (range: BarRange) => void;
+  onLoop: (range: LoopRange) => void;
   onSeekBar: (index: number) => void;
 }) {
   const lastView = useRef<FallingView | null>(null);
@@ -215,14 +235,9 @@ function FallingCanvas({
     () => fitRange(perf.lowest + transpose, perf.highest + transpose, prefs.full),
     [perf, transpose, prefs.full],
   );
-  const [edgeDraft, setEdgeDraft] = useState<BarRange | null>(null);
+  const [edgeDraft, setEdgeDraft] = useState<LoopRange | null>(null);
   const shownLoop = edgeDraft ?? activeLoop(prefs);
-  const loop = useMemo(() => {
-    if (!shownLoop) return null;
-    const from = perf.bars[shownLoop.from];
-    const to = perf.bars[shownLoop.to];
-    return from && to ? { start: from.start, end: to.end } : null;
-  }, [perf, shownLoop]);
+  const loop = useMemo(() => loopSpan(perf, shownLoop), [perf, shownLoop]);
   const hidden = useMemo(() => new Set([...hiddenLanes, LEFT_OUT]), [hiddenLanes]);
   const names = useMemo(
     () => (prefs.names ? { flats: transposeFifths(perf.keyFifths, transpose) < 0 } : null),
@@ -377,20 +392,24 @@ function FallingCanvas({
   ]);
 
   const drag = useRef<{ x: number; y: number; position: number; moved: boolean } | null>(null);
-  const edgeDrag = useRef<{ anchor: number; to: number; y: number; moved: boolean } | null>(null);
+  const edgeDrag = useRef<{
+    bar: number;
+    anchor: BeatPoint;
+    to: BeatPoint;
+    y: number;
+    moved: boolean;
+  } | null>(null);
   const edgeBar = (e: { clientX: number; clientY: number; currentTarget: HTMLElement }) => {
     const view = lastView.current;
     if (!view) return null;
     const box = e.currentTarget.getBoundingClientRect();
     return barEdgeAt(view, e.clientX - box.left, e.clientY - box.top);
   };
-  const edgeBarAtHeight = (e: { clientY: number; currentTarget: HTMLElement }) => {
+  const edgeBeatAt = (e: { clientY: number; currentTarget: HTMLElement }) => {
     const view = lastView.current;
     if (!view) return null;
     const box = e.currentTarget.getBoundingClientRect();
-    const g = geometry(view);
-    const y = Math.min(g.notesHeight - 1, Math.max(0, e.clientY - box.top));
-    return barEdgeAt(view, 0, y);
+    return beatPoint(perf, edgeTimeAt(view, e.clientY - box.top));
   };
   const keyHeld = useRef<number | null>(null);
   const keyUnder = (e: { clientX: number; clientY: number; currentTarget: HTMLElement }) => {
@@ -436,9 +455,10 @@ function FallingCanvas({
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           const bar = edgeBar(e);
-          if (bar !== null) {
-            console.info('dewidebug bar edge pressed', { bar });
-            edgeDrag.current = { anchor: bar, to: bar, y: e.clientY, moved: false };
+          const beat = bar === null ? null : edgeBeatAt(e);
+          if (bar !== null && beat) {
+            console.info('dewidebug bar edge pressed', { bar, beat });
+            edgeDrag.current = { bar, anchor: beat, to: beat, y: e.clientY, moved: false };
             return;
           }
           const key = onKeyDown ? keyUnder(e) : null;
@@ -459,11 +479,11 @@ function FallingCanvas({
           const edge = edgeDrag.current;
           if (edge) {
             if (!edge.moved && Math.abs(e.clientY - edge.y) < CLICK_SLOP) return;
-            const to = edgeBarAtHeight(e) ?? edge.to;
-            if (edge.moved && to === edge.to) return;
+            const to = edgeBeatAt(e) ?? edge.to;
+            if (edge.moved && to.bar === edge.to.bar && to.beat === edge.to.beat) return;
             edge.moved = true;
             edge.to = to;
-            setEdgeDraft(rangeBetween(edge.anchor, to));
+            setEdgeDraft(loopBetween(perf, edge.anchor, to));
             return;
           }
           if (e.buttons === 0) {
@@ -496,8 +516,8 @@ function FallingCanvas({
           if (edge) {
             edgeDrag.current = null;
             setEdgeDraft(null);
-            if (edge.moved) onLoop(rangeBetween(edge.anchor, edge.to));
-            else onSeekBar(edge.anchor);
+            if (edge.moved) onLoop(loopBetween(perf, edge.anchor, edge.to));
+            else onSeekBar(edge.bar);
             return;
           }
           if (keyHeld.current !== null) {
@@ -782,7 +802,7 @@ export function PlayAlong({
   }, [player, perf, key]);
 
   const loopBar = activeLoop(prefs);
-  const waitLoopStart = loopBar && perf ? (perf.bars[loopBar.from]?.start ?? null) : null;
+  const waitLoopStart = perf ? (loopSpan(perf, loopBar)?.start ?? null) : null;
   const wait = useWaitForMe({
     enabled: prefs.waitForMe,
     player,
@@ -814,16 +834,17 @@ export function PlayAlong({
   }, [player, lanes, mutedLanes, leftOut, waitMine]);
 
   const applied = activeLoop(prefs);
-  const loopFrom = applied?.from ?? null;
-  const loopTo = applied?.to ?? null;
+  const appliedSpan = perf ? loopSpan(perf, applied) : null;
+  const loopStart = appliedSpan?.start ?? null;
+  const loopEnd = appliedSpan?.end ?? null;
   useEffect(() => {
-    if (!player || !perf) return;
-    const from = loopFrom === null ? undefined : perf.bars[loopFrom];
-    const to = loopTo === null ? undefined : perf.bars[loopTo];
-    console.info('dewidebug play-along loop applied', { from: loopFrom, to: loopTo });
-    player.setLoop(from && to ? { start: from.start, end: to.end } : null);
+    if (!player) return;
+    console.info('dewidebug play-along loop applied', { start: loopStart, end: loopEnd });
+    player.setLoop(
+      loopStart !== null && loopEnd !== null ? { start: loopStart, end: loopEnd } : null,
+    );
     waitJumpTo(player.position());
-  }, [player, perf, loopFrom, loopTo, waitJumpTo]);
+  }, [player, loopStart, loopEnd, waitJumpTo]);
 
   useEffect(() => {
     player?.setTranspose(transpose);
@@ -894,7 +915,7 @@ export function PlayAlong({
     if (!player) return;
     player.setPassListener((speed) => {
       if (!loopNow) return;
-      const bit = bits.find((b) => b.from === loopNow.from && b.to === loopNow.to);
+      const bit = bits.find((b) => sameLoop(b, loopNow));
       if (!bit || speed <= bit.bestSpeed + 1e-9) return;
       console.info('dewidebug hard bit new best', {
         name: bit.name,
@@ -969,9 +990,10 @@ export function PlayAlong({
   const chooseBit = useCallback(
     (b: HardBit) => {
       console.info('dewidebug hard bit chosen', { name: b.name, from: b.from, to: b.to });
-      updatePrefs((p) => ({ ...p, loop: { from: b.from, to: b.to }, loopOn: true }));
-      const bar = perf?.bars[b.from];
-      if (bar && player && !player.playing) seekTo(bar.start);
+      const loop = loopOf(b);
+      updatePrefs((p) => ({ ...p, loop, loopOn: true }));
+      const span = perf ? loopSpan(perf, loop) : null;
+      if (span && player && !player.playing) seekTo(span.start);
     },
     [updatePrefs, perf, player, seekTo],
   );
@@ -995,9 +1017,7 @@ export function PlayAlong({
     };
   }, [openBit, bitsLoaded, bits, perf, player]);
 
-  const loopBitId = loopNow
-    ? (bits.find((b) => b.from === loopNow.from && b.to === loopNow.to)?.id ?? null)
-    : null;
+  const loopBitId = loopNow ? (bits.find((b) => sameLoop(b, loopNow))?.id ?? null) : null;
   useEffect(() => {
     if (!playing || loopBitId === null) return;
     console.info('dewidebug hard bit tried', { id: loopBitId });
@@ -1030,11 +1050,11 @@ export function PlayAlong({
   );
 
   const chooseLoop = useCallback(
-    (range: BarRange, from: string) => {
+    (range: LoopRange, from: string) => {
       console.info('dewidebug play-along loop chosen', { ...range, from });
       updatePrefs((p) => ({ ...p, loop: range, loopOn: true }));
-      const bar = perf?.bars[range.from];
-      if (bar && player && !player.playing) seekTo(bar.start);
+      const span = perf ? loopSpan(perf, range) : null;
+      if (span && player && !player.playing) seekTo(span.start);
     },
     [perf, player, seekTo, updatePrefs],
   );
@@ -1166,17 +1186,13 @@ export function PlayAlong({
     );
   }
 
-  const currentBar = () => (player ? barAt(perf, player.position() + 0.001) : 0);
+  const currentBeat = (): BeatPoint =>
+    beatPoint(perf, (player?.position() ?? prefs.position) + 0.001) ?? { bar: 0, beat: 0 };
   const writtenKey = keyName(perf.keyFifths, perf.keyMinor);
   const playedKey = keyName(transposeFifths(perf.keyFifths, transpose), perf.keyMinor);
   const playOn = prefs.playOn ?? instrumentFor(perf.staves);
   const capo = playOn === 'guitar' ? capoFor(transpose) : null;
-  const loopLabel = prefs.loop
-    ? strings.playAlong.loopBars(
-        String(perf.bars[prefs.loop.from]?.number ?? '?'),
-        String(perf.bars[prefs.loop.to]?.number ?? '?'),
-      )
-    : strings.playAlong.loopOff;
+  const loopLabel = loopLabelText(perf, prefs.loop);
 
   return (
     <section
@@ -1467,12 +1483,14 @@ export function PlayAlong({
             className="btn small ghost"
             title={tips.playAlong.fromHere}
             onClick={() => {
-              const at = currentBar();
-              updatePrefs((p) => ({
-                ...p,
-                loop: { from: at, to: p.loop && p.loop.to >= at ? p.loop.to : at },
-                loopOn: true,
-              }));
+              const at = currentBeat();
+              updatePrefs((p) => {
+                const end = p.loop ? loopEndPoint(perf, p.loop) : at;
+                const keep = end.bar > at.bar || (end.bar === at.bar && end.beat >= at.beat);
+                const loop = loopBetween(perf, at, keep ? end : at);
+                console.info('dewidebug play-along loop from here', { at, loop });
+                return { ...p, loop, loopOn: true };
+              });
             }}
           >
             {strings.playAlong.fromHere}
@@ -1482,12 +1500,15 @@ export function PlayAlong({
             className="btn small ghost"
             title={tips.playAlong.toHere}
             onClick={() => {
-              const at = currentBar();
-              updatePrefs((p) => ({
-                ...p,
-                loop: { from: p.loop && p.loop.from <= at ? p.loop.from : at, to: at },
-                loopOn: true,
-              }));
+              const at =
+                lastBeatBefore(perf, player?.position() ?? prefs.position) ?? currentBeat();
+              updatePrefs((p) => {
+                const start = p.loop ? loopStartPoint(p.loop) : at;
+                const keep = start.bar < at.bar || (start.bar === at.bar && start.beat <= at.beat);
+                const loop = loopBetween(perf, keep ? start : at, at);
+                console.info('dewidebug play-along loop to here', { at, loop });
+                return { ...p, loop, loopOn: true };
+              });
             }}
           >
             {strings.playAlong.toHere}
@@ -1773,14 +1794,24 @@ export function PlayAlong({
         )}
         {bits.map((b) => {
           const on = activeLoop(prefs);
-          const active = on?.from === b.from && on.to === b.to;
+          const active = sameLoop(on, b);
+          const bitEnds = loopEnds(perf, b);
           return (
             <span key={b.id} className="playalong-part" data-testid="hard-bit">
               <button
                 type="button"
                 className="btn small ghost"
                 aria-pressed={active}
-                title={tips.playAlong.hardBit(b.fromBar, b.toBar)}
+                title={
+                  bitEnds && !bitEnds.whole
+                    ? tips.playAlong.hardBitBeats(
+                        bitEnds.fromBar,
+                        bitEnds.fromBeat,
+                        bitEnds.toBar,
+                        bitEnds.toBeat,
+                      )
+                    : tips.playAlong.hardBit(b.fromBar, b.toBar)
+                }
                 onClick={() => {
                   chooseBit(b);
                 }}
@@ -1804,40 +1835,37 @@ export function PlayAlong({
             </span>
           );
         })}
-        {bitsLoaded &&
-          prefs.loop &&
-          !bits.some((b) => b.from === prefs.loop?.from && b.to === prefs.loop.to) && (
-            <button
-              type="button"
-              className="btn small sun"
-              data-testid="save-hard-bit"
-              onClick={() => {
-                const loop = prefs.loop;
-                if (!loop) return;
-                const fromBar = perf.bars[loop.from]?.number ?? 0;
-                const toBar = perf.bars[loop.to]?.number ?? 0;
-                const name = window.prompt(
-                  strings.playAlong.hardBitPrompt,
-                  `Bars ${String(fromBar)}–${String(toBar)}`,
-                );
-                if (!name?.trim()) return;
-                saveBits([
-                  ...bits,
-                  {
-                    id: newId(),
-                    name: name.trim(),
-                    from: loop.from,
-                    to: loop.to,
-                    fromBar,
-                    toBar,
-                    bestSpeed: 0,
-                  },
-                ]);
-              }}
-            >
-              {strings.playAlong.saveHardBit}
-            </button>
-          )}
+        {bitsLoaded && prefs.loop && !bits.some((b) => sameLoop(b, prefs.loop)) && (
+          <button
+            type="button"
+            className="btn small sun"
+            data-testid="save-hard-bit"
+            onClick={() => {
+              const loop = prefs.loop;
+              if (!loop) return;
+              const fromBar = perf.bars[loop.from]?.number ?? 0;
+              const toBar = perf.bars[loop.to]?.number ?? 0;
+              const name = window.prompt(
+                strings.playAlong.hardBitPrompt,
+                loopRangeText(perf, loop) ?? units.loopBars(fromBar, toBar),
+              );
+              if (!name?.trim()) return;
+              saveBits([
+                ...bits,
+                {
+                  id: newId(),
+                  name: name.trim(),
+                  ...loop,
+                  fromBar,
+                  toBar,
+                  bestSpeed: 0,
+                },
+              ]);
+            }}
+          >
+            {strings.playAlong.saveHardBit}
+          </button>
+        )}
       </div>
       <div className="playalong-parts playalong-settings" aria-label={tips.playAlong.parts}>
         <Choice

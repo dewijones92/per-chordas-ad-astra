@@ -262,6 +262,8 @@ export const strings = {
     exportXml: '💾 MusicXML',
     exportMidi: '💾 MIDI',
     loopBars: (from: string, to: string) => `📍 Bars ${from}–${to}`,
+    loopBeats: (fromBar: number, fromBeat: number, toBar: number, toBeat: number) =>
+      `📍 Bar ${String(fromBar)} beat ${String(fromBeat)} – bar ${String(toBar)} beat ${String(toBeat)}`,
     loopOff: '⚪ Off',
     fromHere: '⏮️ From here',
     toHere: '⏭️ To here',
@@ -600,9 +602,9 @@ export const tips = {
     exportXml: (key: string) => `MusicXML in ${key}, for MuseScore or any notation program`,
     exportMidi: (key: string) => `MIDI in ${key}, repeats played out`,
     barEdge:
-      'Drag up or down along the bar numbers to loop those bars; click a bar number to go to that bar',
-    fromHere: 'Start the loop at the current bar',
-    toHere: 'End the loop at the current bar',
+      'Drag up or down along the bar numbers to loop from one beat to another; click a bar number to go to that bar',
+    fromHere: 'Start the loop at the current beat',
+    toHere: 'End the loop at the beat line nearest to here',
     clearLoop: 'Clear the loop',
     ramp: (step: number, target: number) =>
       `Each time the loop comes round, play it ${String(step)}% faster until ${String(target)}%`,
@@ -644,6 +646,8 @@ export const tips = {
       "The drum pattern this piece's time signature calls for. The metronome's Groove menu is separate and only plays with the metronome",
     hardBits: 'Hard bits',
     hardBit: (from: number, to: number) => `Loop bars ${String(from)}–${String(to)}`,
+    hardBitBeats: (fromBar: number, fromBeat: number, toBar: number, toBeat: number) =>
+      `Loop bar ${String(fromBar)} beat ${String(fromBeat)} to bar ${String(toBar)} beat ${String(toBeat)}`,
     forget: (name: string) => `Forget ${name}`,
     parts: 'Parts',
     show: (part: string) => `Show ${part}`,
@@ -788,6 +792,8 @@ export const units = {
   seconds: (n: number) => `${String(n)} s`,
   noteInBar: (note: string, bar: number) => `${note} in bar ${String(bar)}`,
   loopBars: (from: number, to: number) => `bars ${String(from)}–${String(to)}`,
+  loopBeats: (fromBar: number, fromBeat: number, toBar: number, toBeat: number) =>
+    `bar ${String(fromBar)} beat ${String(fromBeat)} – bar ${String(toBar)} beat ${String(toBeat)}`,
   ago: {
     justNow: 'just now',
     minutes: (n: number) => `${String(n)} min ago`,

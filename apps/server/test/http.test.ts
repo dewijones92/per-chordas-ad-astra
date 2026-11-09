@@ -479,7 +479,17 @@ describe('HTTP API with two people', () => {
     expect(await resume(WIFE)).toBe('/piece/hers');
     expect(await resume(DEWI)).toBe('/piece/his');
 
-    const bit = { id: 'b1', name: 'Opening', from: 0, to: 1, fromBar: 1, toBar: 2, bestSpeed: 0.6 };
+    const bit = {
+      id: 'b1',
+      name: 'Opening',
+      from: 0,
+      to: 1,
+      fromBar: 1,
+      toBar: 2,
+      fromBeat: 1,
+      toBeat: 2,
+      bestSpeed: 0.6,
+    };
     await app.request(`/api/pieces/${piece.id}/hard-bits/waltz.mscz`, as(DEWI, send('PUT', [bit])));
     const best = async (email: string) =>
       (

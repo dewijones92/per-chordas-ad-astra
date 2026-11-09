@@ -170,8 +170,16 @@ keyboard from above, like the bird's-eye piano videos.
   same notes, bars, tempo and key back. Nothing is uploaded; it is built in the browser.
 - **Loop**: drag across bars on the **bar strip** above the notes, drag up or down the **bar edge** (the narrow
   column of bar numbers down the left of the falling notes, Dewi 7 Nov 2026: "select to loop any range I select"),
-  or use From here / To here. Both snap to whole bars, the yellow band follows the drag, and letting go turns the
-  loop on. Click a bar on either to jump to it, Shift+click on the strip to stretch the loop. The keyboard starts to
+  or use From here / To here. The bar strip snaps to whole bars; the bar edge and From here / To here snap to the
+  **beat** (9 Nov 2026, Dewi: "bars are too restrictive"; he chose beats over anywhere so the count-in still lines up):
+  the edge drag runs from the beat you press on to the beat you let go on, From here starts at the beat under the
+  playhead, and To here ends at the beat line nearest the playhead (at least one beat), so pressing it just after a
+  passage ends, or with the playhead paused on a bar line, ends the loop on that line. A loop that starts on a first
+  beat and ends on a last beat is still whole bars and reads "📍 Bars 12–14"; otherwise "📍 Bar 12 beat 3 – bar 14
+  beat 2". Saved as bar indices with optional `fromBeat` (0-based) and `toBeat` (beats of the last bar included),
+  so old loops and hard bits are unchanged (`music/loop-range.ts` turns either into seconds). The yellow band follows
+  the drag, and letting go turns the loop on. Click a bar on either to jump to it, Shift+click on the strip to
+  stretch the loop (to whole bars). The keyboard starts to
   the right of the bar edge, so the lowest notes can still be clicked for fingering; dragging the notes themselves
   still scrolls. **Speed up each loop** adds a chosen step every time
   round (0.5–20%, 5% to start with) until a chosen speed (100% to start with), both typed in beside the switch; the change happens exactly at the loop point, so no note is cut. **🔁 Loop** switches the loop off
@@ -202,7 +210,8 @@ keyboard from above, like the bird's-eye piano videos.
   patterns are the metronome's, `drums/`). Pausing during the count-in silences the clicks
   already scheduled, and a seek, speed or loop change during it keeps the music waiting for the count-in to
   end.
-- **Hard bits** (📌): with a loop set, **Save loop as hard bit** names it (default "Bars 12–16"). Saved
+- **Hard bits** (📌): with a loop set, **Save loop as hard bit** names it (default "bars 12–16", or "bar 12 beat 3 –
+  bar 16 beat 2" for a beat loop, whose beats it keeps). Saved
   hard bits are chips: click one to loop it, ✕ to forget it. Each remembers the **best speed** a whole pass
   has been played at: a pass counts only when it ran from the loop's start to its end with no jump, speed
   change or loop change inside it, so pausing near the end and speeding up does not count. With "speed up

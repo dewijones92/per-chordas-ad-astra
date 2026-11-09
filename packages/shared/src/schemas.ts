@@ -300,6 +300,8 @@ export const HardBit = z
     to: z.int().min(0),
     fromBar: z.int().min(0),
     toBar: z.int().min(0),
+    fromBeat: z.int().min(0).max(63).optional(),
+    toBeat: z.int().min(1).max(64).optional(),
     bestSpeed: z.number().min(0).max(PLAY_ALONG_MAX_SPEED),
     best: z.record(PersonKey, z.number().min(0).max(PLAY_ALONG_MAX_SPEED)).optional(),
   })

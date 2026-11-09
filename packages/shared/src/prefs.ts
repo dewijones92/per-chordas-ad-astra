@@ -8,6 +8,13 @@ export type Subdivision = z.infer<typeof Subdivision>;
 export const PerBeat = z.union([z.literal('auto'), Subdivision]);
 export type PerBeat = z.infer<typeof PerBeat>;
 export const COUNT_IN_MAX_BEATS = 16;
+export const LoopRange = z.object({
+  from: z.int().min(0),
+  to: z.int().min(0),
+  fromBeat: z.int().min(0).max(63).optional(),
+  toBeat: z.int().min(1).max(64).optional(),
+});
+export type LoopRange = z.infer<typeof LoopRange>;
 export const CountIn = z.union([z.literal('bar'), z.int().min(0).max(COUNT_IN_MAX_BEATS)]);
 export type CountIn = z.infer<typeof CountIn>;
 
@@ -94,7 +101,7 @@ export function speedPercent(speed: number): number {
 
 export const PlayAlongPrefs = z.object({
   speed: z.number().min(PLAY_ALONG_MIN_SPEED).max(PLAY_ALONG_MAX_SPEED),
-  loop: z.object({ from: z.int().min(0), to: z.int().min(0) }).nullable(),
+  loop: LoopRange.nullable(),
   loopOn: z.boolean().default(true),
   hidden: z.array(z.int().min(0)).max(64),
   muted: z.array(z.int().min(0)).max(64),

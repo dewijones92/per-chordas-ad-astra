@@ -1,6 +1,6 @@
 import { makeMusicXml, PIANO_WALTZ } from '../packages/fixtures/src/index.ts';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { createPiece, watchVoices } from './support/helpers.ts';
+import { clickBar, createPiece, watchVoices } from './support/helpers.ts';
 import { fakeMidi, installFakeMidi, type FakeMidiOptions } from './support/fake-midi.ts';
 import { strings } from '../apps/web/src/strings.ts';
 
@@ -397,6 +397,7 @@ test('pausing shows how it went so far, and Start again begins afresh', async ({
 test('the count-in plays first, and a loop starts over at its start', async ({ page }) => {
   await open(page, 'Loop Wait', undefined, false);
   await page.getByRole('button', { name: 'From here' }).click();
+  await clickBar(page, 1);
   await page.getByRole('button', { name: 'To here' }).click();
   await expect(page.getByTestId('playalong-loop')).toContainText('Bars 1–1');
   await page.getByTestId('playalong-countin').check();

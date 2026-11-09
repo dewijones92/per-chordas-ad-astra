@@ -141,3 +141,14 @@ export async function watchVoices(page: Page): Promise<() => Promise<Voice[]>> {
   });
   return () => page.evaluate(() => (window as unknown as { voices: Voice[] }).voices.slice());
 }
+
+export async function clickBar(page: Page, index: number): Promise<void> {
+  const strip = page.getByTestId('playalong-bars');
+  const box = await strip.boundingBox();
+  if (!box) throw new Error('no bar strip');
+  const cell = Number(await strip.getAttribute('data-cell-width'));
+  await page.mouse.click(box.x + cell * (index + 0.5), box.y + 10);
+  await expect(page.getByTestId('playalong-position')).toContainText(
+    `📍 Bar ${String(index + 1)} ·`,
+  );
+}

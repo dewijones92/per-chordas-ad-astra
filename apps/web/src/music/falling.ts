@@ -616,6 +616,12 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
   };
 }
 
+export function edgeTimeAt(view: GeometryView & Pick<FallingView, 'position'>, py: number): number {
+  const g = geometry(view);
+  const y = Math.min(g.notesHeight - 1, Math.max(0, py));
+  return view.position + (g.notesHeight - y) / Math.max(1, g.pxPerSecond);
+}
+
 export function barEdgeAt(
   view: GeometryView & Pick<FallingView, 'perf' | 'position'>,
   px: number,
