@@ -271,11 +271,12 @@ describe('Transport', () => {
     expect(t.speedAt(lead + 25)).toBe(1);
   });
 
-  it('makes each pass the chosen percent faster than the last, to a tenth of a percent, always moving', () => {
+  it('makes each pass exactly the chosen percent faster than the last, at any speed', () => {
     expect(nextPassSpeed(0.5, { step: 0.01, target: 1 })).toBe(0.505);
-    expect(nextPassSpeed(0.15, { step: 0.01, target: 1 })).toBe(0.152);
-    expect(nextPassSpeed(0.5, { step: 0.025, target: 1 })).toBe(0.513);
-    expect(nextPassSpeed(0.05, { step: 0.005, target: 1 })).toBe(0.051);
+    expect(nextPassSpeed(0.15, { step: 0.01, target: 1 })).toBe(0.1515);
+    expect(nextPassSpeed(0.5, { step: 0.025, target: 1 })).toBe(0.5125);
+    expect(nextPassSpeed(0.05, { step: 0.005, target: 1 })).toBe(0.05025);
+    expect(nextPassSpeed(0.5, { step: 0.05, target: 0.4 })).toBe(0.5);
     expect(nextPassSpeed(0.99, { step: 0.05, target: 1 })).toBe(1);
     expect(nextPassSpeed(1.2, { step: 0.05, target: 1 })).toBe(1.2);
   });

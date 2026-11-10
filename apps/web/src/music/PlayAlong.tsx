@@ -1351,30 +1351,34 @@ export function PlayAlong({
           </label>
           {prefs.ramp && (
             <>
-              <span className="muted">{units.by}</span>
-              <PercentInput
-                value={prefs.rampStep}
-                min={RAMP_MIN_STEP}
-                max={RAMP_MAX_STEP}
-                step={PLAY_ALONG_SPEED_STEP}
-                label={tips.playAlong.rampStep}
-                testId="playalong-ramp-step"
-                onChange={(rampStep) => {
-                  updatePrefs((p) => ({ ...p, rampStep: roundSpeed(rampStep) }));
-                }}
-              />
-              <span className="muted">{units.upTo}</span>
-              <PercentInput
-                value={prefs.rampTarget}
-                min={PLAY_ALONG_MIN_SPEED}
-                max={PLAY_ALONG_MAX_SPEED}
-                step={PLAY_ALONG_SPEED_STEP}
-                label={tips.playAlong.rampTarget}
-                testId="playalong-ramp-target"
-                onChange={(rampTarget) => {
-                  updatePrefs((p) => ({ ...p, rampTarget: roundSpeed(rampTarget) }));
-                }}
-              />
+              <span className="playalong-ramp-part">
+                <span className="muted">{units.by}</span>
+                <PercentInput
+                  value={prefs.rampStep}
+                  min={RAMP_MIN_STEP}
+                  max={RAMP_MAX_STEP}
+                  step={PLAY_ALONG_SPEED_STEP}
+                  label={tips.playAlong.rampStep}
+                  testId="playalong-ramp-step"
+                  onChange={(rampStep) => {
+                    updatePrefs((p) => ({ ...p, rampStep: roundSpeed(rampStep) }));
+                  }}
+                />
+              </span>
+              <span className="playalong-ramp-part">
+                <span className="muted">{units.upTo}</span>
+                <PercentInput
+                  value={prefs.rampTarget}
+                  min={PLAY_ALONG_MIN_SPEED}
+                  max={PLAY_ALONG_MAX_SPEED}
+                  step={PLAY_ALONG_SPEED_STEP}
+                  label={tips.playAlong.rampTarget}
+                  testId="playalong-ramp-target"
+                  onChange={(rampTarget) => {
+                    updatePrefs((p) => ({ ...p, rampTarget: roundSpeed(rampTarget) }));
+                  }}
+                />
+              </span>
             </>
           )}
         </span>

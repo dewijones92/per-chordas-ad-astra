@@ -351,6 +351,12 @@ export class PianoPlayer {
     this.both((t) => {
       t.seek(song, at);
     });
+    if (this.transport.playing)
+      console.info('dewidebug play-along seek', {
+        to: song.toFixed(2),
+        at: at.toFixed(3),
+        movesAt: this.transport.resumesAt(at).toFixed(3),
+      });
     this.lastPosition = song;
     if (this.transport.playing) this.silence();
     if (this.heldAt !== null) this.release();
@@ -360,6 +366,12 @@ export class PianoPlayer {
     const at = this.ctx?.currentTime ?? 0;
     const changed = this.transport.setSpeed(speed, at);
     this.clicks.setSpeed(speed, at);
+    if (changed && this.transport.playing)
+      console.info('dewidebug play-along speed changed while playing', {
+        speed,
+        at: at.toFixed(3),
+        movesAt: this.transport.resumesAt(at).toFixed(3),
+      });
     if (changed && this.transport.playing) this.silence();
   }
 

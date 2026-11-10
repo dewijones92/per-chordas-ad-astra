@@ -27,12 +27,11 @@ export interface Scheduled<T extends Timed = Timed> {
 }
 
 export const START_LEAD_SECONDS = 0.06;
-const PASS_SPEED_GRAIN = 1000;
+const PASS_SPEED_GRAIN = 100_000;
 
 export function nextPassSpeed(speed: number, ramp: Ramp): number {
-  const faster = Math.round(speed * (1 + ramp.step) * PASS_SPEED_GRAIN + 1e-6) / PASS_SPEED_GRAIN;
-  const moving = Math.max(faster, Math.round(speed * PASS_SPEED_GRAIN + 1) / PASS_SPEED_GRAIN);
-  return Math.max(speed, Math.min(ramp.target, moving));
+  const faster = Math.round(speed * (1 + ramp.step) * PASS_SPEED_GRAIN) / PASS_SPEED_GRAIN;
+  return Math.max(speed, Math.min(ramp.target, faster));
 }
 export function clampSpeed(speed: number): number {
   return Math.min(PLAY_ALONG_MAX_SPEED, Math.max(PLAY_ALONG_MIN_SPEED, speed));
@@ -130,7 +129,7 @@ export class Transport<T extends Timed = Timed> {
     return index;
   }
 
-  private resumesAt(ctx: number): number {
+  resumesAt(ctx: number): number {
     const index = this.anchorIndexAt(ctx);
     const here = this.anchors[index];
     const held = here?.speed === 0 ? (this.anchors[index + 1]?.ctx ?? ctx) : ctx;

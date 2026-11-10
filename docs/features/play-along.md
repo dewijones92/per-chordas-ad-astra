@@ -195,7 +195,7 @@ keyboard from above, like the bird's-eye piano videos.
   stretch the loop (to whole bars). The keyboard starts to
   the right of the bar edge, so the lowest notes can still be clicked for fingering; dragging the notes themselves
   still scrolls. **Speed up each loop** plays each pass a chosen percent
-  faster than the one before (0.5–20%, 5% to start with), to a tenth of a percent and always at least that much,
+  faster than the one before (0.5–20%, 5% to start with), exactly (the speed box rounds it to a tenth),
   until a chosen speed (100% to start with), both typed in beside the switch. Until 10 Nov 2026 it added the step as
   points on the speed dial, so "1%" at 15% speed played about 7% faster; Dewi read it as "1% faster", and it now
   means that; the change happens exactly at the loop point, so no note is cut. **🔁 Loop** switches the loop off

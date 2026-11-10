@@ -531,6 +531,35 @@ test('the count-in can be a number of beats, plays again each time a loop goes r
   await expect(page.getByTestId('playalong-countin-length')).toBeDisabled();
 });
 
+test('speed up each loop with a count-in waits for the count-in before every pass, and the speed box keeps up', async ({
+  page,
+}) => {
+  await createPiece(page, 'Ramp Count In', { pdf: false });
+  await page.getByTestId('upload-music').setInputFiles(waltzMscz());
+  await expect(page.getByTestId('playalong-canvas')).toBeVisible();
+  await page.getByLabel('Play-along speed').fill('50');
+  await page.getByLabel('Play-along speed').press('Enter');
+  await page.getByRole('button', { name: 'From here' }).click();
+  await clickBar(page, 1);
+  await page.getByRole('button', { name: 'To here' }).click();
+  await expect(page.getByTestId('playalong-countin')).toBeChecked();
+  await page.getByTestId('playalong-countin-length').selectOption('1');
+  await page.getByTestId('playalong-ramp').check();
+  const countIns = watchCountIns(page);
+  await page.getByTestId('playalong-play').click();
+  const samples = await sampleClock(page, () => countIns.length >= 4, 30_000);
+  await page.getByTestId('playalong-play').click();
+  expect(countIns.length).toBeGreaterThanOrEqual(4);
+  for (const wrap of countIns.slice(1, 3)) {
+    const held = samples.filter(
+      (x) => x.clock > wrap.at + 0.05 && x.clock < wrap.at + wrap.beats * wrap.seconds - 0.05,
+    );
+    expect(held.length).toBeGreaterThan(3);
+    expect(Math.max(...held.map((x) => x.position))).toBeLessThan(0.05);
+  }
+  await expect(page.getByTestId('playalong-speed')).toHaveValue('57.9');
+});
+
 test('per beat: Auto clicks on the beat at full speed and fills in at half speed; ♫ adds a softer click between the beats, and is remembered', async ({
   page,
 }) => {
