@@ -89,9 +89,13 @@ keyboard from above, like the bird's-eye piano videos.
   placed before names, so a name gives way to a finger and turning names on never hides one; the finger of the
   picked note is always shown (Dewi, 7 Nov 2026: "I can't change finger numbers when the note names are on").
 - **More room**: drag the bar under the stave (or focus it and use ↑ ↓) to give the stave or the falling notes more
-  height; double-click it to go back to automatic. **🔼 Fewer controls** folds away the settings rows and (9 Nov 2026,
+  height; double-click it to go back to automatic. The settings sit in fixed rows under the play bar (10 Nov 2026, Dewi: "screen a bit all over the place",
+  with the speed-up "a mile away from the speed"): 🔁 the loop with its count-in, click and drums; 📌 hard bits; 🎵 the
+  key, what it plays on, the file check and export; 👀 what is shown (notation, names, fingering, hands, chords,
+  tails, all 88 keys); then the hands and parts. Speed up each loop sits on the play bar right after the speed.
+  Before, one wrapping row put each control wherever the window's width left it. **🔼 Fewer controls** folds away the settings rows and (9 Nov 2026,
   Dewi: "the vertical space on the left should just be taken up by the bird's eye view") moves the play bar (play,
-  rewind, bar and time, Wait for me, look ahead, speed, 🔽 More controls) and the Wait for me strip to the top of the
+  rewind, bar and time, Wait for me, look ahead, speed, speed up each loop, 🔽 More controls) and the Wait for me strip to the top of the
   right-hand column, above the metronome, in the Notes and Both views alike. The left keeps only the stave (if
   ticked), the bar strip and the falling notes. It is the same bar, drawn into a slot in the column through a React
   portal, so its buttons, shortcuts and readout are unchanged; 🔽 More controls brings it back above the notes.

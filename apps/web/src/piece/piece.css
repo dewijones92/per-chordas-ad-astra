@@ -251,6 +251,16 @@
   min-width: 40px;
 }
 
+.dock-playbar .playalong-ramp {
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+}
+
+.dock-playbar .playalong-ramp label,
+.dock-playbar .playalong-ramp .muted {
+  white-space: nowrap;
+}
+
 .dock-playbar .spacer {
   display: none;
 }

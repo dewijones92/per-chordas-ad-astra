@@ -34,13 +34,28 @@ test('the falling notes zoom out to show more, the stave resizes, the settings f
   await expect(page.getByTestId('playalong-look-ahead-value')).toHaveText('2 s');
 
   await expect(page.getByTestId('playalong-transpose')).toBeVisible();
+  const speedBar = page.locator('.playalong-bar', { has: page.getByTestId('playalong-speed') });
+  await expect(speedBar.getByTestId('playalong-ramp')).toBeVisible();
+  const loopRow = page.getByTestId('playalong-loop-row');
+  for (const id of ['playalong-loop', 'playalong-countin', 'playalong-click'])
+    await expect(loopRow.getByTestId(id)).toBeVisible();
+  await expect(
+    page.getByTestId('playalong-piece-row').getByTestId('playalong-transpose'),
+  ).toBeVisible();
+  await expect(page.getByTestId('playalong-show-row').getByTestId('playalong-names')).toBeVisible();
   await page.getByTestId('playalong-compact').click();
   await expect(page.getByTestId('playalong-transpose')).toBeHidden();
   await expect(page.getByTestId('playalong-compact')).toHaveText(strings.playAlong.moreControls);
   await expect(page.getByTestId('playalong-look-ahead')).toBeVisible();
   await expect(canvas).toBeInViewport({ ratio: 0.5 });
   const docked = page.getByTestId('dock-playbar');
-  for (const id of ['playalong-play', 'playalong-position', 'playalong-compact', 'playalong-speed'])
+  for (const id of [
+    'playalong-play',
+    'playalong-position',
+    'playalong-compact',
+    'playalong-speed',
+    'playalong-ramp',
+  ])
     await expect(docked.getByTestId(id)).toBeVisible();
   await expect(docked.getByTestId('playalong-position')).toContainText('📍 Bar 1 ·');
   const bar = await docked.boundingBox();

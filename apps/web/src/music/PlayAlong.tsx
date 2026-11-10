@@ -1333,6 +1333,51 @@ export function PlayAlong({
             onChange={setSpeed}
           />
         </span>
+        <span
+          className="playalong-field playalong-ramp"
+          title={tips.playAlong.ramp(speedPercent(prefs.rampStep), speedPercent(prefs.rampTarget))}
+        >
+          <label className="playalong-field">
+            <input
+              type="checkbox"
+              checked={prefs.ramp}
+              data-testid="playalong-ramp"
+              onChange={(e) => {
+                const ramp = e.target.checked;
+                updatePrefs((p) => ({ ...p, ramp }));
+              }}
+            />
+            {strings.playAlong.ramp}
+          </label>
+          {prefs.ramp && (
+            <>
+              <span className="muted">{units.by}</span>
+              <PercentInput
+                value={prefs.rampStep}
+                min={RAMP_MIN_STEP}
+                max={RAMP_MAX_STEP}
+                step={PLAY_ALONG_SPEED_STEP}
+                label={tips.playAlong.rampStep}
+                testId="playalong-ramp-step"
+                onChange={(rampStep) => {
+                  updatePrefs((p) => ({ ...p, rampStep: roundSpeed(rampStep) }));
+                }}
+              />
+              <span className="muted">{units.upTo}</span>
+              <PercentInput
+                value={prefs.rampTarget}
+                min={PLAY_ALONG_MIN_SPEED}
+                max={PLAY_ALONG_MAX_SPEED}
+                step={PLAY_ALONG_SPEED_STEP}
+                label={tips.playAlong.rampTarget}
+                testId="playalong-ramp-target"
+                onChange={(rampTarget) => {
+                  updatePrefs((p) => ({ ...p, rampTarget: roundSpeed(rampTarget) }));
+                }}
+              />
+            </>
+          )}
+        </span>
         <button
           type="button"
           className="btn small ghost"
@@ -1368,7 +1413,241 @@ export function PlayAlong({
       }}
     >
       {barDocked ? createPortal(playBar, controlsSlot) : playBar}
-      <div className="playalong-bar playalong-settings">
+      <div className="playalong-bar playalong-settings" data-testid="playalong-loop-row">
+        <span className="playalong-field" data-testid="playalong-loop">
+          <LoopSwitch
+            on={prefs.loopOn && prefs.loop !== null}
+            disabled={!prefs.loop}
+            onChange={(loopOn) => {
+              updatePrefs((p) => ({ ...p, loopOn }));
+            }}
+            testId="playalong-loop-on"
+          />
+          <strong className={prefs.loopOn ? '' : 'muted'}>{loopLabel}</strong>
+          <button
+            type="button"
+            className="btn small ghost"
+            title={tips.playAlong.fromHere}
+            onClick={() => {
+              const at = currentBeat();
+              updatePrefs((p) => {
+                const end = p.loop ? loopEndPoint(perf, p.loop) : at;
+                const keep = end.bar > at.bar || (end.bar === at.bar && end.beat >= at.beat);
+                const loop = loopBetween(perf, at, keep ? end : at);
+                console.info('dewidebug play-along loop from here', { at, loop });
+                return { ...p, loop, loopOn: true };
+              });
+            }}
+          >
+            {strings.playAlong.fromHere}
+          </button>
+          <button
+            type="button"
+            className="btn small ghost"
+            title={tips.playAlong.toHere}
+            onClick={() => {
+              const at =
+                lastBeatBefore(perf, player?.position() ?? prefs.position) ?? currentBeat();
+              updatePrefs((p) => {
+                const start = p.loop ? loopStartPoint(p.loop) : at;
+                const keep = start.bar < at.bar || (start.bar === at.bar && start.beat <= at.beat);
+                const loop = loopBetween(perf, keep ? start : at, at);
+                console.info('dewidebug play-along loop to here', { at, loop });
+                return { ...p, loop, loopOn: true };
+              });
+            }}
+          >
+            {strings.playAlong.toHere}
+          </button>
+          {prefs.loop && (
+            <button
+              type="button"
+              className="btn small ghost"
+              aria-label={tips.playAlong.clearLoop}
+              onClick={() => {
+                updatePrefs((p) => ({ ...p, loop: null }));
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </span>
+        <label className="playalong-field" title={tips.playAlong.countIn}>
+          <input
+            type="checkbox"
+            checked={prefs.countIn}
+            data-testid="playalong-countin"
+            onChange={(e) => {
+              const countIn = e.target.checked;
+              updatePrefs((p) => ({ ...p, countIn }));
+            }}
+          />
+          {strings.playAlong.countIn}
+        </label>
+        <select
+          className="playalong-countin-length"
+          value={String(prefs.countInBeats ?? 'bar')}
+          disabled={!prefs.countIn}
+          title={tips.playAlong.countInLength}
+          aria-label={tips.playAlong.countInLength}
+          data-testid="playalong-countin-length"
+          onChange={(e) => {
+            const value = e.target.value;
+            const countInBeats = value === 'bar' ? 'bar' : Number(value);
+            console.info('dewidebug play-along count-in length', { countInBeats });
+            updatePrefs((p) => ({ ...p, countInBeats }));
+          }}
+        >
+          <option value="bar">{strings.playAlong.countInBar}</option>
+          {Array.from({ length: COUNT_IN_MAX_BEATS }, (_, i) => i + 1).map((n) => (
+            <option key={n} value={String(n)}>
+              {strings.playAlong.countInBeats(n)}
+            </option>
+          ))}
+        </select>
+        <label className="playalong-field" title={tips.playAlong.click}>
+          <input
+            type="checkbox"
+            checked={prefs.click}
+            data-testid="playalong-click"
+            onChange={(e) => {
+              const click = e.target.checked;
+              updatePrefs((p) => ({ ...p, click }));
+            }}
+          />
+          {strings.playAlong.click}
+        </label>
+        <label className="playalong-field" title={tips.playAlong.drums}>
+          <input
+            type="checkbox"
+            checked={prefs.drums}
+            data-testid="playalong-drums"
+            onChange={(e) => {
+              const drums = e.target.checked;
+              updatePrefs((p) => ({ ...p, drums }));
+            }}
+          />
+          {strings.playAlong.drums}
+        </label>
+        {prefs.drums && groove && (
+          <span
+            className="muted playalong-field"
+            title={tips.playAlong.groove}
+            data-testid="playalong-groove"
+            data-groove={groove}
+          >
+            {strings.metronome.grooves[groove]}
+          </span>
+        )}
+        {(prefs.click || prefs.drums) && (
+          <span className="playalong-field" title={tips.playAlong.perBeat}>
+            <span className="playalong-label">{strings.playAlong.perBeat}</span>
+            <NoteValues
+              value={perBeat}
+              auto
+              label={tips.playAlong.perBeat}
+              testId="playalong-per-beat"
+              onChange={(next) => {
+                console.info('dewidebug play-along per beat chosen', { from: perBeat, to: next });
+                updatePrefs((p) => ({ ...p, perBeat: next }));
+              }}
+            />
+          </span>
+        )}
+      </div>
+      <div
+        className="playalong-parts playalong-bits playalong-settings"
+        aria-label={tips.playAlong.hardBits}
+        data-testid="hard-bits"
+      >
+        <span className="playalong-field">{strings.playAlong.hardBits}</span>
+        {hardBits.error && !bitsLoaded && (
+          <span className="error small-print" data-testid="hard-bits-error">
+            {strings.playAlong.hardBitsFailed} {hardBits.error}{' '}
+            <button type="button" className="btn small ghost" onClick={reloadHardBits}>
+              {strings.common.retry}
+            </button>
+          </span>
+        )}
+        {bitsLoaded && bits.length === 0 && (
+          <span className="muted small-print">{strings.playAlong.hardBitsEmpty}</span>
+        )}
+        {bits.map((b) => {
+          const on = activeLoop(prefs);
+          const active = sameLoop(on, b);
+          const bitEnds = loopEnds(perf, b);
+          return (
+            <span key={b.id} className="playalong-part" data-testid="hard-bit">
+              <button
+                type="button"
+                className="btn small ghost"
+                aria-pressed={active}
+                title={
+                  bitEnds && !bitEnds.whole
+                    ? tips.playAlong.hardBitBeats(
+                        bitEnds.fromBar,
+                        bitEnds.fromBeat,
+                        bitEnds.toBar,
+                        bitEnds.toBeat,
+                      )
+                    : tips.playAlong.hardBit(b.fromBar, b.toBar)
+                }
+                onClick={() => {
+                  chooseBit(b);
+                }}
+              >
+                {b.name}
+              </button>
+              <span className="muted small-print" data-testid="hard-bit-best">
+                {strings.playAlong.best(speedPercent(b.bestSpeed))}
+              </span>
+              <button
+                type="button"
+                className="btn small ghost icon part-toggle"
+                aria-label={tips.playAlong.forget(b.name)}
+                onClick={() => {
+                  if (!window.confirm(strings.playAlong.forgetConfirm(b.name))) return;
+                  saveBits(bits.filter((x) => x.id !== b.id));
+                }}
+              >
+                ✕
+              </button>
+            </span>
+          );
+        })}
+        {bitsLoaded && prefs.loop && !bits.some((b) => sameLoop(b, prefs.loop)) && (
+          <button
+            type="button"
+            className="btn small sun"
+            data-testid="save-hard-bit"
+            onClick={() => {
+              const loop = prefs.loop;
+              if (!loop) return;
+              const fromBar = perf.bars[loop.from]?.number ?? 0;
+              const toBar = perf.bars[loop.to]?.number ?? 0;
+              const name = window.prompt(
+                strings.playAlong.hardBitPrompt,
+                loopRangeText(perf, loop) ?? units.loopBars(fromBar, toBar),
+              );
+              if (!name?.trim()) return;
+              saveBits([
+                ...bits,
+                {
+                  id: newId(),
+                  name: name.trim(),
+                  ...loop,
+                  fromBar,
+                  toBar,
+                  bestSpeed: 0,
+                },
+              ]);
+            }}
+          >
+            {strings.playAlong.saveHardBit}
+          </button>
+        )}
+      </div>
+      <div className="playalong-bar playalong-settings" data-testid="playalong-piece-row">
         <span className="playalong-field" data-testid="playalong-transpose">
           <span>{strings.playAlong.key}</span>
           <button
@@ -1484,203 +1763,8 @@ export function PlayAlong({
             {strings.playAlong.exportMidi}
           </button>
         </span>
-        <span className="playalong-field" data-testid="playalong-loop">
-          <LoopSwitch
-            on={prefs.loopOn && prefs.loop !== null}
-            disabled={!prefs.loop}
-            onChange={(loopOn) => {
-              updatePrefs((p) => ({ ...p, loopOn }));
-            }}
-            testId="playalong-loop-on"
-          />
-          <strong className={prefs.loopOn ? '' : 'muted'}>{loopLabel}</strong>
-          <button
-            type="button"
-            className="btn small ghost"
-            title={tips.playAlong.fromHere}
-            onClick={() => {
-              const at = currentBeat();
-              updatePrefs((p) => {
-                const end = p.loop ? loopEndPoint(perf, p.loop) : at;
-                const keep = end.bar > at.bar || (end.bar === at.bar && end.beat >= at.beat);
-                const loop = loopBetween(perf, at, keep ? end : at);
-                console.info('dewidebug play-along loop from here', { at, loop });
-                return { ...p, loop, loopOn: true };
-              });
-            }}
-          >
-            {strings.playAlong.fromHere}
-          </button>
-          <button
-            type="button"
-            className="btn small ghost"
-            title={tips.playAlong.toHere}
-            onClick={() => {
-              const at =
-                lastBeatBefore(perf, player?.position() ?? prefs.position) ?? currentBeat();
-              updatePrefs((p) => {
-                const start = p.loop ? loopStartPoint(p.loop) : at;
-                const keep = start.bar < at.bar || (start.bar === at.bar && start.beat <= at.beat);
-                const loop = loopBetween(perf, keep ? start : at, at);
-                console.info('dewidebug play-along loop to here', { at, loop });
-                return { ...p, loop, loopOn: true };
-              });
-            }}
-          >
-            {strings.playAlong.toHere}
-          </button>
-          {prefs.loop && (
-            <button
-              type="button"
-              className="btn small ghost"
-              aria-label={tips.playAlong.clearLoop}
-              onClick={() => {
-                updatePrefs((p) => ({ ...p, loop: null }));
-              }}
-            >
-              ✕
-            </button>
-          )}
-        </span>
-        <span
-          className="playalong-field"
-          title={tips.playAlong.ramp(speedPercent(prefs.rampStep), speedPercent(prefs.rampTarget))}
-        >
-          <label className="playalong-field">
-            <input
-              type="checkbox"
-              checked={prefs.ramp}
-              data-testid="playalong-ramp"
-              onChange={(e) => {
-                const ramp = e.target.checked;
-                updatePrefs((p) => ({ ...p, ramp }));
-              }}
-            />
-            {strings.playAlong.ramp}
-          </label>
-          {prefs.ramp && (
-            <>
-              <span className="muted">{units.by}</span>
-              <PercentInput
-                value={prefs.rampStep}
-                min={RAMP_MIN_STEP}
-                max={RAMP_MAX_STEP}
-                step={PLAY_ALONG_SPEED_STEP}
-                label={tips.playAlong.rampStep}
-                testId="playalong-ramp-step"
-                onChange={(rampStep) => {
-                  updatePrefs((p) => ({ ...p, rampStep: roundSpeed(rampStep) }));
-                }}
-              />
-              <span className="muted">{units.upTo}</span>
-              <PercentInput
-                value={prefs.rampTarget}
-                min={PLAY_ALONG_MIN_SPEED}
-                max={PLAY_ALONG_MAX_SPEED}
-                step={PLAY_ALONG_SPEED_STEP}
-                label={tips.playAlong.rampTarget}
-                testId="playalong-ramp-target"
-                onChange={(rampTarget) => {
-                  updatePrefs((p) => ({ ...p, rampTarget: roundSpeed(rampTarget) }));
-                }}
-              />
-            </>
-          )}
-        </span>
-        <span className="spacer" />
-        <label className="playalong-field">
-          <input
-            type="checkbox"
-            checked={prefs.full}
-            onChange={(e) => {
-              const full = e.target.checked;
-              updatePrefs((p) => ({ ...p, full }));
-            }}
-          />
-          {strings.playAlong.fullKeyboard}
-        </label>
-        <label className="playalong-field" title={tips.playAlong.countIn}>
-          <input
-            type="checkbox"
-            checked={prefs.countIn}
-            data-testid="playalong-countin"
-            onChange={(e) => {
-              const countIn = e.target.checked;
-              updatePrefs((p) => ({ ...p, countIn }));
-            }}
-          />
-          {strings.playAlong.countIn}
-        </label>
-        <select
-          className="playalong-countin-length"
-          value={String(prefs.countInBeats ?? 'bar')}
-          disabled={!prefs.countIn}
-          title={tips.playAlong.countInLength}
-          aria-label={tips.playAlong.countInLength}
-          data-testid="playalong-countin-length"
-          onChange={(e) => {
-            const value = e.target.value;
-            const countInBeats = value === 'bar' ? 'bar' : Number(value);
-            console.info('dewidebug play-along count-in length', { countInBeats });
-            updatePrefs((p) => ({ ...p, countInBeats }));
-          }}
-        >
-          <option value="bar">{strings.playAlong.countInBar}</option>
-          {Array.from({ length: COUNT_IN_MAX_BEATS }, (_, i) => i + 1).map((n) => (
-            <option key={n} value={String(n)}>
-              {strings.playAlong.countInBeats(n)}
-            </option>
-          ))}
-        </select>
-        <label className="playalong-field" title={tips.playAlong.click}>
-          <input
-            type="checkbox"
-            checked={prefs.click}
-            data-testid="playalong-click"
-            onChange={(e) => {
-              const click = e.target.checked;
-              updatePrefs((p) => ({ ...p, click }));
-            }}
-          />
-          {strings.playAlong.click}
-        </label>
-        <label className="playalong-field" title={tips.playAlong.drums}>
-          <input
-            type="checkbox"
-            checked={prefs.drums}
-            data-testid="playalong-drums"
-            onChange={(e) => {
-              const drums = e.target.checked;
-              updatePrefs((p) => ({ ...p, drums }));
-            }}
-          />
-          {strings.playAlong.drums}
-        </label>
-        {prefs.drums && groove && (
-          <span
-            className="muted playalong-field"
-            title={tips.playAlong.groove}
-            data-testid="playalong-groove"
-            data-groove={groove}
-          >
-            {strings.metronome.grooves[groove]}
-          </span>
-        )}
-        {(prefs.click || prefs.drums) && (
-          <span className="playalong-field" title={tips.playAlong.perBeat}>
-            <span className="playalong-label">{strings.playAlong.perBeat}</span>
-            <NoteValues
-              value={perBeat}
-              auto
-              label={tips.playAlong.perBeat}
-              testId="playalong-per-beat"
-              onChange={(next) => {
-                console.info('dewidebug play-along per beat chosen', { from: perBeat, to: next });
-                updatePrefs((p) => ({ ...p, perBeat: next }));
-              }}
-            />
-          </span>
-        )}
+      </div>
+      <div className="playalong-bar playalong-settings" data-testid="playalong-show-row">
         {notatable && (
           <label className="playalong-field">
             <input
@@ -1790,98 +1874,17 @@ export function PlayAlong({
           {strings.playAlong.tails}
         </label>
         {samples && <span className="muted small-print">{samples}</span>}
-      </div>
-      <div
-        className="playalong-parts playalong-bits playalong-settings"
-        aria-label={tips.playAlong.hardBits}
-        data-testid="hard-bits"
-      >
-        <span className="playalong-field">{strings.playAlong.hardBits}</span>
-        {hardBits.error && !bitsLoaded && (
-          <span className="error small-print" data-testid="hard-bits-error">
-            {strings.playAlong.hardBitsFailed} {hardBits.error}{' '}
-            <button type="button" className="btn small ghost" onClick={reloadHardBits}>
-              {strings.common.retry}
-            </button>
-          </span>
-        )}
-        {bitsLoaded && bits.length === 0 && (
-          <span className="muted small-print">{strings.playAlong.hardBitsEmpty}</span>
-        )}
-        {bits.map((b) => {
-          const on = activeLoop(prefs);
-          const active = sameLoop(on, b);
-          const bitEnds = loopEnds(perf, b);
-          return (
-            <span key={b.id} className="playalong-part" data-testid="hard-bit">
-              <button
-                type="button"
-                className="btn small ghost"
-                aria-pressed={active}
-                title={
-                  bitEnds && !bitEnds.whole
-                    ? tips.playAlong.hardBitBeats(
-                        bitEnds.fromBar,
-                        bitEnds.fromBeat,
-                        bitEnds.toBar,
-                        bitEnds.toBeat,
-                      )
-                    : tips.playAlong.hardBit(b.fromBar, b.toBar)
-                }
-                onClick={() => {
-                  chooseBit(b);
-                }}
-              >
-                {b.name}
-              </button>
-              <span className="muted small-print" data-testid="hard-bit-best">
-                {strings.playAlong.best(speedPercent(b.bestSpeed))}
-              </span>
-              <button
-                type="button"
-                className="btn small ghost icon part-toggle"
-                aria-label={tips.playAlong.forget(b.name)}
-                onClick={() => {
-                  if (!window.confirm(strings.playAlong.forgetConfirm(b.name))) return;
-                  saveBits(bits.filter((x) => x.id !== b.id));
-                }}
-              >
-                ✕
-              </button>
-            </span>
-          );
-        })}
-        {bitsLoaded && prefs.loop && !bits.some((b) => sameLoop(b, prefs.loop)) && (
-          <button
-            type="button"
-            className="btn small sun"
-            data-testid="save-hard-bit"
-            onClick={() => {
-              const loop = prefs.loop;
-              if (!loop) return;
-              const fromBar = perf.bars[loop.from]?.number ?? 0;
-              const toBar = perf.bars[loop.to]?.number ?? 0;
-              const name = window.prompt(
-                strings.playAlong.hardBitPrompt,
-                loopRangeText(perf, loop) ?? units.loopBars(fromBar, toBar),
-              );
-              if (!name?.trim()) return;
-              saveBits([
-                ...bits,
-                {
-                  id: newId(),
-                  name: name.trim(),
-                  ...loop,
-                  fromBar,
-                  toBar,
-                  bestSpeed: 0,
-                },
-              ]);
+        <label className="playalong-field">
+          <input
+            type="checkbox"
+            checked={prefs.full}
+            onChange={(e) => {
+              const full = e.target.checked;
+              updatePrefs((p) => ({ ...p, full }));
             }}
-          >
-            {strings.playAlong.saveHardBit}
-          </button>
-        )}
+          />
+          {strings.playAlong.fullKeyboard}
+        </label>
       </div>
       <div className="playalong-parts playalong-settings" aria-label={tips.playAlong.parts}>
         <Choice
