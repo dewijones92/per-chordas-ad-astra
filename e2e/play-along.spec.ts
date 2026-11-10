@@ -162,7 +162,7 @@ test('speed goes down to 5% in half-percent steps, takes a typed speed, and spee
   await clickBar(page, 1);
   await page.getByRole('button', { name: 'To here' }).click();
   await page.getByTestId('playalong-ramp').check();
-  await page.getByTestId('playalong-ramp-step').fill('2.5');
+  await page.getByTestId('playalong-ramp-step').fill('5');
   await page.getByTestId('playalong-ramp-step').press('Enter');
   await page.getByTestId('playalong-ramp-target').fill('55');
   await page.getByTestId('playalong-ramp-target').press('Enter');
@@ -175,7 +175,7 @@ test('speed goes down to 5% in half-percent steps, takes a typed speed, and spee
   await page.getByTestId('playalong-play').click();
 
   await page.reload();
-  await expect(page.getByTestId('playalong-ramp-step')).toHaveValue('2.5');
+  await expect(page.getByTestId('playalong-ramp-step')).toHaveValue('5');
   await expect(page.getByTestId('playalong-ramp-target')).toHaveValue('55');
 });
 
@@ -197,12 +197,12 @@ test('speed up each loop plays the looped bar faster every time round, and a har
   await page.getByTestId('playalong-ramp').check();
   await page.getByTestId('playalong-countin').uncheck();
   await page.getByTestId('playalong-play').click();
-  await expect(page.getByTestId('playalong-speed')).toHaveValue('55', { timeout: 10_000 });
-  await expect(page.getByTestId('playalong-speed')).toHaveValue('60', { timeout: 10_000 });
+  await expect(page.getByTestId('playalong-speed')).toHaveValue('52.5', { timeout: 10_000 });
+  await expect(page.getByTestId('playalong-speed')).toHaveValue('55.1', { timeout: 10_000 });
   await page.getByTestId('playalong-play').click();
-  await expect(page.getByTestId('hard-bit-best')).toHaveText(/best 5[05]%/);
+  await expect(page.getByTestId('hard-bit-best')).toHaveText(/best (50|52\.5)%/);
   const json = await eventuallyInRemote(`pieces/${id}/hard-bits.json`, (t) =>
-    t.includes('"bestSpeed": 0.55'),
+    t.includes('"bestSpeed": 0.525'),
   );
   expect(JSON.parse(json)).toMatchObject({
     files: { 'fixture-waltz.mscz': [{ name: 'Opening', fromBar: 1, toBar: 1 }] },

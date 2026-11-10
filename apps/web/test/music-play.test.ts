@@ -19,7 +19,12 @@ import {
 import type { Jump, ScoreMeasure, Volta } from '../src/music/model.ts';
 import type { PerfNote } from '../src/music/performance.ts';
 import { chooseSample, gainFor, sampleFile, SampleManifest } from '../src/music/samples.ts';
-import { clampSpeed, START_LEAD_SECONDS, Transport } from '../src/music/transport.ts';
+import {
+  clampSpeed,
+  nextPassSpeed,
+  START_LEAD_SECONDS,
+  Transport,
+} from '../src/music/transport.ts';
 import { sectionsOf, unroll } from '../src/music/unroll.ts';
 
 function bars(spec: string, jumps: Record<number, Jump> = {}): ScoreMeasure[] {
@@ -222,7 +227,7 @@ describe('Transport', () => {
     const t = new Transport(notes, 4);
     t.setSpeed(0.5, 0);
     t.setLoop({ start: 0, end: 2 }, 0);
-    t.ramp = { step: 0.25, target: 1 };
+    t.ramp = { step: 0.5, target: 1 };
     t.play(0);
     const lead = START_LEAD_SECONDS;
     const s = t.pump(0, 9, () => true);
@@ -248,20 +253,31 @@ describe('Transport', () => {
     expect(t.songAt(lead + 4.001)).toBeCloseTo(0, 2);
   });
 
-  it('speeds up by half a percent a pass, stops at the chosen target, and plays as slow as 5%', () => {
+  it('speeds up by a share of the last pass, stops at the chosen target, and plays as slow as 5%', () => {
     const t = new Transport(notes, 4);
     t.setSpeed(0.01, 0);
     expect(t.speed).toBe(0.05);
     t.setSpeed(0.5, 0);
     t.setLoop({ start: 0, end: 1 }, 0);
-    t.ramp = { step: 0.005, target: 0.51 };
+    t.ramp = { step: 0.2, target: 1 };
     t.play(0);
     t.pump(0, 30, () => true);
     const lead = START_LEAD_SECONDS;
     expect(t.speedAt(lead + 1)).toBe(0.5);
-    expect(t.speedAt(lead + 3)).toBe(0.505);
-    expect(t.speedAt(lead + 5)).toBe(0.51);
-    expect(t.speedAt(lead + 25)).toBe(0.51);
+    expect(t.speedAt(lead + 2.5)).toBe(0.6);
+    expect(t.speedAt(lead + 4)).toBe(0.72);
+    expect(t.speedAt(lead + 5.5)).toBe(0.864);
+    expect(t.speedAt(lead + 6.8)).toBe(1);
+    expect(t.speedAt(lead + 25)).toBe(1);
+  });
+
+  it('makes each pass the chosen percent faster than the last, to a tenth of a percent, always moving', () => {
+    expect(nextPassSpeed(0.5, { step: 0.01, target: 1 })).toBe(0.505);
+    expect(nextPassSpeed(0.15, { step: 0.01, target: 1 })).toBe(0.152);
+    expect(nextPassSpeed(0.5, { step: 0.025, target: 1 })).toBe(0.513);
+    expect(nextPassSpeed(0.05, { step: 0.005, target: 1 })).toBe(0.051);
+    expect(nextPassSpeed(0.99, { step: 0.05, target: 1 })).toBe(1);
+    expect(nextPassSpeed(1.2, { step: 0.05, target: 1 })).toBe(1.2);
   });
 
   it('keeps the music waiting for a count-in when you seek, change speed or loop during it', () => {
@@ -286,7 +302,7 @@ describe('Transport', () => {
     const t = new Transport(notes, 4);
     t.setSpeed(0.5, 0);
     t.loopLead = () => 1;
-    t.ramp = { step: 0.01, target: 1 };
+    t.ramp = { step: 0.02, target: 1 };
     t.setLoop({ start: 0, end: 2 }, 0);
     t.play(0);
     const lead = START_LEAD_SECONDS;

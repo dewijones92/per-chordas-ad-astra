@@ -190,8 +190,11 @@ keyboard from above, like the bird's-eye piano videos.
   the drag, and letting go turns the loop on. Click a bar on either to jump to it, Shift+click on the strip to
   stretch the loop (to whole bars). The keyboard starts to
   the right of the bar edge, so the lowest notes can still be clicked for fingering; dragging the notes themselves
-  still scrolls. **Speed up each loop** adds a chosen step every time
-  round (0.5–20%, 5% to start with) until a chosen speed (100% to start with), both typed in beside the switch; the change happens exactly at the loop point, so no note is cut. **🔁 Loop** switches the loop off
+  still scrolls. **Speed up each loop** plays each pass a chosen percent
+  faster than the one before (0.5–20%, 5% to start with), to a tenth of a percent and always at least that much,
+  until a chosen speed (100% to start with), both typed in beside the switch. Until 10 Nov 2026 it added the step as
+  points on the speed dial, so "1%" at 15% speed played about 7% faster; Dewi read it as "1% faster", and it now
+  means that; the change happens exactly at the loop point, so no note is cut. **🔁 Loop** switches the loop off
   and on without losing it: off, the music plays straight through and the bars stay marked (paler) on the strip;
   setting a loop (From/To here, a drag, a hard bit) switches it back on. Speed runs from 5% to 200% in half-percent
   steps: drag the wide slider, use − / + or `[` / `]` (half a percent each), or type an exact number and press

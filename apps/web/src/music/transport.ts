@@ -1,4 +1,4 @@
-import { PLAY_ALONG_MAX_SPEED, PLAY_ALONG_MIN_SPEED, roundSpeed } from '@pcaa/shared';
+import { PLAY_ALONG_MAX_SPEED, PLAY_ALONG_MIN_SPEED } from '@pcaa/shared';
 export interface Timed {
   start: number;
   end: number;
@@ -27,6 +27,13 @@ export interface Scheduled<T extends Timed = Timed> {
 }
 
 export const START_LEAD_SECONDS = 0.06;
+const PASS_SPEED_GRAIN = 1000;
+
+export function nextPassSpeed(speed: number, ramp: Ramp): number {
+  const faster = Math.round(speed * (1 + ramp.step) * PASS_SPEED_GRAIN + 1e-6) / PASS_SPEED_GRAIN;
+  const moving = Math.max(faster, Math.round(speed * PASS_SPEED_GRAIN + 1) / PASS_SPEED_GRAIN);
+  return Math.max(speed, Math.min(ramp.target, moving));
+}
 export function clampSpeed(speed: number): number {
   return Math.min(PLAY_ALONG_MAX_SPEED, Math.max(PLAY_ALONG_MIN_SPEED, speed));
 }
@@ -187,12 +194,7 @@ export class Transport<T extends Timed = Timed> {
       }
       if (wraps) {
         const wrapCtx = anchor.ctx + (loop.end - anchor.song) / anchor.speed;
-        const speed = this.ramp
-          ? Math.max(
-              anchor.speed,
-              Math.min(this.ramp.target, roundSpeed(anchor.speed + this.ramp.step)),
-            )
-          : anchor.speed;
+        const speed = this.ramp ? nextPassSpeed(anchor.speed, this.ramp) : anchor.speed;
         this.speed = speed;
         if (this.wholePass !== null) this.passes.push({ ctx: wrapCtx, speed: this.wholePass });
         this.wholePass = speed;
