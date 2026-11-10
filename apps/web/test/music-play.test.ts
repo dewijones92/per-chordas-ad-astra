@@ -282,6 +282,28 @@ describe('Transport', () => {
     expect(t.songAt(start + 1)).toBeCloseTo(2.5);
   });
 
+  it('reports the coming pass speed during a loop count-in, and a speed change then keeps the count-in', () => {
+    const t = new Transport(notes, 4);
+    t.setSpeed(0.5, 0);
+    t.loopLead = () => 1;
+    t.ramp = { step: 0.01, target: 1 };
+    t.setLoop({ start: 0, end: 2 }, 0);
+    t.play(0);
+    const lead = START_LEAD_SECONDS;
+    t.pump(0, 4.5, () => true);
+    const inCountIn = lead + 4.5;
+    expect(t.songAt(inCountIn)).toBe(0);
+    expect(t.speedAt(inCountIn)).toBe(0.51);
+    expect(t.setSpeed(0.51, inCountIn)).toBe(false);
+    expect(t.setSpeed(0.6, inCountIn)).toBe(true);
+    expect(t.songAt(lead + 4.9)).toBe(0);
+    expect(t.songAt(lead + 6)).toBeCloseTo(0.6);
+    t.pump(inCountIn, 1, () => true);
+    t.seek(1, lead + 4.6);
+    expect(t.songAt(lead + 4.9)).toBe(1);
+    expect(t.songAt(lead + 6)).toBeCloseTo(1.6);
+  });
+
   it('counts a loop pass only when it ran whole, at the speed it was played', () => {
     const lead = START_LEAD_SECONDS;
     const t = new Transport(notes, 4);

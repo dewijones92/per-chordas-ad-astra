@@ -105,13 +105,30 @@ export class Transport<T extends Timed = Timed> {
       this.paused = target;
       return;
     }
-    this.restartAt(target, Math.max(ctx + START_LEAD_SECONDS, this.startsAt), ctx);
+    this.restartAt(target, Math.max(ctx + START_LEAD_SECONDS, this.resumesAt(ctx)), ctx);
   }
 
   speedAt(ctx: number): number {
-    let anchor = this.anchors.find((a) => a.speed > 0);
-    for (const a of this.anchors) if (a.ctx <= ctx && a.speed > 0) anchor = a;
-    return anchor?.speed ?? this.speed;
+    const coming = this.anchors
+      .slice(Math.max(0, this.anchorIndexAt(ctx)))
+      .find((a) => a.speed > 0);
+    return coming?.speed ?? this.speed;
+  }
+
+  private anchorIndexAt(ctx: number): number {
+    let index = -1;
+    this.anchors.forEach((a, i) => {
+      if (a.ctx <= ctx) index = i;
+    });
+    return index;
+  }
+
+  private resumesAt(ctx: number): number {
+    const index = this.anchorIndexAt(ctx);
+    const here = this.anchors[index];
+    const held = here?.speed === 0 ? (this.anchors[index + 1]?.ctx ?? ctx) : ctx;
+    const pending = index < 0 ? (this.anchors[0]?.ctx ?? ctx) : ctx;
+    return Math.max(ctx, this.startsAt, held, pending);
   }
 
   setSpeed(speed: number, ctx: number): boolean {
@@ -119,7 +136,7 @@ export class Transport<T extends Timed = Timed> {
     if (Math.abs(next - this.speed) < 1e-9) return false;
     const now = this.songAt(ctx);
     this.speed = next;
-    if (this.playing) this.restartAt(now, Math.max(ctx, this.startsAt), ctx);
+    if (this.playing) this.restartAt(now, this.resumesAt(ctx), ctx);
     return true;
   }
 
@@ -133,7 +150,7 @@ export class Transport<T extends Timed = Timed> {
     }
     const now = this.songAt(ctx);
     const inside = this.loop ? now >= this.loop.start && now < this.loop.end : true;
-    this.restartAt(inside ? now : (this.loop?.start ?? now), Math.max(ctx, this.startsAt), ctx);
+    this.restartAt(inside ? now : (this.loop?.start ?? now), this.resumesAt(ctx), ctx);
   }
 
   finished(ctx: number): boolean {

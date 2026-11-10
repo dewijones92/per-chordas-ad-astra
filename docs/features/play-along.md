@@ -1,7 +1,7 @@
 ---
 title: Play-along (MuseScore, MusicXML and MIDI, falling notes, transpose, loop)
 status: shipped
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 # Play-along
@@ -218,7 +218,10 @@ keyboard from above, like the bird's-eye piano videos.
   becomes side sticks and a hat, the first beat louder ([ADR 0022](../adr/0022-drum-beats.md); the sounds and
   patterns are the metronome's, `drums/`). Pausing during the count-in silences the clicks
   already scheduled, and a seek, speed or loop change during it keeps the music waiting for the count-in to
-  end.
+  end. That holds for the count-in before each loop pass as well as the first one, and during a loop's count-in the
+  speed box already shows the coming pass's speed. Until 10 Nov 2026 it showed the old one, so the page set the
+  player back to it, which restarted the loop on the spot: every other pass lost its count-in and sped up only every
+  other time.
 - **Hard bits** (📌): with a loop set, **Save loop as hard bit** names it (default "bars 12–16", or "bar 12 beat 3 –
   bar 16 beat 2" for a beat loop, whose beats it keeps). Saved
   hard bits are chips: click one to loop it, ✕ to forget it. Each remembers the **best speed** a whole pass
