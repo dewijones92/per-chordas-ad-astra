@@ -34,6 +34,26 @@
   user-select: none;
 }
 
+.page-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+
+.page-turn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  opacity: 0.55;
+}
+
+.page-turn:hover,
+.page-turn:focus-visible {
+  opacity: 1;
+}
+
 .page-number {
   position: absolute;
   right: -2px;

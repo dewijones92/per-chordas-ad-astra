@@ -1,4 +1,4 @@
-import type { ViewMode } from '@pcaa/shared';
+import type { PageTurns, QuarterTurn, ViewMode } from '@pcaa/shared';
 import {
   useCallback,
   useEffect,
@@ -11,7 +11,7 @@ import {
 import { itemsOn, type HistoryAction, type History } from '../annotate/history.ts';
 import { useTextEditing } from '../annotate/TextEditor.tsx';
 import type { ToolState } from '../annotate/tools.ts';
-import { openPdf, type PDFPageProxy } from './pdf.ts';
+import { openPdf, turnedViewport, type PDFPageProxy } from './pdf.ts';
 import { PageView } from './PageView.tsx';
 import { turnTarget } from './turn.ts';
 import './score.css';
@@ -45,6 +45,8 @@ interface Props {
   onPositionChange?: (position: ScorePosition) => void;
   hidePdfAnnotations?: boolean;
   onPages?: (opened: { url: string; pages: PDFPageProxy[] } | null) => void;
+  turns?: PageTurns;
+  onTurn?: (page: number) => void;
 }
 
 const PAGE_GAP = 24;
@@ -115,7 +117,9 @@ export function ScoreViewer(props: Props) {
     };
   }, []);
 
-  const firstPage = pages?.[0]?.getViewport({ scale: 1 });
+  const turnOf = (number: number): QuarterTurn => props.turns?.[String(number)] ?? 0;
+  const shownSize = (page: PDFPageProxy, number: number) => turnedViewport(page, turnOf(number), 1);
+  const firstPage = pages?.[0] ? shownSize(pages[0], 1) : undefined;
   const aspect = firstPage ? firstPage.height / firstPage.width : Math.SQRT2;
   const fitted =
     mode === 'width'
@@ -139,7 +143,7 @@ export function ScoreViewer(props: Props) {
     const number = Number(current.dataset['page']);
     const page = pages[number - 1];
     if (!page) return null;
-    const scale = cssWidth / page.getViewport({ scale: 1 }).width;
+    const scale = cssWidth / shownSize(page, number).width;
     const anchor = el.scrollTop + PAGE_GAP;
     return { page: number, y: Math.max(0, Math.round((anchor - current.offsetTop) / scale)) };
   };
@@ -149,7 +153,7 @@ export function ScoreViewer(props: Props) {
     const target = pageElements().find((p) => Number(p.dataset['page']) === page);
     const proxy = pages?.[page - 1];
     if (!el || !target || !proxy) return false;
-    const scale = cssWidth / proxy.getViewport({ scale: 1 }).width;
+    const scale = cssWidth / shownSize(proxy, page).width;
     el.scrollTo({ top: target.offsetTop + y * scale - PAGE_GAP, behavior });
     return true;
   };
@@ -244,8 +248,7 @@ export function ScoreViewer(props: Props) {
       {!pages && <div className="score-message">{strings.score.opening}</div>}
       {pages?.map((page, index) => {
         const number = index + 1;
-        const base = page.getViewport({ scale: 1 });
-        const scale = cssWidth / base.width;
+        const scale = cssWidth / shownSize(page, number).width;
         return (
           <PageView
             key={number}
@@ -261,6 +264,8 @@ export function ScoreViewer(props: Props) {
             hidePdfAnnotations={props.hidePdfAnnotations ?? false}
             scrollRoot={scrollRoot}
             onEditText={textEditing.start}
+            turn={turnOf(number)}
+            {...(props.onTurn ? { onTurn: props.onTurn } : {})}
           >
             {textEditing.editor(number, (x, y) => ({ left: x * scale, top: y * scale }), scale)}
           </PageView>

@@ -467,6 +467,7 @@ export const strings = {
   score: {
     openFailed: '❌ Could not open this PDF:',
     opening: '⏳ Opening score…',
+    turnPage: '🔄 Turn',
   },
   practiceChart: {
     empty: '📈 Log a session with a tempo to see your progress here.',
@@ -540,6 +541,7 @@ export const tips = {
   piece: {
     layoutGroup: 'Page layout',
     scoreCompact: 'Hide or show the top menu and the title bar, to give the score more room',
+    turnPage: 'Turn this page a quarter turn clockwise, for everyone who opens this score',
     layouts: {
       page: 'Fit one whole page',
       spread: 'Two pages side by side',

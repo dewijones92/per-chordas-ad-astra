@@ -37,6 +37,7 @@ import {
   PiecePatch,
   Piece,
   PdfImportRequest,
+  PageTurnRequest,
   PracticeSession,
   safeFileName,
   SettingsFile,
@@ -589,6 +590,33 @@ export class DataRepo {
     });
   }
 
+  async turnPage(id: Slug, file: FileName, input: unknown): Promise<Annotations> {
+    const { page, turn } = PageTurnRequest.parse(input);
+    return this.locked(`piece:${id}`, async () => {
+      const piece = await this.getPiece(id);
+      const before = await this.getAnnotations(id, file);
+      const key = String(page);
+      const was = before.turns?.[key] ?? 0;
+      if (was === turn) {
+        this.log.info(
+          { id, file, page, turn },
+          'dewidebug repo page already at that turn; nothing written',
+        );
+        return before;
+      }
+      const turns = Object.fromEntries(
+        Object.entries({ ...before.turns, [key]: turn }).filter(([, t]) => t !== 0),
+      );
+      const { turns: _old, ...rest } = before;
+      const next = Annotations.parse(Object.keys(turns).length > 0 ? { ...rest, turns } : rest);
+      await this.writeJson(this.path('pieces', id, 'annotations', `${file}.json`), next);
+      await this.touch(piece, 'page turn');
+      this.log.info({ id, file, page, from: was, to: turn }, 'dewidebug repo page turned');
+      this.changes.markDirty(`Turn ${quote(piece.title)} (${file} p.${key} to ${String(turn)}°)`);
+      return next;
+    });
+  }
+
   async importPdfMarks(id: Slug, file: FileName, input: unknown): Promise<Annotations> {
     const { pages: imported, ...result } = PdfImportRequest.parse(input);
     if (result.hidePdfAnnotations && result.converted === 0) {
@@ -612,6 +640,7 @@ export class DataRepo {
         version: 1,
         pages,
         pdfImport: { ...result, at: this.now().toISOString() },
+        ...(before.turns ? { turns: before.turns } : {}),
       });
       await this.writeJson(this.path('pieces', id, 'annotations', `${file}.json`), next);
       if (result.converted > 0) await this.touch(piece, 'pdf marks');

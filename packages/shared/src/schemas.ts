@@ -244,12 +244,23 @@ export const PdfImport = z.object({
 });
 export type PdfImport = z.infer<typeof PdfImport>;
 
-const AnnotationPages = z.record(z.string().regex(/^[1-9][0-9]*$/), z.array(AnnotationItem));
+const pageKey = z.string().regex(/^[1-9][0-9]*$/);
+const AnnotationPages = z.record(pageKey, z.array(AnnotationItem));
+
+export const QuarterTurn = z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]);
+export type QuarterTurn = z.infer<typeof QuarterTurn>;
+
+export const PageTurns = z.record(pageKey, QuarterTurn);
+export type PageTurns = z.infer<typeof PageTurns>;
+
+export const PageTurnRequest = z.object({ page: z.int().min(1), turn: QuarterTurn }).strict();
+export type PageTurnRequest = z.infer<typeof PageTurnRequest>;
 
 export const Annotations = z.object({
   version: z.literal(1),
   pages: AnnotationPages,
   pdfImport: PdfImport.optional(),
+  turns: PageTurns.optional(),
 });
 export type Annotations = z.infer<typeof Annotations>;
 

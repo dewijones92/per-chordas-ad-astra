@@ -1,4 +1,11 @@
-import { diffAnnotations, emptyAnnotations, isNoChange, type Annotations } from '@pcaa/shared';
+import {
+  diffAnnotations,
+  emptyAnnotations,
+  isNoChange,
+  type Annotations,
+  type PageTurns,
+  type QuarterTurn,
+} from '@pcaa/shared';
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import { api, type AnnotationLayer } from '../api/client.ts';
 import { historyReducer, initialHistory, type HistoryAction } from './history.ts';
@@ -15,6 +22,7 @@ export function useAnnotations(pieceId: string, file: string, layer: AnnotationL
   const [loaded, setLoaded] = useState<{ key: string; error: string | null } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
+  const [turns, setTurns] = useState<PageTurns>({});
   const confirmed = useRef<Annotations | null>(null);
   const inFlight = useRef<Annotations | null>(null);
   const waiting = useRef(false);
@@ -33,6 +41,7 @@ export function useAnnotations(pieceId: string, file: string, layer: AnnotationL
         confirmed.current = doc;
         failures.current = 0;
         dispatch({ type: 'reset', doc });
+        setTurns(doc.turns ?? {});
         setLoaded({ key, error: null });
       },
       (e: unknown) => {
@@ -174,5 +183,47 @@ export function useAnnotations(pieceId: string, file: string, layer: AnnotationL
     dispatch({ type: 'import', pages, pdfImport: saved.pdfImport });
   }, []);
 
-  return { history, dispatch: act, load, error: loadError ?? saveError, reload, adopt };
+  const turnPage = useCallback(
+    (page: number) => {
+      const key = String(page);
+      const before = turns;
+      const turn = (((before[key] ?? 0) + 90) % 360) as QuarterTurn;
+      console.info('dewidebug score page turn', {
+        pieceId,
+        file,
+        page,
+        from: before[key] ?? 0,
+        to: turn,
+      });
+      setTurns({ ...before, [key]: turn });
+      api.turnPage(pieceId, file, page, turn).then(
+        (saved) => {
+          setTurns(saved.turns ?? {});
+          setSaveError(null);
+        },
+        (e: unknown) => {
+          console.warn('dewidebug score page turn failed; turning it back', {
+            pieceId,
+            file,
+            page,
+            error: String(e),
+          });
+          setTurns(before);
+          setSaveError(e instanceof Error ? e.message : String(e));
+        },
+      );
+    },
+    [turns, pieceId, file],
+  );
+
+  return {
+    history,
+    dispatch: act,
+    load,
+    error: loadError ?? saveError,
+    reload,
+    adopt,
+    turns,
+    turnPage,
+  };
 }

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createPiece, eventuallyInRemote, waitForGitHub } from './support/helpers.ts';
+import { createPiece, eventuallyInRemote, remoteLog, waitForGitHub } from './support/helpers.ts';
 
 interface Doc {
   pages: Record<string, { kind: string; text?: string; glyph?: string }[]>;
@@ -202,4 +202,50 @@ test('two tabs drawing on one score keep each other’s marks, and an undo in on
   await page.reload();
   await expect(page.getByTestId('annotation-layer-1')).toHaveAttribute('data-items', '1');
   await other.close();
+});
+
+test('a page turns a quarter at a time, its drawings turn with it, drawing still lands under the pen, and the turn is kept', async ({
+  page,
+}) => {
+  await createPiece(page, 'Turned Etude');
+  const layer = page.getByTestId('annotation-layer-1');
+  const box = await layerBox(page);
+  await page.mouse.move(box.x + 40, box.y + 40);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(box.x + 40 + i * 4, box.y + 40 + i * 2);
+  await page.mouse.up();
+  await expect(layer).toHaveAttribute('data-items', '1');
+  await waitForGitHub(page);
+
+  const sheet = page.locator('.page[data-page="1"]');
+  await expect(sheet).toHaveAttribute('data-turn', '0');
+  await page.getByTestId('turn-page-1').click();
+  await expect(sheet).toHaveAttribute('data-turn', '90');
+  const turned = await sheet.boundingBox();
+  if (!turned) throw new Error('no page box');
+  expect(turned.width).toBeGreaterThan(turned.height);
+  const first = await layer.locator(':scope > *').first().boundingBox();
+  if (!first) throw new Error('no stroke box');
+  expect(first.x - turned.x).toBeGreaterThan(turned.width / 2);
+  expect(first.y - turned.y).toBeLessThan(turned.height / 3);
+
+  const at = { x: turned.x + turned.width * 0.3, y: turned.y + turned.height * 0.6 };
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(at.x + i * 4, at.y + i * 2);
+  await page.mouse.up();
+  await expect(layer).toHaveAttribute('data-items', '2');
+  const second = await layer.locator(':scope > *').nth(1).boundingBox();
+  if (!second) throw new Error('no second stroke box');
+  expect(Math.abs(second.x - at.x)).toBeLessThan(12);
+  expect(Math.abs(second.y - at.y)).toBeLessThan(12);
+
+  await eventuallyInRemote('pieces/turned-etude/annotations/turned-etude.pdf.json', (t) =>
+    t.includes('"turns"'),
+  );
+  expect(remoteLog('%B').join('\n')).toContain("Turn 'Turned Etude' (turned-etude.pdf p.1 to 90°)");
+  await page.reload();
+  await expect(page.locator('.page[data-page="1"]')).toHaveAttribute('data-turn', '90');
+  await page.getByTestId('turn-page-1').click();
+  await expect(page.locator('.page[data-page="1"]')).toHaveAttribute('data-turn', '180');
 });

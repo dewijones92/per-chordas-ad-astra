@@ -1,4 +1,5 @@
 import type * as PdfJs from 'pdfjs-dist';
+import type { QuarterTurn } from '@pcaa/shared';
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 
 export type { PDFDocumentProxy, PDFPageProxy };
@@ -16,6 +17,21 @@ export function pdfLibrary(): Promise<typeof PdfJs> {
     return pdfjs;
   });
   return library;
+}
+
+export function turnedViewport(page: PDFPageProxy, turn: QuarterTurn, scale: number) {
+  return page.getViewport({ scale, rotation: (page.rotate + turn) % 360 });
+}
+
+export function turnTransform(
+  turn: QuarterTurn,
+  width: number,
+  height: number,
+): string | undefined {
+  if (turn === 90) return `translate(${String(height)}px, 0) rotate(90deg)`;
+  if (turn === 180) return `translate(${String(width)}px, ${String(height)}px) rotate(180deg)`;
+  if (turn === 270) return `translate(0, ${String(width)}px) rotate(270deg)`;
+  return undefined;
 }
 
 export function annotationMode(hidePdfAnnotations: boolean): number | undefined {

@@ -112,7 +112,10 @@ function ScoreArea({
   focus: boolean | null;
   onFocus: (on: boolean) => void;
 }) {
-  const { history, dispatch, load, error, reload, adopt } = useAnnotations(piece.id, file);
+  const { history, dispatch, load, error, reload, adopt, turns, turnPage } = useAnnotations(
+    piece.id,
+    file,
+  );
   const scoreUrl = api.fileUrl(piece.id, file);
   const [opened, setOpened] = useState<{ url: string; pages: PDFPageProxy[] } | null>(null);
   const pdfMarks = usePdfMarks({
@@ -216,6 +219,8 @@ function ScoreArea({
         <ScoreViewer
           readOnly={load !== 'ready'}
           hidePdfAnnotations={pdfMarks.hidePdfAnnotations}
+          turns={turns}
+          {...(load === 'ready' ? { onTurn: turnPage } : {})}
           onPages={setOpened}
           url={scoreUrl}
           history={history}

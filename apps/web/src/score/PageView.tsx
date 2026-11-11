@@ -1,9 +1,10 @@
-import type { AnnotationItem } from '@pcaa/shared';
+import type { AnnotationItem, QuarterTurn } from '@pcaa/shared';
 import { useEffect, useRef, useState } from 'react';
 import { AnnotationLayer, type TextEditRequest } from '../annotate/AnnotationLayer.tsx';
 import type { HistoryAction } from '../annotate/history.ts';
 import type { ToolState } from '../annotate/tools.ts';
-import { annotationMode, type PDFPageProxy } from './pdf.ts';
+import { strings, tips } from '../strings.ts';
+import { annotationMode, turnedViewport, turnTransform, type PDFPageProxy } from './pdf.ts';
 
 interface Props {
   page: PDFPageProxy;
@@ -18,17 +19,20 @@ interface Props {
   scrollRoot: HTMLElement | null;
   readOnly: boolean;
   hidePdfAnnotations: boolean;
+  turn: QuarterTurn;
+  onTurn?: (page: number) => void;
   children?: React.ReactNode;
 }
 
 export function PageView(props: Props) {
-  const { page, number, cssWidth, hidePdfAnnotations } = props;
+  const { page, number, cssWidth, hidePdfAnnotations, turn } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const holderRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const base = page.getViewport({ scale: 1 });
-  const scale = cssWidth / base.width;
-  const cssHeight = base.height * scale;
+  const shown = turnedViewport(page, turn, 1);
+  const scale = cssWidth / shown.width;
+  const cssHeight = shown.height * scale;
 
   const { scrollRoot } = props;
   useEffect(() => {
@@ -59,7 +63,7 @@ export function PageView(props: Props) {
       return;
     }
     const ratio = Math.min(window.devicePixelRatio || 1, 3);
-    const viewport = page.getViewport({ scale: scale * ratio });
+    const viewport = turnedViewport(page, turn, scale * ratio);
     canvas.width = Math.floor(viewport.width);
     canvas.height = Math.floor(viewport.height);
     const mode = annotationMode(hidePdfAnnotations);
@@ -73,7 +77,7 @@ export function PageView(props: Props) {
     return () => {
       task.cancel();
     };
-  }, [visible, page, scale, cssWidth, number, hidePdfAnnotations]);
+  }, [visible, page, scale, cssWidth, number, hidePdfAnnotations, turn]);
 
   return (
     <div
@@ -81,6 +85,7 @@ export function PageView(props: Props) {
       className="page"
       data-page={number}
       data-pdf-annotations={hidePdfAnnotations ? 'hidden' : 'shown'}
+      data-turn={turn}
       style={{ width: cssWidth, height: cssHeight }}
     >
       <canvas
@@ -88,20 +93,42 @@ export function PageView(props: Props) {
         className="page-canvas"
         style={{ width: cssWidth, height: cssHeight }}
       />
-      <AnnotationLayer
-        page={number}
-        width={base.width}
-        height={base.height}
-        scale={scale}
-        items={props.items}
-        tools={props.tools}
-        dispatch={props.dispatch}
-        selected={props.selected}
-        onSelect={props.onSelect}
-        readOnly={props.readOnly}
-        onEditText={props.onEditText}
-      />
-      {props.children}
+      <div
+        className="page-layer"
+        style={{
+          width: base.width * scale,
+          height: base.height * scale,
+          transform: turnTransform(turn, base.width * scale, base.height * scale),
+        }}
+      >
+        <AnnotationLayer
+          page={number}
+          width={base.width}
+          height={base.height}
+          scale={scale}
+          items={props.items}
+          tools={props.tools}
+          dispatch={props.dispatch}
+          selected={props.selected}
+          onSelect={props.onSelect}
+          readOnly={props.readOnly}
+          onEditText={props.onEditText}
+        />
+        {props.children}
+      </div>
+      {props.onTurn && (
+        <button
+          type="button"
+          className="btn small ghost page-turn"
+          title={tips.piece.turnPage}
+          data-testid={`turn-page-${String(number)}`}
+          onClick={() => {
+            props.onTurn?.(number);
+          }}
+        >
+          {strings.score.turnPage}
+        </button>
+      )}
       <span className="page-number">{number}</span>
     </div>
   );

@@ -199,6 +199,9 @@ export function createApp(deps: AppDeps): Hono {
   api.patch('/pieces/:id/annotations/:file/falling', async (c) =>
     c.json(await repo.changeFallingDrawings(slug(c), file(c), await c.req.json())),
   );
+  api.put('/pieces/:id/annotations/:file/turn', async (c) =>
+    c.json(await repo.turnPage(slug(c), file(c), await c.req.json())),
+  );
   api.post('/pieces/:id/annotations/:file/import', async (c) =>
     c.json(await repo.importPdfMarks(slug(c), file(c), await c.req.json())),
   );

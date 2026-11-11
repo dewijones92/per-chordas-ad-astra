@@ -264,6 +264,49 @@ describe('HTTP API', () => {
     expect(((await flushed.json()) as { phase: string }).phase).toBe('clean');
   });
 
+  it('turns a page a quarter at a time, keeps the turn through drawings and an import, and refuses odd angles', async () => {
+    const piece = await createPieceWithScore();
+    const base = `/api/pieces/${piece.id}/annotations/romanza.pdf`;
+    const turn = (body: unknown) =>
+      app.request(`${base}/turn`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    const turned = await turn({ page: 3, turn: 90 });
+    expect(turned.status).toBe(200);
+    expect(((await turned.json()) as { turns: unknown }).turns).toEqual({ '3': 90 });
+    expect((await turn({ page: 3, turn: 45 })).status).toBe(400);
+    expect((await turn({ page: 0, turn: 90 })).status).toBe(400);
+    await app.request(base, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        version: 1,
+        put: {
+          '1': [{ kind: 'stamp', id: 'a', colour: '#123456', glyph: 'P', x: 1, y: 2, size: 20 }],
+        },
+        remove: [],
+      }),
+    });
+    await app.request(`${base}/import`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        version: 1,
+        pages: {},
+        converted: 0,
+        hidePdfAnnotations: false,
+        skipped: [],
+      }),
+    });
+    const after = (await (await app.request(base)).json()) as { turns: unknown; pages: object };
+    expect(after.turns).toEqual({ '3': 90 });
+    expect(Object.keys(after.pages)).toEqual(['1']);
+    const back = (await (await turn({ page: 3, turn: 0 })).json()) as { turns?: unknown };
+    expect(back.turns).toBeUndefined();
+  });
+
   it('round-trips drawings on the falling notes of music, and refuses them for a PDF', async () => {
     const piece = await createPieceWithScore();
     const music = await app.request(`/api/pieces/${piece.id}/music`, {

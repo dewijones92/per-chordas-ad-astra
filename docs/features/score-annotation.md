@@ -11,7 +11,10 @@ ratio, and frees the canvas and pdf.js caches once it is further away; the docum
 score. Tested on real scans (2026-10-07): a 128-page JBIG2+JPX method book opens in ~0.3 s and paints its first
 page in ~1.1–1.4 s, mid-book pages in ~0.1 s, with ~9 MB of retained JS heap; CCITT fax and vector scores too.
 Layouts are **Page** (fit one whole page, the default), **Two** (a spread) and **Width**; the choice
-follows you between devices. **🔼 Fewer controls**, beside the layouts in the Score view (11 Nov 2026, Dewi: "I
+follows you between devices. **🔄 Turn** in a page's top-right corner turns that page a quarter turn clockwise,
+with its drawings, for everyone who opens the score (11 Nov 2026, Dewi: "Why is this page horizontal? ... rotate
+each page individually"; his Capricho Árabe PDF asks for pages 3–8 sideways, and the app followed it). Four clicks
+bring it back; the PDF itself is never changed (ADR 0003). **🔼 Fewer controls**, beside the layouts in the Score view (11 Nov 2026, Dewi: "I
 thought we did a button that removed all the vertical waste ... I can't do it on this. Is it only on the piano
 pieces?"), hides the app's top menu and the piece's title bar as it does in Notes and Both, so a fitted page grows
 taller; ⬅️ Library, the view switch and the save status move to the top of the right-hand column. It follows you

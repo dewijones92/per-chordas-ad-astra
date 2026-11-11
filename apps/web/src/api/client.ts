@@ -4,6 +4,7 @@ import {
   FindSearchResponse,
   type FoundScore,
   type PdfImportRequest,
+  type QuarterTurn,
   Health,
   Loops,
   FileFingering,
@@ -122,6 +123,15 @@ export const api = {
     tracked(
       'drawing',
       request(annotationsUrl(id, file, layer), Annotations, jsonInit('PATCH', changes, keepalive)),
+    ),
+  turnPage: (id: string, file: string, page: number, turn: QuarterTurn) =>
+    tracked(
+      'page turn',
+      request(
+        `/api/pieces/${enc(id)}/annotations/${enc(file)}/turn`,
+        Annotations,
+        jsonInit('PUT', { page, turn }),
+      ),
     ),
   importPdfMarks: (id: string, file: string, marks: PdfImportRequest) =>
     tracked(
