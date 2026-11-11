@@ -548,6 +548,7 @@ test('speed up each loop with a count-in waits for the count-in before every pas
   const countIns = watchCountIns(page);
   await page.getByTestId('playalong-play').click();
   const samples = await sampleClock(page, () => countIns.length >= 4, 30_000);
+  await expect(page.getByTestId('playalong-speed')).toHaveValue('57.9');
   await page.getByTestId('playalong-play').click();
   expect(countIns.length).toBeGreaterThanOrEqual(4);
   for (const wrap of countIns.slice(1, 3)) {
@@ -557,7 +558,6 @@ test('speed up each loop with a count-in waits for the count-in before every pas
     expect(held.length).toBeGreaterThan(3);
     expect(Math.max(...held.map((x) => x.position))).toBeLessThan(0.05);
   }
-  await expect(page.getByTestId('playalong-speed')).toHaveValue('57.9');
 });
 
 test('per beat: Auto clicks on the beat at full speed and fills in at half speed; ♫ adds a softer click between the beats, and is remembered', async ({

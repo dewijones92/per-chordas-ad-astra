@@ -66,17 +66,25 @@ export const toneFile = (name: string, seconds = 8) => ({
   buffer: Buffer.from(makeToneWav({ frequencyHz: 196, seconds })),
 });
 
-export async function learnKeySaved(page: Page, on: boolean): Promise<void> {
+export async function switchSaved(
+  page: Page,
+  name: 'learnKey' | 'scoreFocus',
+  on: boolean,
+): Promise<void> {
   await expect
     .poll(
       async () => {
         const res = await page.request.get('/api/resume');
-        const state = (await res.json()) as { learnKey?: { on: boolean } | null };
-        return state.learnKey?.on ?? false;
+        const state = (await res.json()) as Record<string, { on: boolean } | null | undefined>;
+        return state[name]?.on ?? false;
       },
-      { timeout: 15_000, message: `waiting for the server to hold learnKey ${String(on)}` },
+      { timeout: 15_000, message: `waiting for the server to hold ${name} ${String(on)}` },
     )
     .toBe(on);
+}
+
+export async function learnKeySaved(page: Page, on: boolean): Promise<void> {
+  await switchSaved(page, 'learnKey', on);
 }
 
 export async function openLibrary(page: Page): Promise<void> {
@@ -84,10 +92,12 @@ export async function openLibrary(page: Page): Promise<void> {
   await expect(page.locator('.boot')).toHaveCount(0);
   const nav = page.locator('.nav').getByRole('link', { name: strings.nav.library, exact: true });
   const docked = page.getByTestId('dock-head').getByRole('link', { name: strings.piece.library });
-  await expect(nav.or(docked).first()).toBeVisible();
-  if (await docked.isVisible()) await docked.click();
-  else await nav.click();
-  await expect(page.getByRole('heading', { name: 'Your library' })).toBeVisible();
+  const heading = page.getByRole('heading', { name: 'Your library' });
+  await expect(async () => {
+    if (await docked.isVisible()) await docked.click({ timeout: 2_000 });
+    else await nav.click({ timeout: 2_000 });
+    await expect(heading).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
 }
 
 export async function createPiece(

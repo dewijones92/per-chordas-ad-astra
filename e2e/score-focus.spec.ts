@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { strings } from '../apps/web/src/strings.ts';
-import { createPiece } from './support/helpers.ts';
+import { createPiece, switchSaved } from './support/helpers.ts';
 
 test('in the Score view, Fewer controls hides the top menu and title bar, and is remembered', async ({
   page,
@@ -12,6 +12,7 @@ test('in the Score view, Fewer controls hides the top menu and title bar, and is
   await expect(button).toHaveText(strings.playAlong.fewerControls);
   await button.click();
   await expect(button).toHaveText(strings.playAlong.moreControls);
+  await switchSaved(page, 'scoreFocus', true);
   await expect(page.locator('.topbar')).toBeHidden();
   await expect(page.getByTestId('piece-title')).toBeHidden();
   const head = page.getByTestId('dock-head');
@@ -31,4 +32,5 @@ test('in the Score view, Fewer controls hides the top menu and title bar, and is
   await expect(page.locator('.topbar')).toBeVisible();
   await expect(page.getByTestId('piece-title')).toBeVisible();
   await expect(page.getByTestId('dock-head')).toHaveCount(0);
+  await switchSaved(page, 'scoreFocus', false);
 });
