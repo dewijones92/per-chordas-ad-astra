@@ -201,7 +201,7 @@ keyboard from above, like the bird's-eye piano videos.
   means that; the change happens exactly at the loop point, so no note is cut. **🔁 Loop** switches the loop off
   and on without losing it: off, the music plays straight through and the bars stay marked (paler) on the strip;
   setting a loop (From/To here, a drag, a hard bit) switches it back on. Speed runs from 5% to 200% in half-percent
-  steps: drag the wide slider, use − / + or `[` / `]` (half a percent each), or type an exact number and press
+  steps: drag the wide slider, use − / + or `[` / `]` (to the next half percent either way, so a speed a loop pass left at 55.1% goes to 55.5% or 55%), or type an exact number and press
   Enter (the box applies on Enter or when you leave it, so typing 50 never plays at 5% on the way). Speed, the
   speed-up step and stop, the loop and the switch are remembered per file, on every device.
 - **Count-in and click**: 🥁 Count-in (on by default) plays clicks at the playing speed before the music starts:

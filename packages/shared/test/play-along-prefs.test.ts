@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PLAY_ALONG, PlayAlongPrefs } from '../src/prefs.ts';
+import { DEFAULT_PLAY_ALONG, PlayAlongPrefs, stepSpeed } from '../src/prefs.ts';
 
 describe('play-along preferences', () => {
   const older = {
@@ -28,5 +28,13 @@ describe('play-along preferences', () => {
 
   it('have the same defaults as an empty parse of the older shape', () => {
     expect(PlayAlongPrefs.parse({ ...older, muted: [], position: 0 })).toEqual(DEFAULT_PLAY_ALONG);
+  });
+
+  it('step the speed to the next half percent either way, also from a speed a loop pass left between them', () => {
+    expect(stepSpeed(0.5, 1)).toBe(0.505);
+    expect(stepSpeed(0.5, -1)).toBe(0.495);
+    expect(stepSpeed(0.55125, 1)).toBe(0.555);
+    expect(stepSpeed(0.55125, -1)).toBe(0.55);
+    expect(stepSpeed(0.5788, -1)).toBe(0.575);
   });
 });

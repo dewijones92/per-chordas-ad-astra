@@ -13,6 +13,7 @@ import {
   COUNT_IN_MAX_BEATS,
   roundSpeed,
   speedPercent,
+  stepSpeed,
   stepLookAhead,
   type FingerText,
   type HardBit,
@@ -1165,9 +1166,9 @@ export function PlayAlong({
         });
         toggle();
       } else if (shortcut === 'slower') {
-        setSpeed(prefs.speed - PLAY_ALONG_SPEED_STEP);
+        setSpeed(stepSpeed(prefs.speed, -1));
       } else if (shortcut === 'faster') {
-        setSpeed(prefs.speed + PLAY_ALONG_SPEED_STEP);
+        setSpeed(stepSpeed(prefs.speed, 1));
       } else if (shortcut === 'previousBar') {
         stepBar(-1);
       } else if (shortcut === 'nextBar') {
@@ -1296,7 +1297,7 @@ export function PlayAlong({
             aria-label={tips.playAlong.slower}
             disabled={prefs.speed <= PLAY_ALONG_MIN_SPEED}
             onClick={() => {
-              setSpeed(prefs.speed - PLAY_ALONG_SPEED_STEP);
+              setSpeed(stepSpeed(prefs.speed, -1));
             }}
           >
             −
@@ -1318,7 +1319,7 @@ export function PlayAlong({
             aria-label={tips.playAlong.faster}
             disabled={prefs.speed >= PLAY_ALONG_MAX_SPEED}
             onClick={() => {
-              setSpeed(prefs.speed + PLAY_ALONG_SPEED_STEP);
+              setSpeed(stepSpeed(prefs.speed, 1));
             }}
           >
             +

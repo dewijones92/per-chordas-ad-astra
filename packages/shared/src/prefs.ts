@@ -95,6 +95,12 @@ export function roundSpeed(speed: number): number {
   return Math.round(speed / PLAY_ALONG_SPEED_STEP) / (1 / PLAY_ALONG_SPEED_STEP);
 }
 
+export function stepSpeed(speed: number, direction: 1 | -1): number {
+  const place = speed / PLAY_ALONG_SPEED_STEP;
+  const next = direction > 0 ? Math.floor(place + 1e-6) + 1 : Math.ceil(place - 1e-6) - 1;
+  return roundSpeed(next * PLAY_ALONG_SPEED_STEP);
+}
+
 export function speedPercent(speed: number): number {
   return Math.round(speed * 1000) / 10;
 }
