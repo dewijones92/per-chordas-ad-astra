@@ -539,6 +539,7 @@ export const tips = {
   },
   piece: {
     layoutGroup: 'Page layout',
+    scoreCompact: 'Hide or show the top menu and the title bar, to give the score more room',
     layouts: {
       page: 'Fit one whole page',
       spread: 'Two pages side by side',

@@ -43,7 +43,9 @@ import {
   rememberPieceScore,
   savedPieceView,
   rememberScore,
+  rememberScoreFocus,
   rememberViewMode,
+  savedScoreFocus,
   savedViewMode,
   scoreKey,
 } from '../resume/resume.ts';
@@ -86,14 +88,29 @@ const VIEW_CHOICES: { mode: PieceView; label: string; title: string }[] = [
   { mode: 'notes', label: strings.piece.views.notes, title: tips.piece.views.notes },
 ];
 
+function FocusBody({ on }: { on: boolean }) {
+  useEffect(() => {
+    document.body.classList.toggle('notes-focus', on);
+    console.info('dewidebug piece notes focus', { on });
+    return () => {
+      document.body.classList.remove('notes-focus');
+    };
+  }, [on]);
+  return null;
+}
+
 function ScoreArea({
   piece,
   file,
   onPatch,
+  focus,
+  onFocus,
 }: {
   piece: Piece;
   file: string;
   onPatch: (p: PiecePatch) => void;
+  focus: boolean | null;
+  onFocus: (on: boolean) => void;
 }) {
   const { history, dispatch, load, error, reload, adopt } = useAnnotations(piece.id, file);
   const scoreUrl = api.fileUrl(piece.id, file);
@@ -177,6 +194,20 @@ function ScoreArea({
                 {m.label}
               </button>
             ))}
+            {focus !== null && (
+              <button
+                type="button"
+                className="btn small ghost"
+                aria-pressed={focus}
+                title={tips.piece.scoreCompact}
+                data-testid="score-compact"
+                onClick={() => {
+                  onFocus(!focus);
+                }}
+              >
+                {focus ? strings.playAlong.moreControls : strings.playAlong.fewerControls}
+              </button>
+            )}
           </span>
         }
       />
@@ -426,14 +457,13 @@ export function PiecePage({ id }: { id: string }) {
   const [, navigate] = useLocation();
   const search = useSearch();
   const [playBarSlot, setPlayBarSlot] = useState<HTMLDivElement | null>(null);
-  const [notesFocus, setNotesFocus] = useState(false);
-  useEffect(() => {
-    document.body.classList.toggle('notes-focus', notesFocus);
-    console.info('dewidebug piece notes focus', { on: notesFocus });
-    return () => {
-      document.body.classList.remove('notes-focus');
-    };
-  }, [notesFocus]);
+  const [playAlongFocus, setPlayAlongFocus] = useState(false);
+  const [scoreFocus, setScoreFocus] = useState(savedScoreFocus);
+  const chooseScoreFocus = useCallback((on: boolean) => {
+    console.info('dewidebug piece score fewer controls', { on });
+    setScoreFocus(on);
+    rememberScoreFocus(on);
+  }, []);
   const [linkedBit, setLinkedBit] = useState(() => {
     const params = new URLSearchParams(search);
     const bit = params.get('bit');
@@ -498,6 +528,7 @@ export function PiecePage({ id }: { id: string }) {
     : !scoreFile
       ? 'notes'
       : (wantedView?.mode ?? 'split');
+  const notesFocus = viewMode === 'score' ? scoreFocus : playAlongFocus;
   const chooseView = (mode: PieceView, file: string | null) => {
     console.info('dewidebug piece view chosen', { id, mode, file });
     setChosenView({ mode, file });
@@ -609,7 +640,14 @@ export function PiecePage({ id }: { id: string }) {
         <div className={`piece-main view-${viewMode}`}>
           {viewMode !== 'notes' &&
             (scoreFile ? (
-              <ScoreArea key={scoreFile} piece={current} file={scoreFile} onPatch={stablePatch} />
+              <ScoreArea
+                key={scoreFile}
+                piece={current}
+                file={scoreFile}
+                onPatch={stablePatch}
+                focus={viewMode === 'score' ? scoreFocus : null}
+                onFocus={chooseScoreFocus}
+              />
             ) : (
               <div className="no-score">
                 <div className="card empty-state">
@@ -637,7 +675,7 @@ export function PiecePage({ id }: { id: string }) {
               }}
               openBit={linkedBit?.bit ?? null}
               controlsSlot={playBarSlot}
-              onCompactChange={setNotesFocus}
+              onCompactChange={setPlayAlongFocus}
               onBitOpened={() => {
                 console.info('dewidebug piece opened on a hard bit; keeping the view', {
                   id,
@@ -652,6 +690,7 @@ export function PiecePage({ id }: { id: string }) {
           )}
         </div>
 
+        <FocusBody on={notesFocus} />
         <aside className="dock" aria-label={tips.piece.dock}>
           {notesFocus && (
             <div className="dock-head row" data-testid="dock-head">

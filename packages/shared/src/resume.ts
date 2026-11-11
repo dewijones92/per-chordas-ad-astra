@@ -33,6 +33,7 @@ export const ResumeState = z.object({
   viewMode: z.object({ mode: ViewMode, at }).nullable().default(null),
   librarySort: SortChoice.extend({ at }).nullable().default(null),
   learnKey: z.object({ on: z.boolean(), at }).nullable().default(null),
+  scoreFocus: z.object({ on: z.boolean(), at }).nullable().default(null),
   playAlong: z.record(key, PlayAlongPrefs.extend({ at })).default({}),
   pieceView: z
     .record(key, z.object({ mode: PieceView, file: z.string().max(100).nullable(), at }))
@@ -53,6 +54,7 @@ export const emptyResume = (): ResumeState => ({
   viewMode: null,
   librarySort: null,
   learnKey: null,
+  scoreFocus: null,
   playAlong: {},
   pieceView: {},
   bitsTried: {},
@@ -89,6 +91,7 @@ export function mergeResume(a: ResumeState, b: ResumeState): ResumeState {
     viewMode: newerOf(a.viewMode, b.viewMode),
     librarySort: newerOf(a.librarySort, b.librarySort),
     learnKey: newerOf(a.learnKey, b.learnKey),
+    scoreFocus: newerOf(a.scoreFocus, b.scoreFocus),
     playAlong: newest(a.playAlong, b.playAlong),
     pieceView: newest(a.pieceView, b.pieceView),
     bitsTried: newest(a.bitsTried, b.bitsTried),

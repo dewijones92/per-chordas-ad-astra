@@ -270,6 +270,14 @@ export function savedLearnKey(): boolean {
   return readResume().learnKey?.on ?? false;
 }
 
+export function rememberScoreFocus(on: boolean): void {
+  updateResume((s) => ({ ...s, scoreFocus: { on, at: now() } }));
+}
+
+export function savedScoreFocus(): boolean {
+  return readResume().scoreFocus?.on ?? false;
+}
+
 export function rememberLibrarySort(choice: SortChoice): void {
   updateResume((s) => ({ ...s, librarySort: { ...choice, at: now() } }));
 }
