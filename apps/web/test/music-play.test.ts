@@ -321,6 +321,19 @@ describe('Transport', () => {
     expect(t.songAt(lead + 6)).toBeCloseTo(1.6);
   });
 
+  it('is not running during a loop count-in, just as during the first one', () => {
+    const t = new Transport(notes, 4);
+    t.loopLead = () => 1;
+    t.setLoop({ start: 0, end: 2 }, 0);
+    t.play(0);
+    const lead = START_LEAD_SECONDS;
+    expect(t.running(lead / 2)).toBe(false);
+    expect(t.running(lead + 1)).toBe(true);
+    t.pump(0, 2.5, () => true);
+    expect(t.running(lead + 2.5)).toBe(false);
+    expect(t.running(lead + 3.01)).toBe(true);
+  });
+
   it('counts a loop pass only when it ran whole, at the speed it was played', () => {
     const lead = START_LEAD_SECONDS;
     const t = new Transport(notes, 4);

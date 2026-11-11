@@ -156,7 +156,8 @@ keyboard from above, like the bird's-eye piano videos.
   the keys you press are yellow with a dot, and they sound with the piano. A chord needs all its keys, in any
   order, pressed together or still held. A wrong key is counted and the music still waits. Your notes are the
   lanes you can see, or only the muted ones if you have muted a hand to play it yourself; a hidden hand is left to
-  the app, and ✂️ thinned-out octave notes are not asked for. Count-in, 🔁 loops (each pass waits again), speed and
+  the app, and ✂️ thinned-out octave notes are not asked for. Count-in, 🔁 loops (each pass waits again, after its count-in: until 11 Nov 2026 a loop's count-in could be
+  cut short by the wait and keys pressed during it were judged, unlike the first count-in), speed and
   transpose all work (the keys asked for are the ones that sound after transposing). The bar shows a running
   `✅ first time · ❌ wrong · ⏳ waited` line; at the end, or when you pause, a card gives the result and 🔄 Start again.
 - **Stepping while paused**: `,` / `.`, a bar click or a scrub while paused moves the 📍 Bar readout, the bar

@@ -93,7 +93,7 @@ export class Transport<T extends Timed = Timed> {
   }
 
   running(ctx: number): boolean {
-    return this.playing && ctx >= this.startsAt - 1e-9;
+    return this.playing && ctx >= this.resumesAt(ctx) - 1e-9;
   }
 
   pause(ctx: number, song?: number): void {
