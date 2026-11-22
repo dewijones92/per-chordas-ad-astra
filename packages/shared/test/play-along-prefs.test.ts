@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PLAY_ALONG, PlayAlongPrefs, stepSpeed } from '../src/prefs.ts';
+import { DEFAULT_PLAY_ALONG, PlayAlongPrefs, playModeOf, stepSpeed } from '../src/prefs.ts';
 
 describe('play-along preferences', () => {
   const older = {
@@ -10,6 +10,15 @@ describe('play-along preferences', () => {
     full: false,
     position: 4,
   };
+
+  it('resolves legacy wait settings and defaults MIDI monitoring to all inputs', () => {
+    const legacy = PlayAlongPrefs.parse({ ...older, waitForMe: true });
+    expect(legacy).toMatchObject({ playMode: null, midiDevice: null, midiSound: true });
+    expect(playModeOf(legacy)).toBe('wait');
+    expect(playModeOf(DEFAULT_PLAY_ALONG)).toBe('off');
+    expect(playModeOf({ ...legacy, playMode: 'rhythm' })).toBe('rhythm');
+    expect(playModeOf({ ...legacy, playMode: 'off' })).toBe('off');
+  });
 
   it('read from before chord names as off, keeping what they held', () => {
     const parsed = PlayAlongPrefs.parse(older);

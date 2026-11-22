@@ -2,7 +2,7 @@
 title: Wait for me: the falling notes stop at your notes until you play them, from MIDI, the screen or the computer keyboard
 status: accepted
 date: 2026-11-04
-updated: 2026-11-04
+updated: 2026-11-22
 ---
 
 # 0024 · Wait for me: the falling notes stop at your notes until you play them
@@ -81,3 +81,5 @@ be driveable from a virtual piano.
 - Web Audio will not start from a MIDI message alone in a browser that has had no click; the first on-screen click,
   key press or Play starts it.
 - The accompaniment notes sounding when a hold begins are not cut; they ring out.
+
+An explicit play mode takes precedence over the saved wait flag. With no explicit mode, older preferences continue to select wait or off. Rhythm and wait use the same filtered, transposed chord targets. Rhythm measures timing in real seconds, counts each distinct chord pitch once, and keeps session totals across loop passes. Accuracy is the fraction of judged pitches and wrong presses that were successful hits.

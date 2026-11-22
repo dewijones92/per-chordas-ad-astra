@@ -1,7 +1,7 @@
 ---
 title: Play-along (MuseScore, MusicXML and MIDI, falling notes, transpose, loop)
 status: shipped
-updated: 2026-11-10
+updated: 2026-11-22
 ---
 
 # Play-along
@@ -259,3 +259,5 @@ which hand plays what beyond its track order; MIDI has no notation, key spelling
 in the source arrive as one long note or as two notes, as the file wrote them; lyrics, articulations and dynamics marks are not in the notation yet; ottava
 lines, swing, pedal and grace-note timing are approximate; two of MuseScore's 69 repeat cases (a jump into
 an ending that has its own repeats) differ.
+
+The rhythm grading engine, MIDI input selection, sustain pedal support and live piano mute are available to the playback layer. The play-along screen still uses the existing Wait for me control.

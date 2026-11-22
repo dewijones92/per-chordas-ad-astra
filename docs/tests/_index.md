@@ -1,6 +1,6 @@
 ---
 title: Testing strategy and coverage map
-updated: 2026-11-11
+updated: 2026-11-22
 ---
 
 # Tests
@@ -113,3 +113,5 @@ adapters over browser or process APIs; their logic lives in pure modules that ar
 hand after deploy), the Google gate (checked by response body after deploy), and audio quality.
 
 Run locally: `PW_CHROMIUM_PATH=~/.cache/ms-playwright/chromium-1169/chrome-linux/chrome pnpm e2e`.
+
+Rhythm session tests cover transposed chords, timing at different speeds, repeated pitches, misses, replay and feedback expiry. MIDI and player unit tests drive fake ports and audio voices through pedal, device and mute changes.

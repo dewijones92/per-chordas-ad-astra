@@ -129,6 +129,10 @@ export class PianoPlayer {
   private wrapPending = false;
   private readonly liveVoices = new Set<Voice>();
   private readonly liveKeys = new Map<number, Voice>();
+  private sustained = false;
+  private liveSound = true;
+  private readonly sustainedKeys = new Set<number>();
+  private readonly pendingKeys = new Map<number, symbol>();
   private readonly wantedKeys = new Set<number>();
 
   constructor(
@@ -416,7 +420,9 @@ export class PianoPlayer {
     this.stopPump();
     this.silence();
     this.heldAt = null;
-    for (const pitch of [...this.liveKeys.keys()]) this.keyUp(pitch);
+    this.sustained = false;
+    this.wantedKeys.clear();
+    this.silenceLive();
     stopAll(this.countInClicks, this.ctx?.currentTime ?? 0);
     void this.ctx?.close();
     this.ctx = null;
@@ -556,8 +562,36 @@ export class PianoPlayer {
     this.sound(note.pitch + this.transpose, note.velocity, start, start + duration, this.voices);
   }
 
+  private silenceLive(): void {
+    const now = this.ctx?.currentTime ?? 0;
+    for (const voice of this.liveVoices) voice.source.stop(now);
+    this.pendingKeys.clear();
+    this.liveKeys.clear();
+    this.sustainedKeys.clear();
+  }
+
+  setLiveSound(on: boolean): void {
+    if (this.liveSound === on) return;
+    this.liveSound = on;
+    if (!on) this.silenceLive();
+    console.info('dewidebug live piano sound', { on });
+  }
+
+  setSustain(down: boolean): void {
+    if (this.sustained === down) return;
+    this.sustained = down;
+    console.info('dewidebug live piano sustain', { down });
+    if (down) return;
+    for (const pitch of this.sustainedKeys) {
+      if (!this.wantedKeys.has(pitch)) this.releaseKey(pitch);
+    }
+    this.sustainedKeys.clear();
+  }
+
   keyDown(pitch: number, velocity: number): void {
+    this.pendingKeys.delete(pitch);
     this.wantedKeys.add(pitch);
+    if (!this.liveSound) return;
     const ctx = this.ctx;
     if (ctx?.state === 'running' && this.manifest) {
       this.startKey(pitch, velocity);
@@ -567,8 +601,12 @@ export class PianoPlayer {
       pitch,
       state: ctx?.state ?? 'none',
     });
+    const request = Symbol();
+    this.pendingKeys.set(pitch, request);
     this.prepare().then(
       () => {
+        if (this.pendingKeys.get(pitch) !== request) return;
+        this.pendingKeys.delete(pitch);
         this.startKey(pitch, velocity);
       },
       (error: unknown) => {
@@ -578,7 +616,16 @@ export class PianoPlayer {
   }
 
   keyUp(pitch: number): void {
+    this.pendingKeys.delete(pitch);
     this.wantedKeys.delete(pitch);
+    if (this.sustained) {
+      this.sustainedKeys.add(pitch);
+      return;
+    }
+    this.releaseKey(pitch);
+  }
+
+  private releaseKey(pitch: number): void {
     const voice = this.liveKeys.get(pitch);
     const ctx = this.ctx;
     if (!voice || !ctx) return;
@@ -595,9 +642,9 @@ export class PianoPlayer {
 
   private startKey(pitch: number, velocity: number): void {
     const ctx = this.ctx;
-    if (!ctx || !this.wantedKeys.has(pitch)) return;
-    this.keyUp(pitch);
-    this.wantedKeys.add(pitch);
+    if (!ctx || !this.liveSound || !this.wantedKeys.has(pitch)) return;
+    this.sustainedKeys.delete(pitch);
+    this.releaseKey(pitch);
     const voice = this.sound(pitch, velocity, ctx.currentTime, null, this.liveVoices);
     if (voice) this.liveKeys.set(pitch, voice);
   }
