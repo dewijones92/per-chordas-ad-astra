@@ -455,3 +455,36 @@ describe('a dotted line joins notes that start together in different hands', () 
     expect(hidden.joins).toBe(0);
   });
 });
+
+describe('rhythm visuals on the falling notes', () => {
+  it('draws hit and missed note counts, hit-pop pills, and wrong-key flashes', () => {
+    const perfectNote = note(60, 0.5, 1);
+    const missedNote = note(64, 0.2, 0.7);
+    const { ctx, texts } = recordingContext();
+    const drawn = drawFalling(ctx, {
+      ...view(perfOf([perfectNote, missedNote]), DEFAULT_LOOK_AHEAD),
+      rhythmActive: true,
+      sustained: true,
+      noteHits: new Map([
+        [perfectNote, 'perfect'],
+        [missedNote, 'missed'],
+      ]),
+      hitPops: [
+        { pitch: 60, grade: 'perfect', atMs: 900 },
+        { pitch: 62, grade: 'wrong', atMs: 950 },
+      ],
+      popLabels: {
+        perfect: 'Perfect',
+        early: 'Early',
+        late: 'Late',
+        missed: 'Miss',
+        wrong: 'Wrong',
+      },
+      popNowMs: 1000,
+    });
+    expect(drawn.hits).toBe(1);
+    expect(drawn.missed).toBe(1);
+    expect(drawn.pops).toBe(2);
+    expect(texts.map((t) => t.text)).toEqual(expect.arrayContaining(['Perfect', 'Wrong']));
+  });
+});

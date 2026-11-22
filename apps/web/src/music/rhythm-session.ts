@@ -88,7 +88,7 @@ export class RhythmSession {
     for (const listener of this.listeners) listener();
   }
 
-  view(): RhythmView {
+  view(_version?: number): RhythmView {
     return {
       stats: { ...this.totals },
       noteHits: this.hits,

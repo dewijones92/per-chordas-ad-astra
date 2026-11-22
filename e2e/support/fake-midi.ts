@@ -72,6 +72,9 @@ export async function installFakeMidi(page: Page, options: FakeMidiOptions): Pro
       noteOff(id: string, pitch: number) {
         return midi.send(id, [0x80, pitch, 0]);
       },
+      cc(id: string, controller: number, value: number) {
+        return midi.send(id, [0xb0, controller, value]);
+      },
     };
     (window as unknown as { __midi: typeof midi }).__midi = midi;
     if (opts.mode === 'unsupported') {
@@ -95,6 +98,7 @@ export interface FakeMidiPage {
   unplug: (id: string) => Promise<void>;
   noteOn: (id: string, pitch: number) => Promise<boolean>;
   noteOff: (id: string, pitch: number) => Promise<boolean>;
+  cc: (id: string, controller: number, value: number) => Promise<boolean>;
   requests: () => Promise<number>;
 }
 
@@ -104,6 +108,7 @@ interface Win {
     unplug(id: string): void;
     noteOn(id: string, pitch: number): boolean;
     noteOff(id: string, pitch: number): boolean;
+    cc(id: string, controller: number, value: number): boolean;
     state: { requests: number };
   };
 }
@@ -130,6 +135,12 @@ export function fakeMidi(page: Page): FakeMidiPage {
       page.evaluate(([i, p]) => (window as unknown as Win).__midi.noteOff(i, p), [
         id,
         pitch,
+      ] as const),
+    cc: (id, controller, value) =>
+      page.evaluate(([i, c, v]) => (window as unknown as Win).__midi.cc(i, c, v), [
+        id,
+        controller,
+        value,
       ] as const),
     requests: () => page.evaluate(() => (window as unknown as Win).__midi.state.requests),
   };
