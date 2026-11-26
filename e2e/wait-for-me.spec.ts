@@ -556,15 +556,24 @@ test('Rhythm mode flows without stopping, grades hits and misses, and shows a re
   await expect(rhythm).toBeVisible();
 
   await start(page);
-  await page.waitForFunction(() => {
-    const el = document.querySelector('[data-testid="playalong-canvas"]');
-    return Number(el?.getAttribute('data-position') ?? '0') > 0;
-  });
+  await page.evaluate(
+    ({ id, pitches, at }) =>
+      new Promise<void>((resolve) => {
+        const midi = (window as unknown as { __midi: { noteOn(i: string, p: number): boolean } })
+          .__midi;
+        const el = document.querySelector('[data-testid="playalong-canvas"]');
+        const step = () => {
+          if (Number(el?.getAttribute('data-position') ?? '0') >= at) {
+            for (const pitch of pitches) midi.noteOn(id, pitch);
+            resolve();
+          } else requestAnimationFrame(step);
+        };
+        step();
+      }),
+    { id: KB, pitches: [59, 62, 67], at: 0.47 },
+  );
   const midi = fakeMidi(page);
-  await midi.noteOn(KB, 43);
-  await midi.noteOn(KB, 71);
-  await midi.noteOff(KB, 43);
-  await midi.noteOff(KB, 71);
+  for (const pitch of [59, 62, 67]) await midi.noteOff(KB, pitch);
 
   await expect
     .poll(
