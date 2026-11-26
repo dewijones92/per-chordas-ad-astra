@@ -504,3 +504,91 @@ test('in the Both view, the letter keys follow your last click: the PDF gets its
   await expect.poll(() => pitchesOf(panel(page), 'data-played')).toContain(69);
   await page.keyboard.up('KeyH');
 });
+
+test('always-on MIDI lights up keys without Wait for me, shows sustain, mutes browser piano and filters devices', async ({
+  page,
+}) => {
+  const voices = await watchVoices(page);
+  await open(page, 'Always On Midi', {
+    mode: 'allowed',
+    devices: [
+      { id: KB, name: 'Digital Piano' },
+      { id: 'kb2', name: 'USB Synth' },
+    ],
+  });
+  await expect(page.getByTestId('midi-bar')).toBeVisible();
+  await expect(page.getByTestId('midi-device-select')).toBeVisible();
+  const midi = fakeMidi(page);
+
+  await midi.noteOn(KB, 60);
+  await expect(canvas(page)).toHaveAttribute('data-played', '60');
+  await midi.cc(KB, 64, 127);
+  await expect(page.getByTestId('midi-sustain')).toBeVisible();
+  await expect(canvas(page)).toHaveAttribute('data-sustain', 'true');
+  await midi.cc(KB, 64, 0);
+  await expect(page.getByTestId('midi-sustain')).toHaveCount(0);
+  await midi.noteOff(KB, 60);
+  await expect(canvas(page)).toHaveAttribute('data-played', '');
+
+  await page.getByTestId('midi-device-select').selectOption('kb2');
+  expect(await midi.noteOn(KB, 62)).toBe(false);
+  expect(await midi.noteOn('kb2', 64)).toBe(true);
+  await expect(canvas(page)).toHaveAttribute('data-played', '64');
+  await midi.noteOff('kb2', 64);
+
+  const beforeMute = (await voices()).length;
+  await page.getByTestId('midi-sound-toggle').click();
+  await expect(page.getByTestId('midi-sound-toggle')).toHaveAttribute('aria-pressed', 'false');
+  await midi.noteOn('kb2', 67);
+  await expect(canvas(page)).toHaveAttribute('data-played', '67');
+  await page.waitForTimeout(250);
+  expect((await voices()).length).toBe(beforeMute);
+  await midi.noteOff('kb2', 67);
+});
+
+test('Rhythm mode flows without stopping, grades hits and misses, and shows a result card', async ({
+  page,
+}) => {
+  await open(page, 'Rhythm Mode');
+  await page.getByTestId('playalong-rhythm').click();
+  await expect(page.getByTestId('playalong-rhythm')).toHaveAttribute('aria-pressed', 'true');
+  const rhythm = page.getByTestId('rhythm-panel');
+  await expect(rhythm).toBeVisible();
+
+  await start(page);
+  await page.waitForFunction(() => {
+    const el = document.querySelector('[data-testid="playalong-canvas"]');
+    return Number(el?.getAttribute('data-position') ?? '0') > 0;
+  });
+  const midi = fakeMidi(page);
+  await midi.noteOn(KB, 43);
+  await midi.noteOn(KB, 71);
+  await midi.noteOff(KB, 43);
+  await midi.noteOff(KB, 71);
+
+  await expect
+    .poll(
+      async () => (await number(rhythm, 'data-perfect')) + (await number(rhythm, 'data-good')),
+      {
+        timeout: 5000,
+      },
+    )
+    .toBeGreaterThanOrEqual(2);
+  await expect
+    .poll(() => number(rhythm, 'data-best-streak'), { timeout: 5000 })
+    .toBeGreaterThanOrEqual(2);
+  await expect.poll(() => number(canvas(page), 'data-hits'), { timeout: 5000 }).toBeGreaterThan(0);
+
+  await expect
+    .poll(() => number(canvas(page), 'data-position'), { timeout: 5000 })
+    .toBeGreaterThan(0.7);
+  await expect.poll(() => number(rhythm, 'data-missed'), { timeout: 5000 }).toBeGreaterThan(0);
+
+  await page.keyboard.press('Space');
+  const result = page.getByTestId('rhythm-result');
+  await expect(result).toBeVisible();
+  await expect(page.getByTestId('rhythm-result-accuracy')).toContainText('% accuracy');
+  await page.getByTestId('wait-again').click();
+  await expect(rhythm).toHaveAttribute('data-notes', '0');
+  await expect(rhythm).toHaveAttribute('data-missed', '0');
+});

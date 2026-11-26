@@ -1,9 +1,9 @@
-import { onsetGroups, LEFT_OUT } from './hands.ts';
+import { rhythmTargets, SEEK_SLACK } from './rhythm-session.ts';
+import { LEFT_OUT } from './hands.ts';
 import type { PerfNote } from './performance.ts';
 
 export const CHORD_WINDOW_MS = 300;
 export const EARLY_SECONDS = 0.3;
-const SEEK_SLACK = 1e-3;
 
 export interface WaitTarget {
   at: number;
@@ -45,14 +45,7 @@ export function waitTargets(
   mine: (note: PerfNote) => boolean,
   transpose: number,
 ): WaitTarget[] {
-  const targets: WaitTarget[] = [];
-  for (const group of onsetGroups(notes.filter(mine))) {
-    const first = group[0];
-    if (!first) continue;
-    const pitches = [...new Set(group.map((n) => n.pitch + transpose))].sort((a, b) => a - b);
-    targets.push({ at: first.start, pitches });
-  }
-  return targets;
+  return rhythmTargets(notes, mine, transpose).map(({ at, pitches }) => ({ at, pitches }));
 }
 
 const noStats = (): WaitStats => ({ targets: 0, notes: 0, right: 0, wrong: 0, waitedMs: 0 });

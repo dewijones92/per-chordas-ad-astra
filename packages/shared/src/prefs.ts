@@ -105,6 +105,14 @@ export function speedPercent(speed: number): number {
   return Math.round(speed * 1000) / 10;
 }
 
+export const PLAY_MODES = ['off', 'wait', 'rhythm'] as const;
+export const PlayMode = z.enum(PLAY_MODES);
+export type PlayMode = z.infer<typeof PlayMode>;
+
+export function playModeOf(prefs: Pick<PlayAlongPrefs, 'playMode' | 'waitForMe'>): PlayMode {
+  return prefs.playMode ?? (prefs.waitForMe ? 'wait' : 'off');
+}
+
 export const PlayAlongPrefs = z.object({
   speed: z.number().min(PLAY_ALONG_MIN_SPEED).max(PLAY_ALONG_MAX_SPEED),
   loop: LoopRange.nullable(),
@@ -135,6 +143,9 @@ export const PlayAlongPrefs = z.object({
   compact: z.boolean().default(false),
   suggest: z.boolean().default(true),
   chords: z.boolean().default(false),
+  playMode: PlayMode.nullable().default(null),
+  midiSound: z.boolean().default(true),
+  midiDevice: z.string().nullable().default(null),
   waitForMe: z.boolean().default(false),
   hands: z.boolean().default(true),
 });
@@ -169,6 +180,9 @@ export const DEFAULT_PLAY_ALONG: PlayAlongPrefs = {
   compact: false,
   suggest: true,
   chords: false,
+  playMode: null,
+  midiSound: true,
+  midiDevice: null,
   waitForMe: false,
   hands: true,
 };

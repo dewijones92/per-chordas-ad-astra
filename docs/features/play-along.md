@@ -1,7 +1,7 @@
 ---
 title: Play-along (MuseScore, MusicXML and MIDI, falling notes, transpose, loop)
 status: shipped
-updated: 2026-11-10
+updated: 2026-11-22
 ---
 
 # Play-along
@@ -259,3 +259,12 @@ which hand plays what beyond its track order; MIDI has no notation, key spelling
 in the source arrive as one long note or as two notes, as the file wrote them; lyrics, articulations and dynamics marks are not in the notation yet; ottava
 lines, swing, pedal and grace-note timing are approximate; two of MuseScore's 69 repeat cases (a jump into
 an ending that has its own repeats) differ.
+
+- **🎮 Rhythm mode & always-on MIDI** (22 Nov 2026): MIDI keyboards now connect as soon as Play-along opens — even
+  when Wait for me and Rhythm are off — lighting up keys you press on the on-screen piano and showing a compact MIDI bar
+  when a keyboard is connected, with a device picker (when more than one keyboard is attached), a live **🦶 Sustain**
+  indicator (CC64 damper pedal holds live piano voices until released), and a **🔊 Piano sound / 🔇 Piano muted**
+  toggle for digital pianos with built-in speakers. **🎮 Rhythm** sits beside **🎹 Wait for me**: playback flows
+  continuously without pausing, grading each note in real time as Perfect (±80 ms), Early/Late (±180 ms) or Missed,
+  colouring falling blocks (green/teal for hits, faded dashed red for misses), floating grade pills above the keys,
+  flashing wrong keys coral-red, and reporting live accuracy/streak plus a result card on pause or finish.

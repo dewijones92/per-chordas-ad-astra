@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { KeyEvent } from '../src/music/key-input.ts';
-import { MidiKeyInput, parseMidiMessage, type MidiStatus } from '../src/music/midi-input.ts';
+import {
+  MidiKeyInput,
+  parseMidiControl,
+  parseMidiMessage,
+  type MidiStatus,
+} from '../src/music/midi-input.ts';
 
 class FakePort {
   state: 'connected' | 'disconnected' = 'connected';
@@ -185,4 +190,49 @@ describe('the MIDI input', () => {
     b.send(0x90, 60, 90);
     expect(events).toHaveLength(1);
   });
+});
+
+it('reads damper values across channels and ignores incomplete or unrelated messages', () => {
+  expect(parseMidiControl([0xbf, 64, 64])).toEqual({ kind: 'sustain', down: true });
+  expect(parseMidiControl([0xb1, 64, 63])).toEqual({ kind: 'sustain', down: false });
+  for (const bytes of [null, undefined, [0xb0, 64], [0xa0, 64, 127], [0xb0, 65, 127]])
+    expect(parseMidiControl(bytes)).toBeNull();
+});
+
+it('lists all ports, releases keys and pedal on selection and releases the pedal on unplug and stop', async () => {
+  const access = new FakeAccess();
+  const a = new FakePort('a', 'Piano');
+  const b = new FakePort('b', null);
+  access.plug(a);
+  access.plug(b);
+  const onControl = vi.fn();
+  const onPorts = vi.fn();
+  const key = vi.fn();
+  const input = new MidiKeyInput(vi.fn(), () => () => Promise.resolve(asAccess(access)), {
+    onControl,
+    onPorts,
+  });
+  input.start(key);
+  await settle();
+  expect(onPorts).toHaveBeenCalledWith([
+    { id: 'a', name: 'Piano' },
+    { id: 'b', name: 'b' },
+  ]);
+  a.send(0x90, 60, 90);
+  a.send(0xb0, 64, 127);
+  a.send(0xb0, 64, 100);
+  expect(onControl).toHaveBeenCalledTimes(1);
+  input.setDevice('b');
+  expect(key.mock.lastCall?.[0]).toMatchObject({ kind: 'up', pitch: 60 });
+  expect(onControl).toHaveBeenLastCalledWith({ kind: 'sustain', down: false });
+  expect(a.send(0xb0, 64, 127)).toBe(false);
+  b.send(0xb0, 64, 127);
+  access.unplug('b');
+  expect(onControl).toHaveBeenCalledTimes(4);
+  expect(onPorts).toHaveBeenLastCalledWith([{ id: 'a', name: 'Piano' }]);
+  input.setDevice(null);
+  a.send(0xb0, 64, 127);
+  input.stop();
+  expect(onControl).toHaveBeenCalledTimes(6);
+  expect(onControl).toHaveBeenLastCalledWith({ kind: 'sustain', down: false });
 });

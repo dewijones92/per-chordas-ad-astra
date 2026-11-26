@@ -23,6 +23,28 @@ export function parseMidiMessage(
   return null;
 }
 
+export interface MidiDevice {
+  id: string;
+  name: string;
+}
+
+export interface MidiControl {
+  kind: 'sustain';
+  down: boolean;
+}
+
+export function parseMidiControl(data: ArrayLike<number> | null | undefined): MidiControl | null {
+  if (
+    !data ||
+    data.length < 3 ||
+    ((data[0] ?? 0) & 0xf0) !== 0xb0 ||
+    data[1] !== 64 ||
+    data[2] === undefined
+  )
+    return null;
+  return { kind: 'sustain', down: data[2] >= 64 };
+}
+
 export type RequestMidi = () => Promise<MIDIAccess>;
 
 export function browserRequestMidi(): RequestMidi | null {
@@ -35,12 +57,18 @@ export class MidiKeyInput implements KeyInput {
   private handler: KeyHandler | null = null;
   private access: MIDIAccess | null = null;
   private stopped = true;
-  private deviceCount = 0;
+  private attached = new Set<MIDIInput>();
+  private deviceId: string | null = null;
+  private sustainDown = false;
   private readonly held = new HeldKeys('midi');
 
   constructor(
     private readonly onStatus: (status: MidiStatus) => void,
     private readonly request: () => RequestMidi | null = browserRequestMidi,
+    private readonly options: {
+      onControl?: (control: MidiControl) => void;
+      onPorts?: (ports: readonly MidiDevice[]) => void;
+    } = {},
   ) {}
 
   start(handler: KeyHandler): void {
@@ -79,40 +107,60 @@ export class MidiKeyInput implements KeyInput {
     this.stopped = true;
     const access = this.access;
     this.access = null;
-    if (access) {
-      access.onstatechange = null;
-      access.inputs.forEach((input) => {
-        input.onmidimessage = null;
-      });
-    }
-    if (this.handler) this.held.releaseAll(this.handler);
+    if (access) access.onstatechange = null;
+    for (const port of this.attached) port.onmidimessage = null;
+    this.attached.clear();
+    this.release();
     this.handler = null;
     this.onStatus({ state: 'off' });
   }
 
+  setDevice(deviceId: string | null): void {
+    if (deviceId === this.deviceId) return;
+    this.release();
+    this.deviceId = deviceId;
+    console.info('dewidebug midi selected input', { deviceId });
+    if (this.access) this.attach(this.access);
+  }
+
+  private sustain(down: boolean): void {
+    if (this.sustainDown === down) return;
+    this.sustainDown = down;
+    this.options.onControl?.({ kind: 'sustain', down });
+  }
+
+  private release(): void {
+    if (this.handler) this.held.releaseAll(this.handler);
+    this.sustain(false);
+  }
+
   private attach(access: MIDIAccess): void {
-    const devices: string[] = [];
+    const ports: MidiDevice[] = [];
+    const next = new Set<MIDIInput>();
     access.inputs.forEach((input) => {
-      if (input.state === 'connected') {
-        input.onmidimessage = (message) => {
-          this.receive(message.data);
-        };
-        devices.push(input.name ?? input.id);
-      } else {
-        input.onmidimessage = null;
-      }
+      if (input.state !== 'connected') return;
+      ports.push({ id: input.id, name: input.name ?? input.id });
+      if (this.deviceId !== null && this.deviceId !== input.id) return;
+      next.add(input);
+      input.onmidimessage = (message) => {
+        this.receive(message.data);
+      };
     });
-    console.info('dewidebug midi inputs', { devices });
-    if (devices.length < this.deviceCount && this.handler) {
-      console.info('dewidebug midi keyboard unplugged: letting go of its keys');
-      this.held.releaseAll(this.handler);
+    for (const input of this.attached) {
+      if (next.has(input)) continue;
+      input.onmidimessage = null;
+      this.release();
     }
-    this.deviceCount = devices.length;
-    this.onStatus({ state: 'ready', devices });
+    this.attached = next;
+    console.info('dewidebug midi inputs', { ports, deviceId: this.deviceId });
+    this.options.onPorts?.(ports);
+    this.onStatus({ state: 'ready', devices: ports.map((port) => port.name) });
   }
 
   private receive(data: Uint8Array | null): void {
     const handler = this.handler;
+    const control = parseMidiControl(data);
+    if (control) this.sustain(control.down);
     const parsed = parseMidiMessage(data);
     if (!handler || !parsed) return;
     if (parsed.kind === 'down') this.held.down(parsed.pitch, parsed.velocity, handler);

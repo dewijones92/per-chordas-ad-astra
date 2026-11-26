@@ -1,6 +1,6 @@
 ---
 title: Testing strategy and coverage map
-updated: 2026-11-11
+updated: 2026-11-22
 ---
 
 # Tests
@@ -113,3 +113,5 @@ adapters over browser or process APIs; their logic lives in pure modules that ar
 hand after deploy), the Google gate (checked by response body after deploy), and audio quality.
 
 Run locally: `PW_CHROMIUM_PATH=~/.cache/ms-playwright/chromium-1169/chrome-linux/chrome pnpm e2e`.
+
+Rhythm session and falling-canvas tests cover transposed chords, timing at different speeds, repeated pitches, misses, replay, feedback expiry, hit/miss block rendering and hit-pop pills. MIDI and player unit tests drive fake ports and audio voices through pedal, device and mute changes. `e2e/wait-for-me.spec.ts` also verifies always-on MIDI key highlights, CC64 sustain, device filtering, browser piano mute, and continuous Rhythm mode grading and results end to end.

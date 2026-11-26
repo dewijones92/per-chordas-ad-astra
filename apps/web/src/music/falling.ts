@@ -12,6 +12,13 @@ import { noteKey } from './model.ts';
 import type { ChordLabel } from './chords.ts';
 import { drawHands } from './hand-draw.ts';
 import type { HandLayer } from './hand-pose.ts';
+import {
+  POP_DURATION_MS,
+  WRONG_FLASH_MS,
+  type HitPop,
+  type NoteGrade,
+  type PopGrade,
+} from './rhythm-session.ts';
 
 export const BAR_EDGE = 26;
 export const TOGETHER = 0.02;
@@ -30,6 +37,14 @@ export const STRIKE_SECONDS = 0.2;
 export const EXPECTED_COLOUR = '#ff5d73';
 export const EXPECTED_FILL = '#ffe6ea';
 export const PLAYED_COLOUR = '#ffc53d';
+export const HIT_PERFECT_COLOUR = '#0e9f6e';
+export const HIT_PERFECT_EDGE = '#0a7a54';
+export const HIT_GOOD_COLOUR = '#13b9a6';
+export const HIT_GOOD_EDGE = '#0d8f80';
+export const MISSED_COLOUR = '#d92d4a';
+export const WRONG_KEY_COLOUR = '#ff5d73';
+export const STRIKE_LINE_RHYTHM = '#6d3df2';
+export const POP_PX = 11;
 
 export function keyUpAt(n: PerfNote, tails: boolean): number {
   return tails ? Math.min(n.end, n.start + STRIKE_SECONDS) : n.end;
@@ -55,6 +70,12 @@ export interface FallingView {
   selected?: string | null;
   expected?: ReadonlySet<number>;
   played?: ReadonlySet<number>;
+  noteHits?: ReadonlyMap<PerfNote, NoteGrade>;
+  hitPops?: readonly HitPop[];
+  popLabels?: Readonly<Record<PopGrade, string>>;
+  popNowMs?: number;
+  sustained?: boolean;
+  rhythmActive?: boolean;
   width: number;
   height: number;
 }
@@ -215,6 +236,9 @@ export interface FallingDrawn {
   blocks: readonly { pitch: number; x: number; y: number }[];
   bars: readonly { index: number; y: number }[];
   joins: number;
+  hits: number;
+  missed: number;
+  pops: number;
 }
 
 export function fingerOf(
@@ -428,6 +452,8 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
   let fingers = 0;
   let selectedDrawn = 0;
   let suggestedDrawn = 0;
+  let hitsDrawn = 0;
+  let missedDrawn = 0;
   const blocks: { pitch: number; x: number; y: number }[] = [];
   const labels: LabelJob[] = [];
   const onsets: Onset[] = [];
@@ -446,12 +472,32 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
         y: Math.round(yBottom - Math.min(h, 40) / 2),
       });
     const sounding = n.start <= position && keyUp > position;
-    const alpha = view.muted.has(view.laneOf(n)) ? 0.35 : 1;
+    const grade = view.noteHits?.get(n);
+    const isHit = grade === 'perfect' || grade === 'early' || grade === 'late';
+    const isMissed = grade === 'missed';
+    if (isHit) hitsDrawn += 1;
+    if (isMissed) missedDrawn += 1;
+    const baseAlpha = view.muted.has(view.laneOf(n)) ? 0.35 : 1;
+    const alpha = isMissed ? baseAlpha * 0.5 : isHit ? 1 : baseAlpha;
+    const blockFill =
+      grade === 'perfect'
+        ? sounding
+          ? HIT_PERFECT_EDGE
+          : HIT_PERFECT_COLOUR
+        : grade === 'early' || grade === 'late'
+          ? sounding
+            ? HIT_GOOD_EDGE
+            : HIT_GOOD_COLOUR
+          : isMissed
+            ? MISSED_COLOUR
+            : sounding
+              ? colour.edge
+              : colour.fill;
     if (keyUp < n.end) {
       const tailTop = yOf(n.end);
       const tailWidth = Math.max(2, Math.min(4, w / 4));
       ctx.globalAlpha = alpha * 0.55;
-      ctx.fillStyle = colour.fill;
+      ctx.fillStyle = blockFill;
       ctx.fillRect(
         x + w / 2 - tailWidth / 2,
         tailTop,
@@ -461,13 +507,16 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
     }
     ctx.globalAlpha = alpha;
     roundRect(ctx, x, yBottom - h, w, h, Math.min(6, w / 3));
-    ctx.fillStyle = sounding ? colour.edge : colour.fill;
+    ctx.fillStyle = blockFill;
     ctx.fill();
     const chosen =
       view.selected != null && n.source !== undefined && noteKey(n.source) === view.selected;
-    ctx.strokeStyle = chosen ? FINGER_COLOUR : '#1d1533';
-    ctx.lineWidth = chosen ? 4 : 1.5;
+    ctx.save();
+    if (isMissed && !chosen) ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = chosen ? FINGER_COLOUR : isMissed ? MISSED_COLOUR : '#1d1533';
+    ctx.lineWidth = chosen ? 4 : isHit ? 2 : 1.5;
     ctx.stroke();
+    ctx.restore();
     if (chosen) selectedDrawn += 1;
     ctx.globalAlpha = 1;
     const finger = fingerOf(n, view.userFingers, view.suggested);
@@ -536,8 +585,57 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
     chordsDrawn.push(chord.name);
   }
 
-  ctx.fillStyle = '#1d1533';
-  ctx.fillRect(0, notesHeight - 2, width, 3);
+  const nowMs = view.popNowMs ?? 0;
+  const hitPops = view.hitPops ?? [];
+  const wrongFlashes = new Set<number>();
+  let popsDrawn = 0;
+  for (const pop of hitPops) {
+    const age = nowMs - pop.atMs;
+    if (age < 0 || age > POP_DURATION_MS) continue;
+    if (pop.grade === 'wrong' && age <= WRONG_FLASH_MS) wrongFlashes.add(pop.pitch);
+    const key = keyForPitch(layout, pop.pitch, view.range);
+    if (!key) continue;
+    const label = view.popLabels?.[pop.grade];
+    if (!label) continue;
+    const progress = age / POP_DURATION_MS;
+    const alpha = progress < 0.5 ? 1 : Math.max(0, 1 - (progress - 0.5) * 2);
+    const rise = progress * 32;
+    const cx = Math.min(width - 28, Math.max(BAR_EDGE + 28, key.x + key.width / 2));
+    const cy = Math.max(14, notesHeight - 16 - rise);
+    const pillFill =
+      pop.grade === 'perfect'
+        ? HIT_PERFECT_COLOUR
+        : pop.grade === 'early' || pop.grade === 'late'
+          ? HIT_GOOD_COLOUR
+          : MISSED_COLOUR;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = `900 ${String(POP_PX)}px Nunito Variable, system-ui, sans-serif`;
+    const pillH = POP_PX + 7;
+    const pillW = Math.max(32, ctx.measureText(label).width + 12);
+    roundRect(ctx, cx - pillW / 2, cy - pillH / 2, pillW, pillH, 8);
+    ctx.fillStyle = pillFill;
+    ctx.fill();
+    ctx.strokeStyle = '#1d1533';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, cx, cy);
+    ctx.restore();
+    popsDrawn += 1;
+  }
+
+  if (view.rhythmActive) {
+    ctx.fillStyle = 'rgba(109, 61, 242, 0.16)';
+    ctx.fillRect(BAR_EDGE, notesHeight - 7, width - BAR_EDGE, 7);
+    ctx.fillStyle = STRIKE_LINE_RHYTHM;
+    ctx.fillRect(0, notesHeight - 2, width, 3);
+  } else {
+    ctx.fillStyle = '#1d1533';
+    ctx.fillRect(0, notesHeight - 2, width, 3);
+  }
 
   const pressed = new Map<number, string>();
   for (const n of soundingAt(perf.notes, position, longest)) {
@@ -551,11 +649,13 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
   const expected = view.expected ?? new Set<number>();
   const played = view.played ?? new Set<number>();
   const fillOf = (pitch: number, rest: string): string =>
-    played.has(pitch)
-      ? PLAYED_COLOUR
-      : expected.has(pitch)
-        ? EXPECTED_FILL
-        : (pressed.get(pitch) ?? rest);
+    wrongFlashes.has(pitch)
+      ? WRONG_KEY_COLOUR
+      : played.has(pitch)
+        ? PLAYED_COLOUR
+        : expected.has(pitch)
+          ? EXPECTED_FILL
+          : (pressed.get(pitch) ?? rest);
   const marker = (k: { x: number; width: number }, y: number, pitch: number) => {
     if (!played.has(pitch)) return;
     ctx.beginPath();
@@ -581,19 +681,30 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
   }
   for (const k of layout.keys) {
     if (!k.black) continue;
-    ctx.fillStyle = played.has(k.pitch)
-      ? PLAYED_COLOUR
-      : expected.has(k.pitch)
-        ? EXPECTED_COLOUR
-        : (pressed.get(k.pitch) ?? '#1d1533');
+    ctx.fillStyle = wrongFlashes.has(k.pitch)
+      ? WRONG_KEY_COLOUR
+      : played.has(k.pitch)
+        ? PLAYED_COLOUR
+        : expected.has(k.pitch)
+          ? EXPECTED_COLOUR
+          : (pressed.get(k.pitch) ?? '#1d1533');
     roundRect(ctx, k.x, keyTop, k.width, keyHeight * BLACK_KEY_HEIGHT_RATIO, 3);
     ctx.fill();
-    if (pressed.has(k.pitch) || played.has(k.pitch) || expected.has(k.pitch)) {
+    if (
+      pressed.has(k.pitch) ||
+      played.has(k.pitch) ||
+      expected.has(k.pitch) ||
+      wrongFlashes.has(k.pitch)
+    ) {
       ctx.strokeStyle = '#1d1533';
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }
     marker(k, keyTop + keyHeight * BLACK_KEY_HEIGHT_RATIO - 10, k.pitch);
+  }
+  if (view.sustained) {
+    ctx.fillStyle = PLAYED_COLOUR;
+    ctx.fillRect(BAR_EDGE, keyTop, width - BAR_EDGE, 4);
   }
   const hands = view.hands ?? [];
   if (hands.length > 0)
@@ -613,6 +724,9 @@ export function drawFalling(ctx: CanvasRenderingContext2D, view: FallingView): F
     blocks,
     bars: barsShown,
     joins,
+    hits: hitsDrawn,
+    missed: missedDrawn,
+    pops: popsDrawn,
   };
 }
 

@@ -9,6 +9,7 @@ import {
   RAMP_MIN_STEP,
   newId,
   perBeatOf,
+  playModeOf,
   countInOf,
   COUNT_IN_MAX_BEATS,
   roundSpeed,
@@ -110,8 +111,9 @@ import { toMusicXml } from './to-musicxml.ts';
 import { download, exportName, performanceToMidi, transposeMusicXml } from './export.ts';
 import { barAt, buildPerformance, type Performance, type PerfNote } from './performance.ts';
 import { PianoPlayer, type PlayerEvent } from './player.ts';
+import type { HitPop, NoteGrade } from './rhythm-session.ts';
 import { useWaitForMe } from './use-wait-for-me.ts';
-import { WaitForMeBar, WaitResult } from './WaitForMePanel.tsx';
+import { MidiStatusBar, WaitForMeBar, WaitResult } from './WaitForMePanel.tsx';
 import { PlayAlongLog } from './practice-session.ts';
 import { clampSpeed } from './transport.ts';
 import './music.css';
@@ -189,6 +191,11 @@ function FallingCanvas({
   pickedLabel,
   expected,
   played,
+  noteHits,
+  sustained,
+  rhythmActive,
+  advanceRhythm,
+  activePops,
   onKeyDown,
   onKeyUp,
   overlay,
@@ -217,6 +224,11 @@ function FallingCanvas({
   pickedLabel: string | null;
   expected: ReadonlySet<number>;
   played: ReadonlySet<number>;
+  noteHits: ReadonlyMap<PerfNote, NoteGrade>;
+  sustained: boolean;
+  rhythmActive: boolean;
+  advanceRhythm: (position: number, nowMs: number) => void;
+  activePops: (nowMs: number) => HitPop[];
   onKeyDown: ((pitch: number) => void) | null;
   onKeyUp: (pitch: number) => void;
   overlay: ReactNode;
@@ -310,6 +322,9 @@ function FallingCanvas({
     const draw = () => {
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       const position = player?.position() ?? prefs.position;
+      const nowMs = window.performance.now();
+      if (playing && rhythmActive) advanceRhythm(position, nowMs);
+      const hitPops = rhythmActive ? activePops(nowMs) : [];
       const view: FallingView = {
         perf,
         position,
@@ -330,6 +345,12 @@ function FallingCanvas({
         selected: selectedNote,
         expected,
         played,
+        noteHits,
+        hitPops,
+        popLabels: units.rhythmPop,
+        popNowMs: nowMs,
+        sustained,
+        rhythmActive,
         width: size.width,
         height: size.height,
       };
@@ -358,12 +379,16 @@ function FallingCanvas({
       el.dataset['clock'] = (player?.audioTime() ?? 0).toFixed(3);
       el.dataset['fingers'] = String(drawn.fingers);
       el.dataset['joins'] = String(drawn.joins);
+      el.dataset['hits'] = String(drawn.hits);
+      el.dataset['missed'] = String(drawn.missed);
+      el.dataset['pops'] = String(drawn.pops);
+      el.dataset['sustain'] = String(sustained);
       el.dataset['expected'] = [...expected].join(' ');
       el.dataset['played'] = [...played].join(' ');
       el.dataset['pressed'] = [...drawn.pressed]
         .map(([pitch, fill]) => `${String(pitch)}:${fill}`)
         .join(' ');
-      if (playing) frame = requestAnimationFrame(draw);
+      if (playing || hitPops.length > 0) frame = requestAnimationFrame(draw);
     };
     draw();
     return () => {
@@ -392,6 +417,11 @@ function FallingCanvas({
     selectedNote,
     expected,
     played,
+    noteHits,
+    sustained,
+    rhythmActive,
+    advanceRhythm,
+    activePops,
   ]);
 
   const drag = useRef<{ x: number; y: number; position: number; moved: boolean } | null>(null);
@@ -813,10 +843,13 @@ export function PlayAlong({
     };
   }, [player, perf, key]);
 
+  const playMode = playModeOf(prefs);
   const loopBar = activeLoop(prefs);
   const waitLoopStart = perf ? (loopSpan(perf, loopBar)?.start ?? null) : null;
   const wait = useWaitForMe({
-    enabled: prefs.waitForMe,
+    mode: playMode,
+    midiSound: prefs.midiSound,
+    midiDevice: prefs.midiDevice,
     player,
     perf,
     lanes,
@@ -1256,15 +1289,30 @@ export function PlayAlong({
         <button
           type="button"
           className="btn small ghost"
-          aria-pressed={prefs.waitForMe}
+          aria-pressed={playMode === 'wait'}
           title={tips.playAlong.waitForMe}
           data-testid="playalong-wait"
           onClick={() => {
-            console.info('dewidebug play-along wait for me', { on: !prefs.waitForMe });
-            updatePrefs((p) => ({ ...p, waitForMe: !p.waitForMe }));
+            const next = playMode === 'wait' ? 'off' : 'wait';
+            console.info('dewidebug play-along mode', { mode: next });
+            updatePrefs((p) => ({ ...p, playMode: next, waitForMe: next === 'wait' }));
           }}
         >
           {strings.playAlong.waitForMe}
+        </button>
+        <button
+          type="button"
+          className="btn small ghost"
+          aria-pressed={playMode === 'rhythm'}
+          title={tips.playAlong.rhythm}
+          data-testid="playalong-rhythm"
+          onClick={() => {
+            const next = playMode === 'rhythm' ? 'off' : 'rhythm';
+            console.info('dewidebug play-along mode', { mode: next });
+            updatePrefs((p) => ({ ...p, playMode: next, waitForMe: false }));
+          }}
+        >
+          {strings.playAlong.rhythm}
         </button>
         <span className="spacer" />
         <span
@@ -1397,11 +1445,31 @@ export function PlayAlong({
           {prefs.compact ? strings.playAlong.moreControls : strings.playAlong.fewerControls}
         </button>
       </div>
-      {prefs.waitForMe && (
+      {playMode !== 'off' ? (
         <WaitForMeBar
           wait={wait}
           playing={playing}
           flats={transposeFifths(perf.keyFifths, transpose) < 0}
+          midiSound={prefs.midiSound}
+          midiDevice={prefs.midiDevice}
+          onMidiSound={(midiSound) => {
+            updatePrefs((p) => ({ ...p, midiSound }));
+          }}
+          onMidiDevice={(midiDevice) => {
+            updatePrefs((p) => ({ ...p, midiDevice }));
+          }}
+        />
+      ) : (
+        <MidiStatusBar
+          wait={wait}
+          midiSound={prefs.midiSound}
+          midiDevice={prefs.midiDevice}
+          onMidiSound={(midiSound) => {
+            updatePrefs((p) => ({ ...p, midiSound }));
+          }}
+          onMidiDevice={(midiDevice) => {
+            updatePrefs((p) => ({ ...p, midiDevice }));
+          }}
         />
       )}
     </>
@@ -2118,10 +2186,15 @@ export function PlayAlong({
         pickedLabel={picked?.label ?? null}
         expected={wait.expected}
         played={wait.played}
-        onKeyDown={prefs.waitForMe ? wait.pressScreen : null}
+        noteHits={wait.noteHits}
+        sustained={wait.sustained}
+        rhythmActive={playMode === 'rhythm'}
+        advanceRhythm={wait.advanceRhythm}
+        activePops={wait.activePops}
+        onKeyDown={wait.pressScreen}
         onKeyUp={wait.releaseScreen}
         overlay={
-          prefs.waitForMe && (
+          playMode !== 'off' && (
             <WaitResult
               wait={wait}
               playing={playing}

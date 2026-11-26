@@ -317,6 +317,11 @@ export const strings = {
     noteNames: '🔤 Note names',
     suggest: '🤖 Suggested fingering',
     waitForMe: '🎹 Wait for me',
+    rhythm: '🎮 Rhythm',
+    midiSoundOn: '🔊 Piano sound',
+    midiSoundOff: '🔇 Piano muted',
+    midiAllDevices: '🎹 All MIDI keyboards',
+    midiSustain: '🦶 Sustain',
     wait: {
       midiAsking: '⏳ Asking the browser for MIDI…',
       midiUnsupported:
@@ -344,6 +349,25 @@ export const strings = {
       wrongNotes: (count: number) => `❌ ${String(count)} wrong ${count === 1 ? 'note' : 'notes'}`,
       waited: (seconds: number) => `⏳ Waited ${String(seconds)} s`,
       again: '🔄 Start again',
+    },
+    rhythmBar: {
+      ready: '▶️ Press Play and hit the notes in time as they reach the keys',
+      playing: '🎶 Play in time as the notes reach the keys',
+      grade: {
+        perfect: '✨ Perfect!',
+        early: '⏪ Early',
+        late: '⏩ Late',
+        missed: '💨 Missed',
+        wrong: '❌ Wrong key',
+      },
+      live: (accuracy: number, streak: number, perfect: number, good: number, missed: number) =>
+        `🎯 ${String(accuracy)}% · 🔥 ${String(streak)} streak · ✨ ${String(perfect)} · 👌 ${String(good)} · 💨 ${String(missed)} missed`,
+      accuracy: (percent: number) => `🎯 ${String(percent)}% accuracy`,
+      hits: (perfect: number, good: number) =>
+        `✨ ${String(perfect)} perfect · 👌 ${String(good)} good`,
+      bestStreak: (streak: number) => `🔥 Best streak ${String(streak)}`,
+      misses: (missed: number, wrong: number) =>
+        `💨 ${String(missed)} missed · ❌ ${String(wrong)} wrong`,
     },
     showHands: '🖐️ Show hands',
     suggestHelp: [
@@ -574,6 +598,13 @@ export const tips = {
       'Drag to give the stave or the falling notes more room; double-click to go back to automatic',
     waitForMe:
       'The falling notes stop at each note or chord of yours until you play it, then carry on; play on a MIDI keyboard, the on-screen keys or your computer keyboard. With nothing muted you play every note you can see; mute a hand to play just that one, and a hidden hand is left to the app',
+    rhythm:
+      'Continuous rhythm mode: the music keeps moving and grades each note you play in real time as Perfect, Early, Late or Missed, tracking your streak and accuracy',
+    midiSound:
+      'Play live keys through the browser piano; mute this if your digital piano already has its own speakers',
+    midiDevice: 'Choose which connected MIDI keyboard to listen to',
+    midiSustain: 'Sustain pedal is held down',
+    rhythmResult: 'How that rhythm run went: accuracy, hits, best streak and misses',
     waitResult: 'How that went: notes right first time, wrong notes and time spent waiting',
     waitInputs: 'Where your playing comes from',
     showHands:
@@ -826,6 +857,13 @@ export const units = {
   },
   by: 'by',
   percent: '%',
+  rhythmPop: {
+    perfect: 'Perfect',
+    early: 'Early',
+    late: 'Late',
+    missed: 'Miss',
+    wrong: 'Wrong',
+  },
   source: {
     ratings: (n: number) => (n === 1 ? '1 rating' : `${compactCount(n)} ratings`),
     views: (n: number) => (n === 1 ? '1 view' : `${compactCount(n)} views`),

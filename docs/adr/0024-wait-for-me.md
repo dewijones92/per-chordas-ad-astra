@@ -2,7 +2,7 @@
 title: Wait for me: the falling notes stop at your notes until you play them, from MIDI, the screen or the computer keyboard
 status: accepted
 date: 2026-11-04
-updated: 2026-11-04
+updated: 2026-11-22
 ---
 
 # 0024 · Wait for me: the falling notes stop at your notes until you play them
@@ -81,3 +81,12 @@ be driveable from a virtual piano.
 - Web Audio will not start from a MIDI message alone in a browser that has had no click; the first on-screen click,
   key press or Play starts it.
 - The accompaniment notes sounding when a hold begins are not cut; they ring out.
+
+- **Always-on MIDI & continuous Rhythm mode** (22 Nov 2026): Web MIDI (`MidiKeyInput`) and on-screen keys now stay active
+  whenever Play-along is open (computer keyboard piano keys are still claimed only while Wait for me or Rhythm is on,
+  respecting drawing/score focus). An explicit `playMode` (`off` | `wait` | `rhythm`) takes precedence over the saved
+  `waitForMe` flag while preserving backward compatibility. `MidiKeyInput` reads CC64 sustain and supports selecting a
+  single input device (`midiDevice`), while `PianoPlayer` supports damper sustain (`setSustain`) and muting live browser
+  piano audio (`setLiveSound`, persisted as `midiSound`) independently of accompaniment playback. Rhythm mode shares the
+  same filtered, transposed chord targets (`rhythmTargets`), measures timing in real seconds, counts each distinct chord
+  pitch once, keeps session totals across loop passes, and feeds per-note grades and floating hit-pops into `drawFalling`.
